@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}Rendez-vous{% endblock %}
+{% block nav_rdv %}active{% endblock %}
+{% block page_title %}Rendez-vous{% endblock %}
+{% block page_heading %}Liste des rendez-vous{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Rendez-vous</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
+{% endblock %}
+
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-info { flex: 1; min-width: 0; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.tabs-nav { display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .7rem; padding: 4px; gap: 2px; flex-wrap: wrap; }
+.tab-link { padding: .42rem .85rem; border-radius: .55rem; font-size: .76rem; font-weight: 700; color: var(--text-muted); text-decoration: none; transition: all .2s; display: inline-flex; align-items: center; gap: .35rem; }
+.tab-link:hover { color: var(--text-primary); }
+.tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.tab-count { font-size: .62rem; font-weight: 800; padding: .12em .45em; border-radius: 999px; background: var(--card-border); color: var(--text-muted); }
+.tab-link.active .tab-count { background: rgba(16,185,129,.15); color: var(--primary); }
+</style>{% endblock %}
+
+{% block content %}
+<!-- 4 stat-h -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.04s">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Terminés</div><div class="stat-h-val">{{ rdv_termines|default:0 }}</div><div class="stat-h-trend" style="color:var(--primary)">Consultations effectuées</div></div>
+      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">En cours</div><div class="stat-h-val">{{ rdv_en_cours|default:0 }}</div><div class="stat-h-trend" style="color:#f59e0b">Aujourd'hui</div></div>
+      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.20s">
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-event"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Programmés</div><div class="stat-h-val">{{ rdv_programmes|default:0 }}</div><div class="stat-h-trend" style="color:#14b8a6">À venir</div></div>
+      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.28s">
+      <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-x-circle-fill"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Annulés</div><div class="stat-h-val">{{ rdv_annules_count|default:0 }}</div><div class="stat-h-trend" style="color:#ef4444">Reprogrammer</div></div>
+      <canvas class="stat-h-spark" data-spark="red"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Recherche + tabs filtres -->
+<div class="panel mb-3">
+  <div class="panel-body" style="padding:.95rem 1.25rem">
+    <div class="d-flex gap-3 align-items-center flex-wrap">
+      <form method="get" class="d-flex gap-2 align-items-center" style="flex:1;min-width:240px">
+        <input type="hidden" name="statut" value="{{ request.GET.statut }}">
+        <div style="position:relative;flex:1">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
+          <input type="text" name="q" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher patient ou médecin…" value="{{ request.GET.q }}">
+        </div>
+        <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i></button>
+        {% if request.GET.q %}<a href="{% url 'consultation:rdv_liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i></a>{% endif %}
+      </form>
+      <div class="tabs-nav">
+        <a href="?{% if request.GET.q %}q={{ request.GET.q }}{% endif %}" class="tab-link {% if not request.GET.statut %}active{% endif %}">Tous <span class="tab-count">{{ rdvs|length }}</span></a>
+        <a href="?statut=programme{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'programme' %}active{% endif %}"><i class="bi bi-calendar-event"></i> Programmés</a>
+        <a href="?statut=termine{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'termine' %}active{% endif %}"><i class="bi bi-check-circle"></i> Terminés</a>
+        <a href="?statut=annule{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'annule' %}active{% endif %}"><i class="bi bi-x-circle"></i> Annulés</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-calendar-check me-2" style="color:var(--accent)"></i>{{ rdvs|length }} rendez-vous{{ rdvs|length|pluralize }}</span>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead><tr><th>#</th><th>Patient</th><th>Médecin</th><th>Date & Heure</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for rdv in rdvs %}
+        <tr>
+          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:var(--text-muted)">RDV-{{ rdv.pk|stringformat:"04d" }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="av" style="background:rgba(16,185,129,.12);color:var(--primary)">{{ rdv.patient.nom|slice:":1" }}{{ rdv.patient.prenom|slice:":1" }}</div>
+              <a href="{% url 'patients:detail' rdv.patient.pk %}" style="font-weight:700;color:var(--text-primary);text-decoration:none">{{ rdv.patient }}</a>
+            </div>
+          </td>
+          <td>Dr. {{ rdv.medecin }}</td>
+          <td><i class="bi bi-clock me-1" style="color:var(--text-muted)"></i>{{ rdv.date|date:"d/m/Y à H:i" }}</td>
+          <td>
+            {% if rdv.statut == 'termine' %}<span class="pill pill-success"><i class="bi bi-check-circle-fill"></i> Terminé</span>
+            {% elif rdv.statut == 'annule' %}<span class="pill pill-danger"><i class="bi bi-x-circle-fill"></i> Annulé</span>
+            {% else %}<span class="pill pill-info"><i class="bi bi-calendar-event"></i> Programmé</span>{% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+          <i class="bi bi-calendar-x" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+          Aucun rendez-vous trouvé
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7] };
+  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444' };
+  document.querySelectorAll('[data-spark]').forEach(c => {
+    const key = c.dataset.spark;
+    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+  });
+})();
+</script>
+{% endblock %}

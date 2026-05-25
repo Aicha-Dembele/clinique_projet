@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} un patient{% endblock %}
+{% block nav_patients %}active{% endblock %}
+{% block page_title %}Patients{% endblock %}
+{% block page_heading %}{{ action }} un patient{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:liste' %}">Patients</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+
+{% block extra_css %}<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.req-mark { color: #ef4444; }
+</style>{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <!-- Identité -->
+  <div class="form-section" style="animation-delay:.04s">
+    <div class="form-section-hdr">
+      <div class="form-section-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-person-fill"></i></div>
+      <div>
+        <div class="form-section-title">Identité du patient</div>
+        <div class="form-section-sub">Informations personnelles obligatoires</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Nom <span class="req-mark">*</span></label>
+        <input type="text" name="nom" class="f-input" value="{{ patient.nom|default:'' }}" placeholder="Nom de famille" required>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Prénom <span class="req-mark">*</span></label>
+        <input type="text" name="prenom" class="f-input" value="{{ patient.prenom|default:'' }}" placeholder="Prénom" required>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Sexe <span class="req-mark">*</span></label>
+        <select name="sexe" class="f-input f-select" required>
+          <option value="">-- Choisir --</option>
+          <option value="Masculin" {% if patient.sexe == 'Masculin' %}selected{% endif %}>Masculin</option>
+          <option value="Féminin"  {% if patient.sexe == 'Féminin'  %}selected{% endif %}>Féminin</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Date de naissance <span class="req-mark">*</span></label>
+        <input type="date" name="date_naissance" class="f-input" value="{{ patient.date_naissance|date:'Y-m-d'|default:'' }}" required>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact -->
+  <div class="form-section" style="animation-delay:.12s">
+    <div class="form-section-hdr">
+      <div class="form-section-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-telephone-fill"></i></div>
+      <div>
+        <div class="form-section-title">Coordonnées</div>
+        <div class="form-section-sub">Téléphone, email et adresse</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Téléphone <span class="req-mark">*</span></label>
+        <input type="text" name="telephone" class="f-input" value="{{ patient.telephone|default:'' }}" placeholder="+223 XX XX XX XX" required>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Email</label>
+        <input type="email" name="email" class="f-input" value="{{ patient.email|default:'' }}" placeholder="email@exemple.com">
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Numéro d'urgence</label>
+        <input type="text" name="numero_urgence" class="f-input" value="{{ patient.numero_urgence|default:'' }}" placeholder="+223 XX XX XX XX">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Adresse</label>
+        <input type="text" name="adresse" class="f-input" value="{{ patient.adresse|default:'' }}" placeholder="Quartier, Commune, Ville…">
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="d-flex gap-2 justify-content-end mt-3">
+    <a href="{% url 'patients:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}

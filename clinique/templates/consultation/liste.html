@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Consultations{% endblock %}
+{% block nav_consultations %}active{% endblock %}
+{% block page_title %}Consultations{% endblock %}
+{% block page_heading %}Liste des consultations{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Consultations</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'consultation:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-circle"></i> Nouvelle consultation</a>
+{% endblock %}
+
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-info { flex: 1; min-width: 0; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+</style>{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="stat-h" style="animation-delay:.04s">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Total consultations</div><div class="stat-h-val">{{ consultations|length }}</div><div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>Suivi médical</div></div>
+      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-week-fill"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Cette semaine</div><div class="stat-h-val">{{ consultations_semaine|default:0 }}</div><div class="stat-h-trend" style="color:#14b8a6">Activité récente</div></div>
+      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="stat-h" style="animation-delay:.20s">
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-capsule"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Avec ordonnance</div><div class="stat-h-val">{{ consultations_ordonnance|default:0 }}</div><div class="stat-h-trend" style="color:#a855f7">Prescriptions</div></div>
+      <canvas class="stat-h-spark" data-spark="purple"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="panel mb-3">
+  <div class="panel-body" style="padding:.85rem 1.25rem">
+    <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+      <div style="position:relative;flex:1;min-width:240px">
+        <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
+        <input type="text" name="q" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher par patient, motif, médecin…" value="{{ request.GET.q }}">
+      </div>
+      <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i> Rechercher</button>
+      {% if request.GET.q %}<a href="{% url 'consultation:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Réinitialiser</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-stethoscope me-2" style="color:var(--accent)"></i>Toutes les consultations</span>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead><tr><th>#</th><th>Patient</th><th>Médecin</th><th>Date</th><th>Motif</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for consultation in consultations %}
+        <tr>
+          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:var(--text-muted)">CON-{{ consultation.pk|stringformat:"04d" }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="av" style="background:rgba(16,185,129,.12);color:var(--primary)">{{ consultation.rendez_vous.patient.nom|slice:":1" }}{{ consultation.rendez_vous.patient.prenom|slice:":1" }}</div>
+              <a href="{% url 'patients:detail' consultation.rendez_vous.patient.pk %}" style="font-weight:700;color:var(--text-primary);text-decoration:none">{{ consultation.rendez_vous.patient }}</a>
+            </div>
+          </td>
+          <td>Dr. {{ consultation.rendez_vous.medecin }}</td>
+          <td><i class="bi bi-clock me-1" style="color:var(--text-muted)"></i>{{ consultation.date|date:'d/m/Y H:i' }}</td>
+          <td>{{ consultation.motif|truncatechars:40 }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'consultation:detail' consultation.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Voir"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'consultation:modifier' consultation.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'consultation:supprimer' consultation.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-5" style="color:var(--text-muted)"><i class="bi bi-file-earmark-medical" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>Aucune consultation enregistrée.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], purple:[4,6,5,8,7,10,9,12,11,14,13,16] };
+  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', purple:'#a855f7' };
+  document.querySelectorAll('[data-spark]').forEach(c => {
+    const key = c.dataset.spark;
+    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+  });
+})();
+</script>
+{% endblock %}

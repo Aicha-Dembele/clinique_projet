@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% block title %}{{ patient.nom }} {{ patient.prenom }}{% endblock %}
+{% block nav_patients %}active{% endblock %}
+{% block page_title %}Fiche patient{% endblock %}
+{% block page_heading %}Dossier patient{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'patients:liste' %}">Patients</a></li>
+  <li class="breadcrumb-item active">{{ patient.nom }} {{ patient.prenom }}</li>
+{% endblock %}
+{% block page_actions %}
+  <a href="{% url 'patients:modifier' patient.pk %}" class="btn-c btn-outline-c"><i class="bi bi-pencil"></i> Modifier</a>
+  <a href="{% url 'consultation:rdv_ajouter' %}?patient={{ patient.pk }}" class="btn-c btn-primary-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
+{% endblock %}
+
+{% block extra_css %}<style>
+.hero-card { background: linear-gradient(135deg, rgba(16,185,129,.06), rgba(20,184,166,.04)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.6rem 1.8rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; position: relative; overflow: hidden; animation: fadeUp .5s ease both; }
+.hero-card::before { content: ''; position: absolute; top: -50px; right: -50px; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,.12), transparent 70%); pointer-events: none; }
+.hero-row { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; position: relative; z-index: 1; }
+.hero-av { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.8rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 12px 28px -8px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.25); letter-spacing: .02em; }
+.hero-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.15; }
+.hero-id { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 700; color: var(--primary); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.2); padding: .25rem .6rem; border-radius: 999px; margin-top: .35rem; }
+.hero-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: .85rem; }
+.hero-meta-item { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; color: var(--text-secondary); font-weight: 600; }
+.hero-meta-item i { color: var(--primary); }
+
+.tabs-wrap { display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .75rem; padding: 4px; gap: 2px; margin-bottom: 1rem; flex-wrap: wrap; }
+.tab-btn { padding: .5rem 1rem; border-radius: .55rem; font-size: .8rem; font-weight: 700; color: var(--text-muted); border: none; background: transparent; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: .4rem; }
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.tab-count { font-size: .62rem; font-weight: 800; padding: .14em .5em; border-radius: 999px; background: var(--card-border); color: var(--text-muted); }
+.tab-btn.active .tab-count { background: rgba(16,185,129,.15); color: var(--primary); }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.info-cell { padding: .85rem 1rem; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .75rem; }
+.info-cell-lbl { font-size: .68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
+.info-cell-val { font-size: .9rem; color: var(--text-primary); font-weight: 600; word-break: break-word; }
+</style>{% endblock %}
+
+{% block content %}
+
+<!-- Hero patient -->
+<div class="hero-card">
+  <div class="hero-row">
+    <div class="hero-av">{{ patient.nom|slice:":1"|upper }}{{ patient.prenom|slice:":1"|upper }}</div>
+    <div style="flex:1;min-width:200px">
+      <div class="hero-name">{{ patient.nom }} {{ patient.prenom }}</div>
+      <div class="hero-id"><i class="bi bi-fingerprint"></i> P-{{ patient.pk|stringformat:"04d" }}</div>
+      <div class="hero-meta">
+        {% if patient.sexe %}<div class="hero-meta-item"><i class="bi bi-{% if patient.sexe == 'Masculin' %}gender-male{% else %}gender-female{% endif %}"></i> {{ patient.sexe }}</div>{% endif %}
+        {% if patient.date_naissance %}<div class="hero-meta-item"><i class="bi bi-cake2-fill"></i> {{ patient.date_naissance|date:"d/m/Y" }}</div>{% endif %}
+        {% if patient.telephone %}<div class="hero-meta-item"><i class="bi bi-telephone-fill"></i> {{ patient.telephone }}</div>{% endif %}
+        {% if patient.email %}<div class="hero-meta-item"><i class="bi bi-envelope-fill"></i> {{ patient.email }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Infos détaillées -->
+<div class="panel mb-3">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-person-badge me-2" style="color:var(--primary)"></i>Informations détaillées</span>
+  </div>
+  <div class="panel-body">
+    <div class="info-grid">
+      <div class="info-cell"><div class="info-cell-lbl">Sexe</div><div class="info-cell-val">{{ patient.sexe|default:"—" }}</div></div>
+      <div class="info-cell"><div class="info-cell-lbl">Date de naissance</div><div class="info-cell-val">{{ patient.date_naissance|date:'d/m/Y'|default:"—" }}</div></div>
+      <div class="info-cell"><div class="info-cell-lbl">Téléphone</div><div class="info-cell-val">{{ patient.telephone|default:"—" }}</div></div>
+      <div class="info-cell"><div class="info-cell-lbl">Email</div><div class="info-cell-val">{{ patient.email|default:"—" }}</div></div>
+      <div class="info-cell"><div class="info-cell-lbl">Numéro d'urgence</div><div class="info-cell-val">{{ patient.numero_urgence|default:"—" }}</div></div>
+      <div class="info-cell"><div class="info-cell-lbl">Adresse</div><div class="info-cell-val">{{ patient.adresse|default:"—" }}</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div x-data="{ tab: 'rdv' }">
+  <div class="tabs-wrap">
+    <button class="tab-btn" :class="{ 'active': tab === 'rdv' }" @click="tab = 'rdv'"><i class="bi bi-calendar-check"></i> Rendez-vous <span class="tab-count">{{ rdvs|length }}</span></button>
+    <button class="tab-btn" :class="{ 'active': tab === 'cons' }" @click="tab = 'cons'"><i class="bi bi-clipboard2-pulse"></i> Consultations <span class="tab-count">{{ consultations|length }}</span></button>
+    <button class="tab-btn" :class="{ 'active': tab === 'exam' }" @click="tab = 'exam'"><i class="bi bi-flask"></i> Examens <span class="tab-count">{{ examens|length }}</span></button>
+    <button class="tab-btn" :class="{ 'active': tab === 'fact' }" @click="tab = 'fact'"><i class="bi bi-receipt"></i> Factures <span class="tab-count">{{ factures|length }}</span></button>
+    <button class="tab-btn" :class="{ 'active': tab === 'doss' }" @click="tab = 'doss'"><i class="bi bi-folder2-open"></i> Dossier médical</button>
+  </div>
+
+  <!-- RDV -->
+  <div x-show="tab === 'rdv'" x-transition class="panel">
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-calendar-check me-2" style="color:var(--accent)"></i>Rendez-vous récents</span></div>
+    <div class="panel-body p-0">
+      <table class="ctable">
+        <thead><tr><th>Date</th><th>Médecin</th><th>Statut</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for rdv in rdvs %}
+          <tr>
+            <td><i class="bi bi-clock me-1" style="color:var(--text-muted)"></i>{{ rdv.date|date:'d/m/Y à H:i' }}</td>
+            <td>Dr. {{ rdv.medecin }}</td>
+            <td>
+              {% if rdv.statut == 'termine' %}<span class="pill pill-success"><i class="bi bi-check-circle-fill"></i> Terminé</span>
+              {% elif rdv.statut == 'annule' %}<span class="pill pill-danger"><i class="bi bi-x-circle-fill"></i> Annulé</span>
+              {% else %}<span class="pill pill-info"><i class="bi bi-calendar-event"></i> Programmé</span>{% endif %}
+            </td>
+            <td><a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-pencil"></i> Modifier</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-calendar-x" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun rendez-vous</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Consultations -->
+  <div x-show="tab === 'cons'" x-transition class="panel" style="display:none">
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-clipboard-data me-2" style="color:var(--primary)"></i>Consultations récentes</span></div>
+    <div class="panel-body p-0">
+      <table class="ctable">
+        <thead><tr><th>Date</th><th>Motif</th><th>Médecin</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for c in consultations %}
+          <tr>
+            <td>{{ c.date|date:'d/m/Y' }}</td>
+            <td>{{ c.motif|truncatechars:50 }}</td>
+            <td>Dr. {{ c.rendez_vous.medecin }}</td>
+            <td><a href="{% url 'consultation:detail' c.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i> Voir</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-clipboard-x" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucune consultation</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Examens -->
+  <div x-show="tab === 'exam'" x-transition class="panel" style="display:none">
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-flask me-2" style="color:#a855f7"></i>Examens médicaux</span></div>
+    <div class="panel-body p-0">
+      <table class="ctable">
+        <thead><tr><th>Type</th><th>Statut</th><th>Résultat</th></tr></thead>
+        <tbody>
+          {% for ex in examens %}
+          <tr>
+            <td><strong>{{ ex.type_examen }}</strong></td>
+            <td>
+              {% if ex.statut == 'en_attente' %}<span class="pill pill-danger"><i class="bi bi-clock-fill"></i> En attente</span>
+              {% elif ex.statut == 'en_cours' %}<span class="pill pill-warning"><i class="bi bi-hourglass-split"></i> En cours</span>
+              {% else %}<span class="pill pill-success"><i class="bi bi-check-circle-fill"></i> Terminé</span>{% endif %}
+            </td>
+            <td>{{ ex.resultat|default:'—'|truncatechars:60 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-flask" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun examen</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Factures -->
+  <div x-show="tab === 'fact'" x-transition class="panel" style="display:none">
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-receipt-cutoff me-2" style="color:var(--primary)"></i>Factures récentes</span></div>
+    <div class="panel-body p-0">
+      <table class="ctable">
+        <thead><tr><th>N°</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for f in factures %}
+          <tr>
+            <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800">FAC-{{ f.pk|stringformat:"04d" }}</td>
+            <td><strong>{{ f.montant_total|floatformat:0 }} <small style="color:var(--text-muted);font-weight:600">FCFA</small></strong></td>
+            <td>
+              {% if f.statut == 'payé' %}<span class="pill pill-success"><i class="bi bi-check-lg"></i> Payé</span>
+              {% else %}<span class="pill pill-danger"><i class="bi bi-x-lg"></i> Non payé</span>{% endif %}
+            </td>
+            <td><a href="{% url 'facturation:detail' f.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i> Voir</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-receipt" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucune facture</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Dossier médical -->
+  <div x-show="tab === 'doss'" x-transition class="panel" style="display:none">
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-folder2-open me-2" style="color:var(--accent)"></i>Dossier médical</span></div>
+    <div class="panel-body">
+      {% if dossier %}
+        <div class="info-grid mb-3">
+          <div class="info-cell"><div class="info-cell-lbl">Antécédents</div><div class="info-cell-val">{{ dossier.antecedents|default:'Aucun antécédent renseigné.'|linebreaksbr }}</div></div>
+          <div class="info-cell"><div class="info-cell-lbl">Allergies</div><div class="info-cell-val">{{ dossier.allergies|default:'Aucune allergie renseignée.'|linebreaksbr }}</div></div>
+        </div>
+        <a href="{% url 'consultation:dossier_detail' dossier.pk %}" class="btn-c btn-primary-c"><i class="bi bi-folder2-open"></i> Voir le dossier complet</a>
+      {% else %}
+        <div class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-folder-x" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun dossier médical associé</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

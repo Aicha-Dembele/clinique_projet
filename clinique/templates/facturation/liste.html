@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Facturation{% endblock %}
+{% block nav_factures %}active{% endblock %}
+{% block page_title %}Facturation{% endblock %}
+{% block page_heading %}Gestion des factures{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Facturation</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'facturation:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-receipt-cutoff"></i> Nouvelle facture</a>
+{% endblock %}
+
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-info { flex: 1; min-width: 0; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.45rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.tabs-nav { display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .7rem; padding: 4px; gap: 2px; flex-wrap: wrap; }
+.tab-link { padding: .42rem .85rem; border-radius: .55rem; font-size: .76rem; font-weight: 700; color: var(--text-muted); text-decoration: none; transition: all .2s; display: inline-flex; align-items: center; gap: .35rem; }
+.tab-link:hover { color: var(--text-primary); }
+.tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+</style>{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.04s">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Encaissé</div><div class="stat-h-val">{{ total_paye|default:0 }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div><div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>Ce mois</div></div>
+      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-clock-history"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">En attente</div><div class="stat-h-val">{{ total_attente|default:0 }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div><div class="stat-h-trend" style="color:#f59e0b">À encaisser</div></div>
+      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.20s">
+      <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-x-circle-fill"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Impayées</div><div class="stat-h-val">{{ factures_impayees|default:0 }}</div><div class="stat-h-trend" style="color:#ef4444">À régulariser</div></div>
+      <canvas class="stat-h-spark" data-spark="red"></canvas>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.28s">
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-receipt"></i></div>
+      <div class="stat-h-info"><div class="stat-h-lbl">Total factures</div><div class="stat-h-val">{{ total_factures|default:0 }}</div><div class="stat-h-trend" style="color:#14b8a6">Ce mois</div></div>
+      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="panel mb-3">
+  <div class="panel-body" style="padding:.95rem 1.25rem">
+    <div class="d-flex gap-3 align-items-center flex-wrap">
+      <form method="get" class="d-flex gap-2 align-items-center" style="flex:1;min-width:240px">
+        <input type="hidden" name="statut" value="{{ request.GET.statut }}">
+        <div style="position:relative;flex:1">
+          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
+          <input type="text" name="q" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher patient ou n° facture…" value="{{ request.GET.q }}">
+        </div>
+        <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i></button>
+      </form>
+      <div class="tabs-nav">
+        <a href="?{% if request.GET.q %}q={{ request.GET.q }}{% endif %}" class="tab-link {% if not request.GET.statut %}active{% endif %}">Toutes</a>
+        <a href="?statut=payé{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'payé' %}active{% endif %}"><i class="bi bi-check-lg"></i> Payées</a>
+        <a href="?statut=non payé{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'non payé' %}active{% endif %}"><i class="bi bi-x-lg"></i> Impayées</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-receipt-cutoff me-2" style="color:var(--primary)"></i>Liste des factures</span>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead><tr><th>N°</th><th>Patient</th><th>Type</th><th>Montant</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for f in factures %}
+        <tr>
+          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:var(--text-muted)">FAC-{{ f.pk|stringformat:"04d" }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="av" style="background:rgba(16,185,129,.12);color:var(--primary)">{{ f.patient.nom|slice:":1" }}{{ f.patient.prenom|slice:":1" }}</div>
+              <div style="font-weight:700">{{ f.patient }}</div>
+            </div>
+          </td>
+          <td>
+            {% if f.consultation %}<span class="pill pill-info"><i class="bi bi-stethoscope"></i> Consultation</span>
+            {% elif f.examen %}<span class="pill pill-purple"><i class="bi bi-flask"></i> Examen</span>
+            {% elif f.hospitalisation %}<span class="pill pill-warn"><i class="bi bi-hospital"></i> Hospitalisation</span>
+            {% else %}<span class="pill pill-gray">—</span>{% endif %}
+          </td>
+          <td><strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem">{{ f.montant_total|floatformat:0 }} <small style="font-size:.7rem;color:var(--text-muted);font-weight:600">FCFA</small></strong></td>
+          <td>
+            {% if f.statut == 'payé' %}<span class="pill pill-success"><i class="bi bi-check-lg"></i> Payé</span>
+            {% else %}<span class="pill pill-danger"><i class="bi bi-x-lg"></i> Non payé</span>{% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'facturation:detail' f.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i></a>
+              {% if f.statut == 'non payé' %}<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ f.pk }}" class="btn-c btn-sm-c btn-primary-c"><i class="bi bi-cash"></i> Encaisser</a>{% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-5" style="color:var(--text-muted)"><i class="bi bi-receipt" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>Aucune facture</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7] };
+  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444' };
+  document.querySelectorAll('[data-spark]').forEach(c => {
+    const key = c.dataset.spark;
+    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+  });
+})();
+</script>
+{% endblock %}

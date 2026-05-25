@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} une consultation{% endblock %}
+{% block nav_consultations %}active{% endblock %}
+{% block page_title %}Consultations{% endblock %}
+{% block page_heading %}{{ action }} une consultation{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:liste' %}">Consultations</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.req-mark { color: #ef4444; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-person-fill"></i></span>
+      <div>
+        <div class="form-section-title">Patient & RDV</div>
+        <div class="form-section-sub">Sélection du rendez-vous clinique lié à la consultation</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-lg-8">
+        <label class="f-label">Rendez-vous <span class="req-mark">*</span></label>
+        <select name="rendez_vous" class="f-input f-select" required>
+          <option value="">-- Choisir un rendez-vous --</option>
+          {% for rdv in rdvs %}
+          <option value="{{ rdv.pk }}" {% if consultation and consultation.rendez_vous_id == rdv.pk %}selected{% endif %}>
+            {{ rdv.patient }} — Dr. {{ rdv.medecin }} — {{ rdv.date|date:"d/m/Y H:i" }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" style="animation-delay:.06s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#14b8a6;background:rgba(20,184,166,.12)"><i class="bi bi-clipboard2-pulse-fill"></i></span>
+      <div>
+        <div class="form-section-title">Détails médicaux</div>
+        <div class="form-section-sub">Motif, diagnostic et observations du praticien</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="f-label">Motif <span class="req-mark">*</span></label>
+        <textarea name="motif" class="f-input" rows="4" placeholder="Motif de la consultation" required>{{ consultation.motif|default:'' }}</textarea>
+      </div>
+      <div class="col-12 col-xl-6">
+        <label class="f-label">Diagnostic</label>
+        <textarea name="diagnostic" class="f-input" rows="5" placeholder="Diagnostic de la consultation">{{ consultation.diagnostic|default:'' }}</textarea>
+      </div>
+      <div class="col-12 col-xl-6">
+        <label class="f-label">Observation</label>
+        <textarea name="observation" class="f-input" rows="5" placeholder="Observations supplémentaires">{{ consultation.observation|default:'' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>
+  </div>
+</form>
+{% endblock %}

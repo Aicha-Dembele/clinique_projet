@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+{% load static %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MédiClinic — Connexion</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    [data-theme="light"] {
+      --gold:#10b981; --gold-d:#059669; --gold-l:#34d399;
+      --ink:#064e3b; --ink-2:#065f46;
+      --page-bg:#f0fdf4;
+      --card-bg:#ffffff; --card-2:#f6faf8;
+      --border:#d1fae5;
+      --text:#064e3b; --text-2:#475569; --muted:#94a3b8;
+      --input-bg:#f6faf8;
+    }
+    [data-theme="dark"] {
+      --gold:#34d399; --gold-d:#10b981; --gold-l:#6ee7b7;
+      --ink:#022c22; --ink-2:#064e3b;
+      --page-bg:#0a0f1a;
+      --card-bg:#111827; --card-2:#0f172a;
+      --border:#1f2937;
+      --text:#d1fae5; --text-2:#94a3b8; --muted:#64748b;
+      --input-bg:#0f172a;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--page-bg); color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      transition: background .35s, color .35s;
+    }
+
+    .login-wrap {
+      min-height: 100vh; width: 100%;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.25rem; padding: 1.25rem;
+    }
+
+    /* ═══════════════ COLONNE GAUCHE — image clinique ═══════════════ */
+    .login-left {
+      position: relative; overflow: hidden;
+      border-radius: 1.5rem;
+      background:
+        linear-gradient(180deg, rgba(240,253,244,0) 0%, rgba(240,253,244,.15) 60%, rgba(6,78,59,.55) 100%),
+        url('https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1400&q=85') center/cover no-repeat,
+        linear-gradient(135deg, #f0fdf4 0%, #d1fae5 100%);
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 2.5rem;
+      animation: fadeUp .8s ease both;
+    }
+
+    .left-brand {
+      display: flex; align-items: center; gap: .75rem;
+      color: var(--ink);
+    }
+    .left-brand-ico {
+      width: 44px; height: 44px; border-radius: .85rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 22px -6px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.4);
+    }
+    .left-brand-ico i { color: #fff; font-size: 1.25rem; }
+    .left-brand-name {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      color: var(--ink); letter-spacing: -.02em;
+    }
+    .left-brand-tag {
+      font-size: .72rem; color: var(--text-2);
+      font-weight: 600; letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-top: .15rem;
+    }
+
+    .left-hero {
+      max-width: 420px;
+      margin-top: 6rem;
+    }
+    .left-hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3rem; font-weight: 600;
+      color: var(--ink); letter-spacing: -.01em;
+      line-height: 1.05;
+    }
+    .left-hero h1 .accent {
+      color: var(--gold); font-style: italic;
+      border-bottom: 2px solid var(--gold);
+      padding-bottom: 2px;
+    }
+    .left-hero p {
+      margin-top: 1.25rem;
+      font-size: .9rem;
+      color: var(--text-2); font-weight: 500;
+      line-height: 1.7; max-width: 360px;
+    }
+
+    /* Carte 4 atouts en bas */
+    .feat-card {
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(20px) saturate(1.1);
+      border: 1px solid rgba(255,255,255,.6);
+      border-radius: 1.1rem;
+      padding: 1.1rem 1.25rem;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      box-shadow: 0 12px 32px -10px rgba(6,78,59,.18);
+    }
+    [data-theme="dark"] .feat-card {
+      background: rgba(17,24,39,.85);
+      border-color: rgba(255,255,255,.08);
+    }
+    .feat-item {
+      display: flex; flex-direction: column; gap: .35rem;
+      text-align: left;
+      position: relative;
+    }
+    .feat-item:not(:last-child)::after {
+      content: ''; position: absolute;
+      right: -.5rem; top: 10%; bottom: 10%;
+      width: 1px; background: rgba(6,78,59,.08);
+    }
+    [data-theme="dark"] .feat-item:not(:last-child)::after { background: rgba(255,255,255,.08); }
+    .feat-ico {
+      width: 28px; height: 28px; border-radius: .55rem;
+      background: rgba(16,185,129,.12);
+      color: var(--gold);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .9rem;
+    }
+    .feat-name { font-size: .8rem; font-weight: 700; color: var(--ink); }
+    [data-theme="dark"] .feat-name { color: var(--text); }
+    .feat-desc { font-size: .68rem; color: var(--text-2); line-height: 1.4; font-weight: 500; }
+
+    /* ═══════════════ COLONNE DROITE — formulaire ═══════════════ */
+    .login-right {
+      position: relative;
+      background: var(--card-bg);
+      border-radius: 1.5rem;
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 2.5rem;
+      transition: background .35s;
+      animation: fadeUp .7s .1s ease both;
+    }
+    .login-form-wrap {
+      width: 100%; max-width: 380px;
+    }
+
+    /* Logo cœur en haut centré */
+    .heart-badge {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+      position: relative;
+    }
+    .heart-badge::before {
+      content: ''; position: absolute; inset: -4px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-l));
+      z-index: -1;
+      opacity: .15;
+    }
+    .heart-badge i {
+      font-size: 1.7rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .login-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.1rem; font-weight: 600;
+      color: var(--text);
+      letter-spacing: -.01em;
+      text-align: center;
+    }
+    .login-sub {
+      font-size: .82rem; color: var(--text-2);
+      margin-top: .4rem; text-align: center;
+      font-weight: 500;
+    }
+
+    .f-label {
+      font-size: .78rem; font-weight: 600; color: var(--text-2);
+      margin-bottom: .45rem;
+      letter-spacing: .01em;
+    }
+
+    .input-wrap { position: relative; }
+    .input-icon {
+      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: .9rem;
+      pointer-events: none;
+    }
+    .f-input {
+      width: 100%; padding: .8rem .95rem .8rem 2.5rem;
+      border: 1px solid var(--border); border-radius: .7rem;
+      font-size: .88rem; font-family: inherit;
+      background: var(--input-bg); color: var(--text);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .f-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 4px rgba(16,185,129,.14);
+      background: var(--card-bg);
+    }
+    .f-input::placeholder { color: var(--muted); }
+
+    .toggle-pw {
+      position: absolute; right: .85rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: .25rem;
+      font-size: .9rem;
+      transition: color .15s;
+    }
+    .toggle-pw:hover { color: var(--gold); }
+
+    .row-options {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 1.1rem 0 1.4rem;
+      font-size: .76rem;
+    }
+    .check-row {
+      display: flex; align-items: center; gap: .45rem;
+      color: var(--text-2); cursor: pointer; user-select: none; font-weight: 600;
+    }
+    .check-row input { accent-color: var(--gold); width: 14px; height: 14px; cursor: pointer; }
+    .row-options a { color: var(--gold); text-decoration: none; font-weight: 700; }
+    .row-options a:hover { color: var(--gold-d); text-decoration: underline; }
+
+    .btn-login {
+      width: 100%; padding: .85rem;
+      border-radius: .7rem; border: none;
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      color: #fff; font-family: inherit;
+      font-size: .9rem; font-weight: 700;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s, filter .2s;
+      box-shadow: 0 8px 22px -6px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.18);
+      display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+    }
+    .btn-login:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px -8px rgba(16,185,129,.65), inset 0 1px 0 rgba(255,255,255,.22);
+      filter: brightness(1.05) saturate(1.05);
+    }
+    .btn-login:active { transform: translateY(0); }
+    [data-theme="dark"] .btn-login {
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      box-shadow: 0 8px 22px -6px rgba(52,211,153,.5), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+
+    /* Séparateur "ou continuer" */
+    .or-sep {
+      display: flex; align-items: center; gap: .75rem;
+      margin: 1.25rem 0;
+      font-size: .72rem; color: var(--muted); font-weight: 600;
+    }
+    .or-sep::before, .or-sep::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* Boutons sociaux */
+    .social-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .65rem;
+    }
+    .btn-social {
+      padding: .7rem .8rem;
+      border-radius: .7rem;
+      border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--text);
+      font-family: inherit; font-size: .82rem; font-weight: 600;
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      transition: border-color .2s, transform .15s, background .2s;
+    }
+    .btn-social:hover {
+      border-color: var(--gold);
+      transform: translateY(-1px);
+      background: var(--card-2);
+    }
+    .btn-social svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .alert-error {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: .7rem;
+      padding: .7rem 1rem;
+      font-size: .8rem; color: #ef4444; font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .5rem;
+      animation: shake .4s ease;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+    .footer-link {
+      margin-top: 1.5rem; text-align: center;
+      font-size: .78rem; color: var(--text-2);
+      font-weight: 500;
+    }
+    .footer-link a {
+      color: var(--gold); font-weight: 700;
+      text-decoration: none;
+    }
+    .footer-link a:hover { color: var(--gold-d); text-decoration: underline; }
+
+    /* ═══════════════ THEME TOGGLE ═══════════════ */
+    .theme-toggle {
+      position: absolute; top: 1.2rem; right: 1.2rem;
+      width: 56px; height: 28px; border-radius: 999px;
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      cursor: pointer; display: flex; align-items: center;
+      padding: 0 4px; z-index: 50;
+      transition: background .25s;
+    }
+    .t-knob {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+      box-shadow: 0 4px 10px -2px rgba(16,185,129,.5);
+    }
+    .t-knob i { font-size: .55rem; color: #fff; }
+    [data-theme="dark"] .t-knob { transform: translateX(28px); }
+
+    /* ═══════════════ ANIMATIONS ═══════════════ */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ═══════════════ RESPONSIVE ═══════════════ */
+    @media (max-width: 992px) {
+      .login-wrap { grid-template-columns: 1fr; }
+      .login-left { display: none; }
+    }
+    @media (max-width: 640px) {
+      .login-wrap { padding: 0; }
+      .login-right { border-radius: 0; padding: 2rem 1.25rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <!-- Colonne gauche : visuel premium -->
+  <aside class="login-left">
+    <div class="left-brand">
+      <div class="left-brand-ico"><i class="bi bi-heart-pulse-fill"></i></div>
+      <div>
+        <div class="left-brand-name">MédiClinic</div>
+        <div class="left-brand-tag">Gestion de Clinique</div>
+      </div>
+    </div>
+
+    <div class="left-hero">
+      <h1>L'excellence des soins,<br>au service de<br><span class="accent">votre santé.</span></h1>
+      <p>MédiClinic vous accompagne au quotidien pour offrir des soins de qualité avec une gestion simplifiée de votre clinique.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-item">
+        <div class="feat-ico"><i class="bi bi-shield-check"></i></div>
+        <div class="feat-name">Sécurité</div>
+        <div class="feat-desc">Vos données patients chiffrées</div>
+      </div>
+      <div class="feat-item">
+        <div class="feat-ico"><i class="bi bi-people-fill"></i></div>
+        <div class="feat-name">Référence</div>
+        <div class="feat-desc">Suivi des patients en temps réel</div>
+      </div>
+      <div class="feat-item">
+        <div class="feat-ico"><i class="bi bi-grid-1x2-fill"></i></div>
+        <div class="feat-name">Collaboratif</div>
+        <div class="feat-desc">Travaillez en équipe sereinement</div>
+      </div>
+      <div class="feat-item">
+        <div class="feat-ico"><i class="bi bi-lightning-charge-fill"></i></div>
+        <div class="feat-name">Réactivité</div>
+        <div class="feat-desc">Prenez les bonnes décisions</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Colonne droite : formulaire -->
+  <main class="login-right">
+
+    <div class="theme-toggle" onclick="toggleTheme()" title="Mode sombre / jour">
+      <div class="t-knob"><i class="bi bi-moon-stars-fill"></i></div>
+    </div>
+
+    <div class="login-form-wrap">
+
+      <div style="text-align:center;margin-bottom:1.75rem">
+        <div class="heart-badge"><i class="bi bi-heart-pulse-fill"></i></div>
+        <div class="login-title">Bienvenue !</div>
+        <div class="login-sub">Connectez-vous à votre espace</div>
+      </div>
+
+      {% if form.errors %}
+      <div class="alert-error">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <div>
+          {% for error in form.non_field_errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+          {% if not form.non_field_errors %}Identifiants incorrects. Veuillez réessayer.{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'login' %}" autocomplete="off">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+        <div style="margin-bottom:1rem">
+          <label class="f-label" for="id_username">Adresse e-mail</label>
+          <div class="input-wrap">
+            <i class="bi bi-envelope input-icon"></i>
+            <input id="id_username" type="text" name="username" class="f-input" placeholder="contact@medicliniccp.com" autocomplete="username" autofocus required>
+          </div>
+        </div>
+
+        <div>
+          <label class="f-label" for="id_password">Mot de passe</label>
+          <div class="input-wrap">
+            <i class="bi bi-lock input-icon"></i>
+            <input id="id_password" type="password" name="password" class="f-input" placeholder="••••••••••••" autocomplete="current-password" required>
+            <button type="button" class="toggle-pw" onclick="togglePw()" aria-label="Afficher / masquer">
+              <i class="bi bi-eye-fill" id="pwIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="row-options">
+          <label class="check-row">
+            <input type="checkbox" name="remember"> Se souvenir de moi
+          </label>
+          <a href="#">Mot de passe oublié ?</a>
+        </div>
+
+        <button type="submit" class="btn-login">
+          Se connecter <i class="bi bi-arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="or-sep">ou continuer avec</div>
+
+      <div class="social-row">
+        <button type="button" class="btn-social" onclick="return false">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.32z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </button>
+        <button type="button" class="btn-social" onclick="return false">
+          <svg viewBox="0 0 24 24"><path fill="#F25022" d="M2 2h9.5v9.5H2z"/><path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00A4EF" d="M2 12.5h9.5V22H2z"/><path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z"/></svg>
+          Microsoft
+        </button>
+      </div>
+
+      <div class="footer-link">
+        Pas encore de compte ? <a href="#">Contactez l'administrateur</a>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  const html = document.documentElement;
+  const saved = localStorage.getItem('mediclinic_theme') || 'light';
+  html.setAttribute('data-theme', saved);
+  function toggleTheme(){
+    const t = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', t);
+    localStorage.setItem('mediclinic_theme', t);
+  }
+  function togglePw(){
+    const i = document.getElementById('id_password');
+    const ic = document.getElementById('pwIcon');
+    const isPw = i.type === 'password';
+    i.type = isPw ? 'text' : 'password';
+    ic.classList.toggle('bi-eye-fill', !isPw);
+    ic.classList.toggle('bi-eye-slash-fill', isPw);
+  }
+</script>
+</body>
+</html>

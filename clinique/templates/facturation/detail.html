@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}Facture FAC-{{ facture.pk|stringformat:"04d" }}{% endblock %}
+{% block nav_factures %}active{% endblock %}
+{% block page_title %}Détail de la facture{% endblock %}
+{% block page_heading %}Facture FAC-{{ facture.pk|stringformat:"04d" }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Facturation</a></li>
+<li class="breadcrumb-item active">Détail</li>
+{% endblock %}
+{% block page_actions %}
+<button type="button" onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer"></i> Imprimer</button>
+<a href="{% url 'facturation:liste' %}" class="btn-c btn-secondary-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
+{% if facture.statut == 'non payé' %}
+<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ facture.pk }}" class="btn-c btn-primary-c no-print"><i class="bi bi-cash-stack"></i> Encaisser</a>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+<style>
+.invoice-hero { background: linear-gradient(135deg, rgba(16,185,129,.05), rgba(20,184,166,.03)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.6rem 1.8rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; animation: fadeUp .5s ease both; }
+.invoice-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; }
+.invoice-meta { font-size: .82rem; color: var(--text-muted); margin-top: .35rem; }
+.total-box { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border-radius: 1rem; padding: 1.4rem 1.7rem; box-shadow: 0 12px 28px -8px rgba(16,185,129,.45); display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; }
+.total-box-lbl { font-size: .82rem; opacity: .9; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.total-box-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; }
+.info-cell { padding: 1rem 1.1rem; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .85rem; }
+.info-cell-lbl { font-size: .68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
+.info-cell-val { font-size: .92rem; color: var(--text-primary); font-weight: 600; line-height: 1.4; }
+@media print { .no-print, .topbar, #sidebar { display: none !important; } #main { margin-left: 0 !important; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="invoice-hero">
+  <div>
+    <div class="invoice-num">FACTURE FAC-{{ facture.pk|stringformat:"04d" }}</div>
+    <div class="invoice-meta">Document de facturation médicale{% if facture.consultation %} • Consultation du {{ facture.consultation.rendez_vous.date|date:'d/m/Y H:i' }}{% endif %}</div>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {% if facture.statut == 'payé' %}
+      <span class="pill pill-success"><i class="bi bi-check-lg"></i> Payé</span>
+    {% else %}
+      <span class="pill pill-danger"><i class="bi bi-x-lg"></i> Non payé</span>
+      <a href="{% url 'facturation:paiement_ajouter' %}?facture={{ facture.pk }}" class="btn-c btn-primary-c no-print"><i class="bi bi-cash-stack"></i> Encaisser</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <div class="info-cell h-100">
+      <div class="info-cell-lbl">Émetteur</div>
+      <div class="info-cell-val">Clinique MédiClinic<br>Service facturation<br>Référence : FAC-{{ facture.pk|stringformat:"04d" }}</div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="info-cell h-100">
+      <div class="info-cell-lbl">Patient</div>
+      <div class="info-cell-val">{{ facture.patient }}<br>{{ facture.patient.telephone|default:'-' }}<br>{{ facture.patient.adresse|default:'-' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-receipt-cutoff me-2" style="color:var(--primary)"></i>Prestations facturées</span>
+  </div>
+  <div class="panel-body">
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>Prestation</th>
+          <th>Description</th>
+          <th>Prix unitaire</th>
+          <th>Quantité</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if facture.lignes.exists %}
+          {% for ligne in facture.lignes.all %}
+          <tr>
+            <td>{{ ligne.type_service }}</td>
+            <td>{{ ligne.type_service }}</td>
+            <td>{{ ligne.prix_unitaire|floatformat:0 }} FCFA</td>
+            <td>{{ ligne.quantite }}</td>
+            <td>{{ ligne.sous_total|floatformat:0 }} FCFA</td>
+          </tr>
+          {% endfor %}
+        {% elif facture.consultation %}
+        <tr>
+          <td>Consultation</td>
+          <td>Dr. {{ facture.consultation.rendez_vous.medecin }} - {{ facture.consultation.rendez_vous.date|date:'d/m/Y H:i' }}</td>
+          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
+          <td>1</td>
+          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
+        </tr>
+        {% elif facture.examen %}
+        <tr>
+          <td>Examen médical</td>
+          <td>{{ facture.examen.type_examen }}</td>
+          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
+          <td>1</td>
+          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
+        </tr>
+        {% elif facture.hospitalisation %}
+        <tr>
+          <td>Hospitalisation</td>
+          <td>Chambre {{ facture.hospitalisation.numero_chambre }} - {{ facture.hospitalisation.nombre_jours }} jour(s)</td>
+          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
+          <td>1</td>
+          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center">Aucun service associé à cette facture.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <div class="total-box">
+      <div>
+        <div class="total-box-lbl">Total à payer</div>
+        <div style="font-size:.78rem;opacity:.82">Tous montants exprimés en FCFA</div>
+      </div>
+      <div class="total-box-val">{{ facture.montant_total|floatformat:0 }} FCFA</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-wallet2 me-2"></i>Paiements</span>
+  </div>
+  <div class="panel-body">
+    {% if facture.paiements.exists %}
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Montant</th>
+          <th>Mode</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for paiement in facture.paiements.all %}
+        <tr>
+          <td>{{ paiement.date|date:'d/m/Y H:i' }}</td>
+          <td>{{ paiement.montant|floatformat:0 }} FCFA</td>
+          <td>{{ paiement.get_mode_paiement_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5" style="color:var(--text-muted)">
+      <i class="bi bi-wallet2" style="font-size:2rem;display:block;margin-bottom:1rem;opacity:.45"></i>
+      Aucun paiement enregistré.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 justify-content-end mt-4 no-print">
+  <button type="button" onclick="window.print()" class="btn-c btn-outline-c"><i class="bi bi-printer"></i> Imprimer</button>
+  <a href="{% url 'facturation:liste' %}" class="btn-c btn-secondary-c"><i class="bi bi-arrow-left"></i> Retour</a>
+</div>
+{% endblock %}

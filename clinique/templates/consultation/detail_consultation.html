@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}Consultation #{{ consultation.pk }}{% endblock %}
+{% block nav_consultations %}active{% endblock %}
+{% block page_title %}Consultation{% endblock %}
+{% block page_heading %}Consultation de {{ consultation.rendez_vous.patient }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:liste' %}">Consultations</a></li>
+  <li class="breadcrumb-item active">Détail</li>
+{% endblock %}
+{% block page_actions %}
+  <a href="{% url 'consultation:modifier' consultation.pk %}" class="btn-c btn-outline-c"><i class="bi bi-pencil"></i> Modifier</a>
+  <a href="{% url 'consultation:supprimer' consultation.pk %}" class="btn-c btn-danger-c"><i class="bi bi-trash"></i> Supprimer</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.hero-card { background: linear-gradient(135deg, rgba(16,185,129,.06), rgba(20,184,166,.04)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.4rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; position: relative; overflow: hidden; animation: fadeUp .5s ease both; }
+.hero-card::before { content: ''; position: absolute; top: -50px; right: -50px; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,.12), transparent 70%); pointer-events: none; }
+.info-cell { padding: .85rem 1rem; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .75rem; }
+.info-cell-lbl { font-size: .68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
+.info-cell-val { font-size: .9rem; color: var(--text-primary); font-weight: 600; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="hero-card">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 position-relative">
+    <div class="d-flex align-items-center gap-3">
+      <span class="av" style="width:56px;height:56px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff"><i class="bi bi-heart-pulse-fill"></i></span>
+      <div>
+        <div class="panel-title" style="font-size:1.25rem">Consultation #{{ consultation.pk }}</div>
+        <div style="color:var(--text-muted);font-size:.85rem;margin-top:.25rem">
+          <i class="bi bi-calendar2-week me-1"></i>{{ consultation.rendez_vous.date|date:'d/m/Y H:i' }}
+          <span class="mx-2">•</span>
+          <a href="#patient-card" style="color:var(--primary);font-weight:700;text-decoration:none">{{ consultation.rendez_vous.patient }}</a>
+        </div>
+      </div>
+    </div>
+    <a href="{% url 'consultation:modifier' consultation.pk %}" class="btn-c btn-primary-c"><i class="bi bi-pencil-square"></i> Modifier</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-xl-4">
+    <div class="panel" id="patient-card">
+      <div class="panel-hdr">
+        <span class="panel-title"><i class="bi bi-person-heart me-2" style="color:var(--primary)"></i>Patient</span>
+      </div>
+      <div class="panel-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="av" style="width:52px;height:52px">{{ consultation.rendez_vous.patient|slice:":1" }}</span>
+          <div>
+            <div class="info-cell-val" style="font-size:1rem">{{ consultation.rendez_vous.patient }}</div>
+            <div style="color:var(--text-muted);font-size:.8rem">P-{{ consultation.rendez_vous.patient.pk|stringformat:"04d" }}</div>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-12">
+            <div class="info-cell">
+              <div class="info-cell-lbl">Téléphone</div>
+              <div class="info-cell-val">{{ consultation.rendez_vous.patient.telephone|default:'-' }}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="info-cell">
+              <div class="info-cell-lbl">Médecin</div>
+              <div class="info-cell-val">Dr. {{ consultation.rendez_vous.medecin }}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="info-cell">
+              <div class="info-cell-lbl">Spécialité</div>
+              <div class="info-cell-val">{{ consultation.rendez_vous.medecin.specialite|default:'N/A' }}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="info-cell">
+              <div class="info-cell-lbl">Dossier médical</div>
+              <div class="info-cell-val">
+                {% if consultation.dossier %}Dossier #{{ consultation.dossier.pk }} — {{ consultation.dossier.date_creation|date:'d/m/Y' }}{% else %}Aucun dossier lié{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-8">
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title"><i class="bi bi-clipboard2-pulse me-2" style="color:var(--accent)"></i>Examen clinique</span>
+      </div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="info-cell">
+              <div class="info-cell-lbl">Motif</div>
+              <div class="info-cell-val">{{ consultation.motif|linebreaksbr }}</div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="info-cell h-100">
+              <div class="info-cell-lbl">Diagnostic</div>
+              <div class="info-cell-val">{{ consultation.diagnostic|linebreaksbr }}</div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="info-cell h-100">
+              <div class="info-cell-lbl">Traitement / Observation</div>
+              <div class="info-cell-val">{% if consultation.observation %}{{ consultation.observation|linebreaksbr }}{% else %}-{% endif %}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-12 col-xl-4">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title"><i class="bi bi-activity me-2"></i>Examens</span></div>
+      <div class="panel-body">
+        {% if consultation.examenmedical_set.exists %}
+        <table class="ctable">
+          <thead><tr><th>Type</th><th>Statut</th></tr></thead>
+          <tbody>
+            {% for examen in consultation.examenmedical_set.all|slice:":3" %}
+            <tr><td>{{ examen.type_examen }}</td><td>{{ examen.get_statut_display }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="mb-0" style="color:var(--text-muted)">Aucun examen lié.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title"><i class="bi bi-prescription2 me-2"></i>Ordonnances</span></div>
+      <div class="panel-body">
+        {% if consultation.ordonnance_set.exists %}
+        <table class="ctable">
+          <thead><tr><th>Date</th><th>Référence</th></tr></thead>
+          <tbody>
+            {% for ordonnance in consultation.ordonnance_set.all|slice:":3" %}
+            <tr><td>{{ ordonnance.date|date:'d/m/Y' }}</td><td>#{{ ordonnance.pk }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="mb-0" style="color:var(--text-muted)">Aucune ordonnance liée.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title"><i class="bi bi-capsule me-2"></i>Traitements</span></div>
+      <div class="panel-body">
+        {% if consultation.traitement_set.exists %}
+        <table class="ctable">
+          <thead><tr><th>Description</th></tr></thead>
+          <tbody>
+            {% for traitement in consultation.traitement_set.all|slice:":3" %}
+            <tr><td>{{ traitement.description|truncatechars:45 }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="mb-0" style="color:var(--text-muted)">Aucun traitement lié.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

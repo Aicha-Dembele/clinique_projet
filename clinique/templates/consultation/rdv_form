@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} un rendez-vous{% endblock %}
+{% block nav_consultation %}active{% endblock %}
+{% block page_title %}Rendez-vous{% endblock %}
+{% block page_heading %}{{ action }} un rendez-vous{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:rdv_liste' %}">Rendez-vous</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.req-mark { color: #ef4444; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-person-vcard-fill"></i></span>
+      <div>
+        <div class="form-section-title">Patient & médecin</div>
+        <div class="form-section-sub">Affectation du rendez-vous au patient et au praticien</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Patient <span class="req-mark">*</span></label>
+        <select name="patient" class="f-input f-select" required>
+          <option value="">-- Choisir un patient --</option>
+          {% for patient in patients %}
+          <option value="{{ patient.pk }}" {% if rdv and rdv.patient_id == patient.pk %}selected{% endif %}>
+            {{ patient.nom }} {{ patient.prenom }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Médecin <span class="req-mark">*</span></label>
+        <select name="medecin" class="f-input f-select" required>
+          <option value="">-- Choisir un médecin --</option>
+          {% for medecin in medecins %}
+          <option value="{{ medecin.pk }}" {% if rdv and rdv.medecin_id == medecin.pk %}selected{% endif %}>
+            Dr. {{ medecin.nom }} {{ medecin.prenom }}{% if medecin.specialite %} — {{ medecin.specialite }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" style="animation-delay:.06s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#14b8a6;background:rgba(20,184,166,.12)"><i class="bi bi-calendar-event-fill"></i></span>
+      <div>
+        <div class="form-section-title">Date & heure</div>
+        <div class="form-section-sub">Planification, motif et statut opérationnel</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Date et heure <span class="req-mark">*</span></label>
+        <input type="datetime-local" name="date" class="f-input" value="{% if rdv %}{{ rdv.date|date:'Y-m-d\TH:i' }}{% endif %}" required>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Statut</label>
+        <select name="statut" class="f-input f-select">
+          <option value="programme" {% if rdv and rdv.statut == 'programme' %}selected{% endif %}>Programmé</option>
+          <option value="termine" {% if rdv and rdv.statut == 'termine' %}selected{% endif %}>Terminé</option>
+          <option value="annule" {% if rdv and rdv.statut == 'annule' %}selected{% endif %}>Annulé</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:rdv_liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}
