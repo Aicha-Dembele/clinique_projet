@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Ordonnance #{{ ordonnance.pk }}{% endblock %}
+{% block nav_consultation %}active{% endblock %}
+{% block page_title %}Ordonnances{% endblock %}
+{% block page_heading %}Ordonnance #{{ ordonnance.pk }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:ordonnances' %}">Ordonnances</a></li>
+  <li class="breadcrumb-item active">#{{ ordonnance.pk }}</li>
+{% endblock %}
+{% block page_actions %}
+  <a href="{% url 'consultation:ordonnance_supprimer' ordonnance.pk %}" class="btn-c btn-danger-c"><i class="bi bi-trash"></i> Supprimer</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.invoice-hero { background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(20,184,166,.04)); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.75rem 2rem; margin-bottom: 1.25rem; animation: fadeUp .5s ease both; }
+.info-cell { padding: .75rem 0; border-bottom: 1px solid var(--card-border); display: flex; align-items: flex-start; gap: .75rem; }
+.info-cell:last-child { border-bottom: none; }
+.info-cell-lbl { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; min-width: 130px; flex-shrink: 0; padding-top: .1rem; }
+.info-cell-val { font-size: .9rem; font-weight: 600; color: var(--text-primary); white-space: pre-wrap; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="invoice-hero">
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <div style="width:54px;height:54px;border-radius:.9rem;background:rgba(16,185,129,.12);display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem;color:#10b981"><i class="bi bi-file-medical-fill"></i></div>
+    <div>
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.35rem;font-weight:800;color:var(--text-primary);letter-spacing:-.02em">Ordonnance #{{ ordonnance.pk }}</div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem">Émise le {{ ordonnance.date|date:'d/m/Y' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-info-circle me-2" style="color:var(--accent)"></i>Détails</span>
+  </div>
+  <div class="panel-body">
+    <div class="info-cell">
+      <span class="info-cell-lbl">Patient</span>
+      <span class="info-cell-val">{{ ordonnance.consultation.rendez_vous.patient }}</span>
+    </div>
+    <div class="info-cell">
+      <span class="info-cell-lbl">Médecin</span>
+      <span class="info-cell-val">Dr. {{ ordonnance.consultation.rendez_vous.medecin }}</span>
+    </div>
+    <div class="info-cell">
+      <span class="info-cell-lbl">Consultation</span>
+      <span class="info-cell-val">{{ ordonnance.consultation.rendez_vous.date|date:'d/m/Y H:i' }}</span>
+    </div>
+    <div class="info-cell">
+      <span class="info-cell-lbl">Date ordonnance</span>
+      <span class="info-cell-val">{{ ordonnance.date|date:'d/m/Y' }}</span>
+    </div>
+    <div class="info-cell">
+      <span class="info-cell-lbl">Médicaments</span>
+      <span class="info-cell-val">{{ ordonnance.medicaments }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 mt-3">
+  <a href="{% url 'consultation:ordonnances' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+  <a href="{% url 'consultation:ordonnance_supprimer' ordonnance.pk %}" class="btn-c btn-danger-c"><i class="bi bi-trash"></i> Supprimer</a>
+</div>
+{% endblock %}

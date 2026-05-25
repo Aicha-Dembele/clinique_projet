@@ -105,8 +105,10 @@
           </td>
           <td>
             <div class="d-flex gap-1">
-              <a href="{% url 'facturation:detail' f.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i></a>
-              {% if f.statut == 'non payé' %}<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ f.pk }}" class="btn-c btn-sm-c btn-primary-c"><i class="bi bi-cash"></i> Encaisser</a>{% endif %}
+              <a href="{% url 'facturation:detail' f.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Voir"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'facturation:modifier' f.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
+              {% if f.statut == 'non payé' %}<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ f.pk }}" class="btn-c btn-sm-c btn-primary-c" title="Encaisser"><i class="bi bi-cash"></i> Payer</a>{% endif %}
+              <a href="{% url 'facturation:supprimer' f.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
             </div>
           </td>
         </tr>

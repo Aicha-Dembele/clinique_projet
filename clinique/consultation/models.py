@@ -49,39 +49,20 @@ class Consultation(models.Model):
     diagnostic = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        patient = self.rendez_vous.patient
-
-        #  Vérifier si le dossier existe
-        dossier, created = DossierMedical.objects.get_or_create(patient=patient)
-        # Lier automatiquement
-        self.dossier_medical = dossier
-
-        super().save(*args, **kwargs)
-
-        #  Mettre le rendez-vous en terminé
-        if self.rendez_vous.statut != 'termine':
-            self.rendez_vous.statut = 'termine'
-            self.rendez_vous.save()
     def get_tarif(self):
         return Tarif.objects.get(
             type_tarif='consultation',
-            specialite=self.medecin.specialite)
-    
+            specialite=self.rendez_vous.medecin.specialite)
+
     def save(self, *args, **kwargs):
-        if not self.dossier:
+        if not self.dossier_id:
             patient = self.rendez_vous.patient
-            self.dossier = get_or_create_dossier(patient)
+            self.dossier, _ = DossierMedical.objects.get_or_create(patient=patient)
         super().save(*args, **kwargs)
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+        if self.rendez_vous and self.rendez_vous.statut != 'termine':
+            self.rendez_vous.statut = 'termine'
+            self.rendez_vous.save()
 
-        print("SAVE CONSULTATION OK")
-
-        if self.rendez_vous:
-           print("RENDEZ-VOUS TROUVÉ")
-           self.rendez_vous.statut = 'termine'
-           self.rendez_vous.save()    
     def __str__(self):
         return f"Consultation de {self.rendez_vous.patient}"
 
@@ -109,22 +90,13 @@ class ExamenMedical(models.Model):
             type_tarif='examen',
             specialite=self.type_examen
         )
+
     def save(self, *args, **kwargs):
-
-    # Vérifier si le patient a déjà un dossier
-        dossier, created = DossierMedical.objects.get_or_create(
-        patient=self.patient
-    )
-
-    # Associer automatiquement
-        self.dossier = dossier
-
+        if not self.dossier_id:
+            dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
+            self.dossier = dossier
         super().save(*args, **kwargs)
 
-    def save(self, *args, **kwargs):
-        if not self.dossier:
-            self.dossier = get_or_create_dossier(self.patient)
-        super().save(*args, **kwargs)    
     def __str__(self):
         return self.type_examen 
     
@@ -199,21 +171,13 @@ class Hospitalisation(models.Model):
     def get_tarif(self):
         tarif = Tarif.objects.get(type_tarif='hospitalisation')
         return tarif.prix * self.nombre_jours
+
     def save(self, *args, **kwargs):
+        if not self.dossier_id:
+            dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
+            self.dossier = dossier
+        super().save(*args, **kwargs)
 
-    #Vérifier si le patient a déjà un dossier
-      dossier, created = DossierMedical.objects.get_or_create(
-        patient=self.patient
-    )
-
-    #Associer automatiquement
-      self.dossier = dossier
-
-      super().save(*args, **kwargs)
-    def save(self, *args, **kwargs):
-        if not self.dossier:
-            self.dossier = get_or_create_dossier(self.patient)
-        super().save(*args, **kwargs) 
     def statut(self):
         return "En cours" if not self.date_sortie else "Sorti"
 

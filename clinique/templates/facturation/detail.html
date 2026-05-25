@@ -9,10 +9,12 @@
 {% endblock %}
 {% block page_actions %}
 <button type="button" onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer"></i> Imprimer</button>
-<a href="{% url 'facturation:liste' %}" class="btn-c btn-secondary-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
+<a href="{% url 'facturation:modifier' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-pencil"></i> Modifier</a>
+<a href="{% url 'facturation:supprimer' facture.pk %}" class="btn-c btn-danger-c no-print"><i class="bi bi-trash"></i> Supprimer</a>
 {% if facture.statut == 'non payé' %}
-<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ facture.pk }}" class="btn-c btn-primary-c no-print"><i class="bi bi-cash-stack"></i> Encaisser</a>
+<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ facture.pk }}" class="btn-c btn-primary-c no-print"><i class="bi bi-cash-stack"></i> Payer</a>
 {% endif %}
+<a href="{% url 'facturation:liste' %}" class="btn-c btn-secondary-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}
 <style>
@@ -139,14 +141,22 @@
           <th>Date</th>
           <th>Montant</th>
           <th>Mode</th>
+          <th class="text-end no-print">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for paiement in facture.paiements.all %}
         <tr>
           <td>{{ paiement.date|date:'d/m/Y H:i' }}</td>
-          <td>{{ paiement.montant|floatformat:0 }} FCFA</td>
+          <td style="font-weight:800;color:#10b981">{{ paiement.montant|floatformat:0 }} FCFA</td>
           <td>{{ paiement.get_mode_paiement_display }}</td>
+          <td class="text-end no-print">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'facturation:paiement_recu' paiement.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Reçu"><i class="bi bi-printer"></i></a>
+              <a href="{% url 'facturation:paiement_modifier' paiement.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'facturation:paiement_supprimer' paiement.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

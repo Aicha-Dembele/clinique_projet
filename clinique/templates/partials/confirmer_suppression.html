@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Confirmer la suppression{% endblock %}
+{% block page_title %}Suppression{% endblock %}
+{% block page_heading %}Confirmer la suppression{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item active">Supprimer</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.confirm-card { background: var(--card-bg); border: 1px solid rgba(239,68,68,.25); border-radius: 1.1rem; padding: 2rem 2.25rem; max-width: 520px; margin: 0 auto; animation: fadeUp .5s ease both; box-shadow: 0 8px 32px -8px rgba(239,68,68,.15); }
+.confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(239,68,68,.1); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; color: #ef4444; margin-bottom: 1.25rem; }
+.confirm-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: .5rem; }
+.confirm-objet { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.15); border-radius: .65rem; padding: .65rem 1rem; font-size: .88rem; font-weight: 600; color: #ef4444; margin: 1rem 0 1.5rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height:50vh">
+  <div class="confirm-card text-center">
+    <div class="confirm-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <div class="confirm-title">Confirmer la suppression</div>
+    <div style="font-size:.88rem;color:var(--text-muted);margin-bottom:.75rem">Cette action est irréversible. Êtes-vous sûr de vouloir supprimer :</div>
+    <div class="confirm-objet">{{ objet }}</div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="d-flex gap-2 justify-content-center">
+        <a href="{{ retour_url }}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+        <button type="submit" class="btn-c btn-danger-c"><i class="bi bi-trash-fill"></i> Supprimer définitivement</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

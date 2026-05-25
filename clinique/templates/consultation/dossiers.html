@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Dossiers médicaux{% endblock %}
+{% block nav_consultation %}active{% endblock %}
+{% block page_title %}Dossiers médicaux{% endblock %}
+{% block page_heading %}Liste des dossiers médicaux{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item active">Dossiers médicaux</li>
+{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-folder2-open me-2" style="color:var(--accent)"></i>Dossiers médicaux</span>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Patient</th>
+          <th>Date création</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in dossiers %}
+        <tr>
+          <td style="font-weight:800;color:var(--text-muted)">{{ d.pk }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="av" style="background:rgba(16,185,129,.12);color:var(--primary)">{{ d.patient.nom|slice:":1" }}{{ d.patient.prenom|slice:":1" }}</div>
+              <div style="font-weight:700">{{ d.patient }}</div>
+            </div>
+          </td>
+          <td>{{ d.date_creation|date:'d/m/Y' }}</td>
+          <td>
+            <a href="{% url 'consultation:dossier_detail' d.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-folder2 text-muted" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucun dossier médical enregistré.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

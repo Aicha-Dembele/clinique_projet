@@ -84,7 +84,7 @@
               <span class="text-muted">Aucune</span>
             {% endif %}
           </td>
-          <td>{{ ordonnance.consultation.rendez_vous.patient if ordonnance.consultation else 'N/A' }}</td>
+          <td>{% if ordonnance.consultation %}{{ ordonnance.consultation.rendez_vous.patient }}{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
           <td>{{ ordonnance.date|date:'d/m/Y' }}</td>
           <td>{{ ordonnance.medicaments|truncatechars:60 }}</td>
           <td>

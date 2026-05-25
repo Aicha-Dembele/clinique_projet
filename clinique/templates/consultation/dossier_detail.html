@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% block title %}Dossier — {{ dossier.patient }}{% endblock %}
+{% block nav_consultation %}active{% endblock %}
+{% block page_title %}Dossier médical{% endblock %}
+{% block page_heading %}Dossier de {{ dossier.patient }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:dossiers' %}">Dossiers</a></li>
+  <li class="breadcrumb-item active">{{ dossier.patient }}</li>
+{% endblock %}
+{% block page_actions %}
+<button type="button" onclick="window.print()" class="btn-c btn-primary-c no-print"><i class="bi bi-printer-fill"></i> Imprimer le dossier</button>
+<a href="{% url 'consultation:dossiers' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.dm-hero { background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(20,184,166,.04)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.75rem 2rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; animation: fadeUp .5s ease both; }
+.dm-hero-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+.dm-avatar { width: 78px; height: 78px; border-radius: 1rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.7rem; font-weight: 800; flex-shrink: 0; box-shadow: 0 8px 22px -6px rgba(16,185,129,.45); }
+.dm-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; }
+.dm-tag { font-size: .8rem; color: var(--text-muted); margin-top: .25rem; font-weight: 500; }
+.dm-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .85rem; margin-top: 1.25rem; }
+.dm-meta-cell { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: .8rem; padding: .7rem .9rem; }
+.dm-meta-lbl { font-size: .67rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.dm-meta-val { font-size: .88rem; color: var(--text-primary); font-weight: 700; margin-top: .15rem; }
+
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1rem 1.1rem; display: flex; align-items: center; gap: .85rem; box-shadow: var(--shadow-sm); animation: fadeUp .5s ease both; }
+.stat-h-ico { width: 44px; height: 44px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.stat-h-info { flex: 1; min-width: 0; }
+.stat-h-lbl { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; }
+
+.dm-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; overflow: hidden; animation: fadeUp .5s ease both; }
+.dm-section-hdr { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.4rem; border-bottom: 1px solid var(--card-border); background: var(--input-bg); }
+.dm-section-ico { width: 36px; height: 36px; border-radius: .65rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; }
+.dm-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; }
+.dm-section-count { margin-left: auto; background: var(--card-bg); border: 1px solid var(--card-border); padding: .25rem .65rem; border-radius: 999px; font-size: .72rem; font-weight: 800; color: var(--text-muted); }
+.dm-section-body { padding: 1.1rem 1.4rem; }
+
+.timeline { display: flex; flex-direction: column; gap: .9rem; }
+.tl-item { display: flex; gap: .85rem; padding: .9rem 1rem; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .85rem; transition: border-color .2s; }
+.tl-item:hover { border-color: rgba(16,185,129,.3); }
+.tl-bullet { width: 32px; height: 32px; border-radius: .55rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: .85rem; }
+.tl-content { flex: 1; min-width: 0; }
+.tl-title { font-size: .9rem; font-weight: 800; color: var(--text-primary); }
+.tl-date { font-size: .7rem; color: var(--text-muted); font-weight: 600; margin-top: .15rem; }
+.tl-body { font-size: .82rem; color: var(--text-primary); margin-top: .55rem; line-height: 1.55; white-space: pre-wrap; }
+.tl-kv { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin-top: .45rem; }
+.tl-kv > div { font-size: .75rem; }
+.tl-kv span { color: var(--text-muted); font-weight: 600; }
+.tl-kv strong { color: var(--text-primary); font-weight: 700; }
+
+.dm-empty { text-align: center; padding: 1.75rem 1rem; color: var(--text-muted); font-size: .85rem; }
+.dm-empty i { font-size: 2rem; opacity: .4; display: block; margin-bottom: .5rem; }
+
+@media print {
+  .no-print, .topbar, #sidebar, nav, .breadcrumb-c, .sb-link, [class*="sidebar"] { display: none !important; }
+  body, #main, .page, main { margin: 0 !important; padding: 1rem !important; background: #fff !important; }
+  .dm-hero, .dm-section, .stat-h { box-shadow: none !important; break-inside: avoid; page-break-inside: avoid; }
+  .tl-item { break-inside: avoid; page-break-inside: avoid; }
+  * { color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="dm-hero">
+  <div class="dm-hero-row">
+    <div class="dm-avatar">{{ dossier.patient.nom|slice:":1" }}{{ dossier.patient.prenom|slice:":1" }}</div>
+    <div style="flex:1;min-width:0">
+      <div class="dm-name">{{ dossier.patient.nom }} {{ dossier.patient.prenom }}</div>
+      <div class="dm-tag">
+        <i class="bi bi-folder2-open me-1"></i> Dossier #{{ dossier.pk }} ouvert le {{ dossier.date_creation|date:'d/m/Y' }}
+      </div>
+    </div>
+  </div>
+  <div class="dm-meta-grid">
+    {% if dossier.patient.date_naissance %}
+    <div class="dm-meta-cell">
+      <div class="dm-meta-lbl"><i class="bi bi-calendar-event me-1"></i> Né(e) le</div>
+      <div class="dm-meta-val">{{ dossier.patient.date_naissance|date:'d/m/Y' }}</div>
+    </div>
+    {% endif %}
+    {% if dossier.patient.sexe %}
+    <div class="dm-meta-cell">
+      <div class="dm-meta-lbl"><i class="bi bi-gender-ambiguous me-1"></i> Sexe</div>
+      <div class="dm-meta-val">{{ dossier.patient.get_sexe_display|default:dossier.patient.sexe }}</div>
+    </div>
+    {% endif %}
+    {% if dossier.patient.telephone %}
+    <div class="dm-meta-cell">
+      <div class="dm-meta-lbl"><i class="bi bi-telephone me-1"></i> Téléphone</div>
+      <div class="dm-meta-val">{{ dossier.patient.telephone }}</div>
+    </div>
+    {% endif %}
+    {% if dossier.patient.adresse %}
+    <div class="dm-meta-cell">
+      <div class="dm-meta-lbl"><i class="bi bi-geo-alt me-1"></i> Adresse</div>
+      <div class="dm-meta-val">{{ dossier.patient.adresse }}</div>
+    </div>
+    {% endif %}
+    {% if dossier.patient.groupe_sanguin %}
+    <div class="dm-meta-cell">
+      <div class="dm-meta-lbl"><i class="bi bi-droplet-fill me-1" style="color:#ef4444"></i> Groupe sanguin</div>
+      <div class="dm-meta-val">{{ dossier.patient.groupe_sanguin }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Consultations</div>
+        <div class="stat-h-val">{{ dossier.consultations.count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-h" style="animation-delay:.06s">
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Examens</div>
+        <div class="stat-h-val">{{ dossier.examens.count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-hospital-fill"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Hospitalisations</div>
+        <div class="stat-h-val">{{ dossier.hospitalisations.count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-h" style="animation-delay:.18s">
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-file-medical-fill"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Ordonnances</div>
+        <div class="stat-h-val">{{ dossier.ordonnance.count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Consultations ───────────────────────────── -->
+<div class="dm-section">
+  <div class="dm-section-hdr">
+    <span class="dm-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></span>
+    <div class="dm-section-title">Consultations</div>
+    <span class="dm-section-count">{{ dossier.consultations.count }}</span>
+  </div>
+  <div class="dm-section-body">
+    {% if dossier.consultations.exists %}
+    <div class="timeline">
+      {% for c in dossier.consultations.all %}
+      <div class="tl-item">
+        <div class="tl-bullet" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></div>
+        <div class="tl-content">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="tl-title">Consultation Dr. {{ c.rendez_vous.medecin.nom }} {{ c.rendez_vous.medecin.prenom }}</div>
+            <span class="pill pill-success" style="font-size:.7rem">{{ c.date|date:'d/m/Y' }}</span>
+          </div>
+          <div class="tl-date">{{ c.date|date:'l d F Y à H:i' }}</div>
+          <div class="tl-kv">
+            {% if c.rendez_vous.medecin.specialite %}<div><span>Spécialité :</span> <strong>{{ c.rendez_vous.medecin.specialite }}</strong></div>{% endif %}
+            <div><span>Statut RDV :</span> <strong>{{ c.rendez_vous.get_statut_display }}</strong></div>
+          </div>
+          {% if c.motif %}<div class="tl-body"><strong style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">Motif</strong><br>{{ c.motif }}</div>{% endif %}
+          {% if c.diagnostic %}<div class="tl-body"><strong style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">Diagnostic</strong><br>{{ c.diagnostic }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="dm-empty"><i class="bi bi-stethoscope"></i>Aucune consultation enregistrée.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Examens & résultats ─────────────────────── -->
+<div class="dm-section">
+  <div class="dm-section-hdr">
+    <span class="dm-section-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></span>
+    <div class="dm-section-title">Examens & résultats</div>
+    <span class="dm-section-count">{{ dossier.examens.count }}</span>
+  </div>
+  <div class="dm-section-body">
+    {% if dossier.examens.exists %}
+    <div class="timeline">
+      {% for e in dossier.examens.all %}
+      <div class="tl-item">
+        <div class="tl-bullet" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></div>
+        <div class="tl-content">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="tl-title">{{ e.type_examen }}</div>
+            {% if e.statut == 'termine' %}<span class="pill pill-success" style="font-size:.7rem"><i class="bi bi-check-lg"></i> Terminé</span>
+            {% elif e.statut == 'en_cours' %}<span class="pill pill-info" style="font-size:.7rem">En cours</span>
+            {% else %}<span class="pill pill-warn" style="font-size:.7rem">En attente</span>{% endif %}
+          </div>
+          <div class="tl-kv">
+            {% if e.medecin %}<div><span>Prescripteur :</span> <strong>Dr. {{ e.medecin.nom }} {{ e.medecin.prenom }}</strong></div>{% endif %}
+            {% if e.laborantin %}<div><span>Laborantin :</span> <strong>{{ e.laborantin.nom }} {{ e.laborantin.prenom }}</strong></div>{% endif %}
+          </div>
+          {% with res=e.resultatexamen_set.first %}
+            {% if res %}
+            <div class="tl-body" style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.18);border-radius:.6rem;padding:.7rem .9rem;margin-top:.7rem">
+              <strong style="color:#10b981;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em"><i class="bi bi-check2-circle me-1"></i>Résultat — {{ res.date_examen|date:'d/m/Y H:i' }}</strong><br>
+              {{ res.resultat }}
+            </div>
+            {% else %}
+            <div class="tl-body" style="color:var(--text-muted);font-style:italic;font-size:.78rem">— Résultat non encore disponible —</div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="dm-empty"><i class="bi bi-flask"></i>Aucun examen prescrit.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Hospitalisations ────────────────────────── -->
+<div class="dm-section">
+  <div class="dm-section-hdr">
+    <span class="dm-section-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-hospital-fill"></i></span>
+    <div class="dm-section-title">Hospitalisations</div>
+    <span class="dm-section-count">{{ dossier.hospitalisations.count }}</span>
+  </div>
+  <div class="dm-section-body">
+    {% if dossier.hospitalisations.exists %}
+    <div class="timeline">
+      {% for h in dossier.hospitalisations.all %}
+      <div class="tl-item">
+        <div class="tl-bullet" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-hospital-fill"></i></div>
+        <div class="tl-content">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="tl-title">Chambre {{ h.numero_chambre }} — {{ h.type_chambre|title }}</div>
+            {% if h.date_sortie %}<span class="pill pill-success" style="font-size:.7rem"><i class="bi bi-check-lg"></i> Sorti</span>
+            {% else %}<span class="pill pill-warn" style="font-size:.7rem">En cours</span>{% endif %}
+          </div>
+          <div class="tl-kv">
+            <div><span>Entrée :</span> <strong>{{ h.date_entree|date:'d/m/Y' }}</strong></div>
+            {% if h.date_sortie %}<div><span>Sortie :</span> <strong>{{ h.date_sortie|date:'d/m/Y' }}</strong></div>{% endif %}
+            <div><span>Durée :</span> <strong>{{ h.nombre_jours }} jour(s)</strong></div>
+            {% if h.medecin %}<div><span>Médecin :</span> <strong>Dr. {{ h.medecin.nom }} {{ h.medecin.prenom }}</strong></div>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="dm-empty"><i class="bi bi-hospital"></i>Aucune hospitalisation.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Ordonnances ─────────────────────────────── -->
+<div class="dm-section">
+  <div class="dm-section-hdr">
+    <span class="dm-section-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-file-medical-fill"></i></span>
+    <div class="dm-section-title">Ordonnances</div>
+    <span class="dm-section-count">{{ dossier.ordonnance.count }}</span>
+  </div>
+  <div class="dm-section-body">
+    {% if dossier.ordonnance.exists %}
+    <div class="timeline">
+      {% for o in dossier.ordonnance.all %}
+      <div class="tl-item">
+        <div class="tl-bullet" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-file-medical-fill"></i></div>
+        <div class="tl-content">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="tl-title">Ordonnance #{{ o.pk }}</div>
+            <span class="pill pill-warn" style="font-size:.7rem">{{ o.date|date:'d/m/Y' }}</span>
+          </div>
+          <div class="tl-kv">
+            {% if o.consultation.rendez_vous.medecin %}<div><span>Médecin :</span> <strong>Dr. {{ o.consultation.rendez_vous.medecin.nom }} {{ o.consultation.rendez_vous.medecin.prenom }}</strong></div>{% endif %}
+          </div>
+          <div class="tl-body"><strong style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">Médicaments prescrits</strong><br>{{ o.medicaments }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="dm-empty"><i class="bi bi-file-medical"></i>Aucune ordonnance.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Traitements ─────────────────────────────── -->
+<div class="dm-section">
+  <div class="dm-section-hdr">
+    <span class="dm-section-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-capsule"></i></span>
+    <div class="dm-section-title">Traitements</div>
+    <span class="dm-section-count">{{ dossier.traitement.count }}</span>
+  </div>
+  <div class="dm-section-body">
+    {% if dossier.traitement.exists %}
+    <div class="timeline">
+      {% for t in dossier.traitement.all %}
+      <div class="tl-item">
+        <div class="tl-bullet" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-capsule"></i></div>
+        <div class="tl-content">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="tl-title">Traitement #{{ t.pk }}</div>
+            <span class="pill pill-info" style="font-size:.7rem">{{ t.duree }} jour(s)</span>
+          </div>
+          <div class="tl-body">{{ t.description }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="dm-empty"><i class="bi bi-capsule"></i>Aucun traitement.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="d-flex gap-2 mt-3 no-print">
+  <a href="{% url 'consultation:dossiers' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour à la liste</a>
+  <button type="button" onclick="window.print()" class="btn-c btn-primary-c"><i class="bi bi-printer-fill"></i> Imprimer le dossier</button>
+</div>
+
+{% endblock %}

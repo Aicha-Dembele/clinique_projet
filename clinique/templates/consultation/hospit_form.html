@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} une hospitalisation{% endblock %}
+{% block nav_consultation %}active{% endblock %}
+{% block page_title %}Hospitalisations{% endblock %}
+{% block page_heading %}{{ action }} une hospitalisation{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:hospitalisations' %}">Hospitalisations</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.req-mark { color: #ef4444; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#3b82f6;background:rgba(59,130,246,.12)"><i class="bi bi-person-fill"></i></span>
+      <div>
+        <div class="form-section-title">Patient & médecin responsable</div>
+        <div class="form-section-sub">Identification du patient et du praticien en charge</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Patient <span class="req-mark">*</span></label>
+        <select name="patient" class="f-input f-select" required {% if hospit %}disabled{% endif %}>
+          <option value="">-- Choisir un patient --</option>
+          {% for p in patients %}
+          <option value="{{ p.pk }}" {% if hospit and hospit.patient_id == p.pk %}selected{% endif %}>{{ p.nom }} {{ p.prenom }}</option>
+          {% endfor %}
+        </select>
+        {% if hospit %}<input type="hidden" name="patient" value="{{ hospit.patient_id }}">{% endif %}
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Médecin <span class="req-mark">*</span></label>
+        <select name="medecin" class="f-input f-select" required>
+          <option value="">-- Choisir un médecin --</option>
+          {% for m in medecins %}
+          <option value="{{ m.pk }}" {% if hospit and hospit.medecin_id == m.pk %}selected{% endif %}>Dr. {{ m.nom }} {{ m.prenom }}{% if m.specialite %} — {{ m.specialite }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" style="animation-delay:.06s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-hospital-fill"></i></span>
+      <div>
+        <div class="form-section-title">Chambre & séjour</div>
+        <div class="form-section-sub">Détails de l'hébergement et durée prévue</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Type de chambre <span class="req-mark">*</span></label>
+        <select name="type_chambre" class="f-input f-select" required>
+          <option value="simple" {% if hospit and hospit.type_chambre == 'simple' %}selected{% endif %}>Simple</option>
+          <option value="double" {% if hospit and hospit.type_chambre == 'double' %}selected{% endif %}>Double</option>
+          <option value="vip" {% if hospit and hospit.type_chambre == 'vip' %}selected{% endif %}>VIP</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Numéro de chambre <span class="req-mark">*</span></label>
+        <input type="text" name="numero_chambre" class="f-input" value="{% if hospit %}{{ hospit.numero_chambre }}{% endif %}" placeholder="Ex : 204" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="f-label">Nombre de jours <span class="req-mark">*</span></label>
+        <input type="number" name="nombre_jours" class="f-input" value="{% if hospit %}{{ hospit.nombre_jours }}{% endif %}" min="1" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="f-label">Date d'entrée <span class="req-mark">*</span></label>
+        <input type="date" name="date_entree" class="f-input" value="{% if hospit %}{{ hospit.date_entree|date:'Y-m-d' }}{% endif %}" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="f-label">Date de sortie</label>
+        <input type="date" name="date_sortie" class="f-input" value="{% if hospit and hospit.date_sortie %}{{ hospit.date_sortie|date:'Y-m-d' }}{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:hospitalisations' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}

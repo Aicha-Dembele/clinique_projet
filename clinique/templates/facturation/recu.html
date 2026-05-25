@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Reçu paiement #{{ paiement.pk }}{% endblock %}
+{% block nav_factures %}active{% endblock %}
+{% block page_title %}Reçu de paiement{% endblock %}
+{% block page_heading %}Reçu #{{ paiement.pk|stringformat:"05d" }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Facturation</a></li>
+<li class="breadcrumb-item"><a href="{% url 'facturation:paiements' %}">Paiements</a></li>
+<li class="breadcrumb-item active">Reçu</li>
+{% endblock %}
+{% block page_actions %}
+<button type="button" onclick="window.print()" class="btn-c btn-primary-c no-print"><i class="bi bi-printer-fill"></i> Imprimer le reçu</button>
+<a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.recu-wrap { max-width: 720px; margin: 0 auto; animation: fadeUp .5s ease both; }
+.recu-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.2rem; box-shadow: var(--shadow-md); overflow: hidden; }
+.recu-hdr { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; padding: 2rem 2rem 1.5rem; position: relative; }
+.recu-hdr::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 18px; background-image: radial-gradient(circle at 9px 0, transparent 9px, var(--card-bg) 9px); background-size: 18px 18px; }
+.recu-brand { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.recu-brand-ico { width: 44px; height: 44px; border-radius: .75rem; background: rgba(255,255,255,.2); display: inline-flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+.recu-brand-ico i { font-size: 1.4rem; color: #fff; }
+.recu-brand-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; }
+.recu-brand-tag { font-size: .72rem; opacity: .85; font-weight: 600; }
+.recu-num { font-size: .78rem; opacity: .85; font-weight: 600; }
+.recu-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.85rem; font-weight: 800; letter-spacing: -.02em; margin-top: .15rem; }
+.recu-status { display: inline-flex; align-items: center; gap: .35rem; background: rgba(255,255,255,.2); padding: .35rem .85rem; border-radius: 999px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; margin-top: .85rem; }
+.recu-body { padding: 2rem; }
+.recu-row { display: flex; justify-content: space-between; padding: .85rem 0; border-bottom: 1px dashed var(--card-border); font-size: .9rem; gap: 1rem; }
+.recu-row:last-child { border-bottom: none; }
+.recu-row-lbl { color: var(--text-muted); font-weight: 600; }
+.recu-row-val { color: var(--text-primary); font-weight: 700; text-align: right; }
+.recu-total { background: rgba(16,185,129,.08); border: 1px dashed rgba(16,185,129,.4); border-radius: .85rem; padding: 1.25rem 1.5rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.recu-total-lbl { font-size: .78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.recu-total-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: #10b981; letter-spacing: -.02em; }
+.recu-footer { padding: 1.25rem 2rem; background: var(--input-bg); border-top: 1px dashed var(--card-border); text-align: center; font-size: .78rem; color: var(--text-muted); font-weight: 500; }
+.recu-stamp { position: absolute; right: 1.25rem; top: 1.25rem; transform: rotate(-12deg); border: 3px solid #10b981; color: #10b981; padding: .35rem 1rem; border-radius: .55rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; opacity: .85; }
+@media print {
+  .no-print, .topbar, #sidebar, nav, .breadcrumb-c { display: none !important; }
+  #main, body, .page { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .recu-wrap { max-width: 100%; }
+  .recu-card { box-shadow: none; border: 1px solid #ddd; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="recu-wrap">
+  <div class="recu-card">
+    <div class="recu-hdr">
+      <div class="recu-brand">
+        <div class="recu-brand-ico"><i class="bi bi-heart-pulse-fill"></i></div>
+        <div>
+          <div class="recu-brand-name">MédiClinic</div>
+          <div class="recu-brand-tag">Reçu officiel de paiement</div>
+        </div>
+      </div>
+      <div class="recu-num">N° Reçu : REC-{{ paiement.pk|stringformat:"05d" }}</div>
+      <div class="recu-title">{{ paiement.montant|floatformat:0 }} FCFA</div>
+      <div class="recu-status"><i class="bi bi-check-circle-fill"></i> Paiement encaissé</div>
+      <div class="recu-stamp">Payé</div>
+    </div>
+
+    <div class="recu-body">
+      <div class="recu-row">
+        <span class="recu-row-lbl">Date du paiement</span>
+        <span class="recu-row-val">{{ paiement.date|date:'d/m/Y à H:i' }}</span>
+      </div>
+      <div class="recu-row">
+        <span class="recu-row-lbl">Patient</span>
+        <span class="recu-row-val">{{ paiement.facture.patient }}</span>
+      </div>
+      <div class="recu-row">
+        <span class="recu-row-lbl">Téléphone</span>
+        <span class="recu-row-val">{{ paiement.facture.patient.telephone|default:'—' }}</span>
+      </div>
+      <div class="recu-row">
+        <span class="recu-row-lbl">N° de facture</span>
+        <span class="recu-row-val">FAC-{{ paiement.facture.pk|stringformat:"04d" }}</span>
+      </div>
+      <div class="recu-row">
+        <span class="recu-row-lbl">Montant facture</span>
+        <span class="recu-row-val">{{ paiement.facture.montant_total|floatformat:0 }} FCFA</span>
+      </div>
+      <div class="recu-row">
+        <span class="recu-row-lbl">Mode de paiement</span>
+        <span class="recu-row-val">
+          {% if paiement.mode_paiement == 'cash' %}<i class="bi bi-cash-stack me-1" style="color:#10b981"></i>Espèces
+          {% elif paiement.mode_paiement == 'orange_money' %}<i class="bi bi-phone-fill me-1" style="color:#f97316"></i>Orange Money
+          {% elif paiement.mode_paiement == 'moov_money' %}<i class="bi bi-phone-fill me-1" style="color:#3b82f6"></i>Moov Money
+          {% elif paiement.mode_paiement == 'carte' %}<i class="bi bi-credit-card-fill me-1" style="color:#a855f7"></i>Carte bancaire
+          {% else %}{{ paiement.get_mode_paiement_display }}{% endif %}
+        </span>
+      </div>
+      {% if paiement.facture.consultation %}
+      <div class="recu-row">
+        <span class="recu-row-lbl">Service</span>
+        <span class="recu-row-val">Consultation Dr. {{ paiement.facture.consultation.rendez_vous.medecin }}</span>
+      </div>
+      {% elif paiement.facture.examen %}
+      <div class="recu-row">
+        <span class="recu-row-lbl">Service</span>
+        <span class="recu-row-val">Examen — {{ paiement.facture.examen.type_examen }}</span>
+      </div>
+      {% elif paiement.facture.hospitalisation %}
+      <div class="recu-row">
+        <span class="recu-row-lbl">Service</span>
+        <span class="recu-row-val">Hospitalisation — Ch. {{ paiement.facture.hospitalisation.numero_chambre }}</span>
+      </div>
+      {% endif %}
+
+      <div class="recu-total">
+        <div>
+          <div class="recu-total-lbl">Montant payé</div>
+          <div style="font-size:.7rem;color:var(--text-muted);font-weight:500;margin-top:.15rem">Reçu valant quittance</div>
+        </div>
+        <div class="recu-total-val">{{ paiement.montant|floatformat:0 }} FCFA</div>
+      </div>
+    </div>
+
+    <div class="recu-footer">
+      Merci de votre confiance — Clinique MédiClinic<br>
+      Ce reçu fait foi de paiement. Conservez-le précieusement.
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-center gap-2 mt-4 no-print">
+    <button type="button" onclick="window.print()" class="btn-c btn-primary-c"><i class="bi bi-printer-fill"></i> Imprimer le reçu</button>
+    <a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour aux paiements</a>
+  </div>
+</div>
+{% endblock %}

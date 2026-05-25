@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} un examen{% endblock %}
+{% block nav_examens %}active{% endblock %}
+{% block page_title %}Examens médicaux{% endblock %}
+{% block page_heading %}{{ action }} un examen{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:examens' %}">Examens</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.req-mark { color: #ef4444; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#a855f7;background:rgba(168,85,247,.12)"><i class="bi bi-person-fill"></i></span>
+      <div>
+        <div class="form-section-title">Patient & consultation</div>
+        <div class="form-section-sub">Associer l'examen au patient et à la consultation concernée</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Patient <span class="req-mark">*</span></label>
+        <select name="patient" class="f-input f-select" required>
+          <option value="">-- Choisir un patient --</option>
+          {% for p in patients %}
+          <option value="{{ p.pk }}" {% if examen and examen.patient_id == p.pk %}selected{% endif %}>{{ p.nom }} {{ p.prenom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Consultation</label>
+        <select name="consultation" class="f-input f-select">
+          <option value="">-- Aucune --</option>
+          {% for c in consultations %}
+          <option value="{{ c.pk }}" {% if examen and examen.consultation_id == c.pk %}selected{% endif %}>{{ c.rendez_vous.patient }} — {{ c.rendez_vous.date|date:'d/m/Y' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" style="animation-delay:.06s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-flask-fill"></i></span>
+      <div>
+        <div class="form-section-title">Détails de l'examen</div>
+        <div class="form-section-sub">Type, statut et praticien assigné</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Type d'examen <span class="req-mark">*</span></label>
+        <input type="text" name="type_examen" class="f-input" value="{% if examen %}{{ examen.type_examen }}{% endif %}" placeholder="Ex : Prise de sang, Radio..." required>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Statut</label>
+        <select name="statut" class="f-input f-select">
+          <option value="en_attente" {% if not examen or examen.statut == 'en_attente' %}selected{% endif %}>En attente</option>
+          <option value="en_cours" {% if examen and examen.statut == 'en_cours' %}selected{% endif %}>En cours</option>
+          <option value="termine" {% if examen and examen.statut == 'termine' %}selected{% endif %}>Terminé</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Laborantin</label>
+        <select name="laborantin" class="f-input f-select">
+          <option value="">-- Aucun --</option>
+          {% for l in laborantins %}
+          <option value="{{ l.pk }}" {% if examen and examen.laborantin_id == l.pk %}selected{% endif %}>{{ l.nom }} {{ l.prenom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Médecin</label>
+        <select name="medecin" class="f-input f-select">
+          <option value="">-- Aucun --</option>
+          {% for m in medecins %}
+          <option value="{{ m.pk }}" {% if examen and examen.medecin_id == m.pk %}selected{% endif %}>Dr. {{ m.nom }} {{ m.prenom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="f-label">Résultat</label>
+        <textarea name="resultat" class="f-input" rows="4" placeholder="Résultat de l'examen...">{% if examen %}{{ examen.resultat }}{% endif %}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:examens' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}

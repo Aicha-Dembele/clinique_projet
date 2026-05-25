@@ -1,14 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}Paiement{% endblock %}
+{% block title %}{{ action }} un paiement{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Paiement{% endblock %}
-{% block page_heading %}Enregistrer un paiement{% endblock %}
+{% block page_heading %}{{ action }} un paiement{% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Facturation</a></li>
-<li class="breadcrumb-item active">Paiement</li>
+<li class="breadcrumb-item"><a href="{% url 'facturation:paiements' %}">Paiements</a></li>
+<li class="breadcrumb-item active">{{ action }}</li>
 {% endblock %}
 {% block page_actions %}
-<a href="{% url 'facturation:paiements' %}" class="btn-c btn-secondary-c"><i class="bi bi-arrow-left"></i> Retour</a>
+<a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}
 <style>
@@ -18,8 +19,14 @@
 .form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
 .form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
 .req-mark { color: #ef4444; }
-.pay-mode-card { border: 1px solid var(--card-border); background: var(--input-bg); border-radius: .85rem; padding: .9rem 1rem; height: 100%; display: flex; align-items: center; gap: .7rem; color: var(--text-primary); font-weight: 700; }
-.pay-mode-card i { color: var(--primary); font-size: 1.1rem; }
+.mode-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .65rem; }
+@media (min-width: 768px) { .mode-grid { grid-template-columns: repeat(4, 1fr); } }
+.mode-card { border: 2px solid var(--card-border); background: var(--input-bg); border-radius: .85rem; padding: .9rem .8rem; display: flex; flex-direction: column; align-items: center; gap: .35rem; cursor: pointer; transition: all .2s; text-align: center; }
+.mode-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.mode-card.selected { border-color: var(--primary); background: rgba(16,185,129,.08); box-shadow: 0 4px 14px -4px rgba(16,185,129,.35); }
+.mode-card i { font-size: 1.5rem; }
+.mode-card-name { font-size: .78rem; font-weight: 700; color: var(--text-primary); }
+.mode-card input[type="radio"] { display: none; }
 </style>
 {% endblock %}
 {% block content %}
@@ -30,25 +37,30 @@
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-receipt-cutoff"></i></span>
       <div>
-        <div class="form-section-title">Facture & patient</div>
-        <div class="form-section-sub">Sélection de la facture concernée par l'encaissement</div>
+        <div class="form-section-title">Facture concernée</div>
+        <div class="form-section-sub">Sélection de la facture à encaisser et du montant payé</div>
       </div>
     </div>
     <div class="row g-3">
       <div class="col-12 col-lg-8">
         <label class="f-label" for="facture">Facture <span class="req-mark">*</span></label>
-        <select id="facture" name="facture" class="f-input f-select">
+        <select id="facture" name="facture" class="f-input f-select" required>
           <option value="">Sélectionner une facture</option>
-          {% for facture in factures %}
-          <option value="{{ facture.pk }}" {% if facture.pk|stringformat:"s" == facture_id %}selected{% endif %}>
-            FAC-{{ facture.pk|stringformat:"04d" }} — {{ facture.patient }} — {{ facture.montant_total|floatformat:0 }} FCFA
+          {% for f in factures %}
+          <option value="{{ f.pk }}"
+                  data-montant="{{ f.montant_total|floatformat:0 }}"
+                  {% if facture_id and f.pk|stringformat:"s" == facture_id|stringformat:"s" %}selected{% endif %}>
+            FAC-{{ f.pk|stringformat:"04d" }} — {{ f.patient }} — {{ f.montant_total|floatformat:0 }} FCFA
           </option>
           {% endfor %}
         </select>
       </div>
       <div class="col-12 col-lg-4">
-        <label class="f-label" for="montant">Montant <span class="req-mark">*</span></label>
-        <input id="montant" type="number" name="montant" min="0" step="0.01" class="f-input" placeholder="Montant du paiement">
+        <label class="f-label" for="montant">Montant (FCFA) <span class="req-mark">*</span></label>
+        <input id="montant" type="number" name="montant" min="0" step="0.01" class="f-input"
+               placeholder="0"
+               value="{% if paiement %}{{ paiement.montant|floatformat:0 }}{% endif %}"
+               required>
       </div>
     </div>
   </div>
@@ -57,26 +69,22 @@
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#14b8a6;background:rgba(20,184,166,.12)"><i class="bi bi-credit-card-2-front-fill"></i></span>
       <div>
-        <div class="form-section-title">Mode de paiement</div>
-        <div class="form-section-sub">Choisir le canal d'encaissement utilisé</div>
+        <div class="form-section-title">Mode de paiement <span class="req-mark">*</span></div>
+        <div class="form-section-sub">Sélectionner le canal d'encaissement</div>
       </div>
     </div>
-    <div class="row g-3 align-items-end">
-      <div class="col-12 col-lg-6">
-        <label class="f-label" for="mode_paiement">Mode de paiement</label>
-        <select id="mode_paiement" name="mode_paiement" class="f-input f-select">
-          <option value="">Sélectionner un mode</option>
-          {% for code, label in modes %}
-          <option value="{{ code }}">{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12 col-lg-6">
-        <div class="row g-2">
-          <div class="col-6"><div class="pay-mode-card"><i class="bi bi-cash-stack"></i> Espèces</div></div>
-          <div class="col-6"><div class="pay-mode-card"><i class="bi bi-phone"></i> Mobile</div></div>
-        </div>
-      </div>
+    <div class="mode-grid">
+      {% for code, label in modes %}
+      <label class="mode-card {% if paiement and paiement.mode_paiement == code %}selected{% endif %}" data-mode="{{ code }}">
+        <input type="radio" name="mode_paiement" value="{{ code }}" {% if paiement and paiement.mode_paiement == code %}checked{% endif %} required>
+        {% if code == 'cash' %}<i class="bi bi-cash-stack" style="color:#10b981"></i>
+        {% elif code == 'orange_money' %}<i class="bi bi-phone-fill" style="color:#f97316"></i>
+        {% elif code == 'moov_money' %}<i class="bi bi-phone-fill" style="color:#3b82f6"></i>
+        {% elif code == 'carte' %}<i class="bi bi-credit-card-fill" style="color:#a855f7"></i>
+        {% else %}<i class="bi bi-wallet2"></i>{% endif %}
+        <div class="mode-card-name">{{ label }}</div>
+      </label>
+      {% endfor %}
     </div>
   </div>
 
@@ -88,6 +96,22 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-document.querySelectorAll('form input, form select, form textarea').forEach(e => { if(!e.classList.contains('f-input')) e.classList.add('f-input'); });
+(function(){
+  const sel = document.getElementById('facture');
+  const mont = document.getElementById('montant');
+  if (sel && mont) {
+    sel.addEventListener('change', () => {
+      const opt = sel.options[sel.selectedIndex];
+      const m = opt && opt.dataset.montant;
+      if (m && !mont.value) mont.value = m;
+    });
+  }
+  document.querySelectorAll('.mode-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+})();
 </script>
 {% endblock %}

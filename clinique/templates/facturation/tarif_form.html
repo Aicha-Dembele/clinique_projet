@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} un tarif{% endblock %}
+{% block nav_factures %}active{% endblock %}
+{% block page_title %}Tarifs{% endblock %}
+{% block page_heading %}{{ action }} un tarif{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Facturation</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'facturation:tarifs' %}">Tarifs</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'facturation:tarifs' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 720px; margin-left: auto; margin-right: auto; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.req-mark { color: #ef4444; }
+.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; font-weight: 500; }
+.actions-row { max-width: 720px; margin-left: auto; margin-right: auto; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-tags-fill"></i></span>
+      <div>
+        <div class="form-section-title">Informations du tarif</div>
+        <div class="form-section-sub">Définissez le nom, le type de service et le prix</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="f-label" for="nom">Nom du tarif <span class="req-mark">*</span></label>
+        <input id="nom" type="text" name="nom" class="f-input" value="{% if tarif %}{{ tarif.nom }}{% endif %}" placeholder="Ex : Consultation cardiologie" required>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="type_service">Type de service <span class="req-mark">*</span></label>
+        <select id="type_service" name="type_service" class="f-input f-select" required>
+          {% for code, label in types %}
+          <option value="{{ code }}" {% if tarif and tarif.type_service == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="specialite">Spécialité</label>
+        <input id="specialite" type="text" name="specialite" class="f-input" value="{% if tarif and tarif.specialite %}{{ tarif.specialite }}{% endif %}" placeholder="Ex : Cardiologie, Dermatologie…">
+        <div class="helper"><i class="bi bi-info-circle me-1"></i> Optionnel — pour les consultations spécialisées</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="prix">Prix (FCFA) <span class="req-mark">*</span></label>
+        <input id="prix" type="number" name="prix" min="0" step="0.01" class="f-input" value="{% if tarif %}{{ tarif.prix|floatformat:0 }}{% endif %}" placeholder="0" required>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions-row d-flex flex-wrap gap-2 justify-content-end">
+    <a href="{% url 'facturation:tarifs' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}
