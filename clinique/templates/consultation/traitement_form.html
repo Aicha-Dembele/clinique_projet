@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Traitement{% endblock %}
+{% block page_title %}{{ action }} un traitement{% endblock %}
+{% block page_heading %}Traitement{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:traitements' %}">Traitements</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="panel">
+  {% csrf_token %}
+  <div class="panel-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Patient *</label>
+        <select name="patient" class="form-select" required>
+          <option value="">-- Choisir --</option>
+          {% for p in patients %}<option value="{{ p.id }}">{{ p }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Consultation liee (optionnel)</label>
+        <select name="consultation" class="form-select">
+          <option value="">-- Aucune --</option>
+          {% for c in consultations %}<option value="{{ c.id }}">#{{ c.id }} - {{ c.rendez_vous.patient }} - {{ c.date|date:"d/m/Y" }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Infirmier en charge (optionnel)</label>
+        <select name="infirmier" class="form-select">
+          <option value="">-- Aucun --</option>
+          {% for i in infirmiers %}<option value="{{ i.id }}">{{ i }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Duree (jours)</label>
+        <input type="number" name="duree" class="form-control" value="1" min="1">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Description du traitement *</label>
+        <textarea name="description" class="form-control" rows="5" required></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="panel-hdr" style="border-top:1px solid var(--card-border);border-bottom:0;justify-content:flex-end">
+    <a href="{% url 'consultation:traitements' %}" class="btn btn-c btn-outline-c">Annuler</a>
+    <button type="submit" class="btn btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>
+  </div>
+</form>
+{% endblock %}

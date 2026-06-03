@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Resultat{% endblock %}
+{% block page_title %}{{ action|default:"Enregistrer" }} un resultat{% endblock %}
+{% block page_heading %}Resultat d'examen{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:resultats' %}">Resultats</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="panel">
+  {% csrf_token %}
+  <div class="panel-body">
+    <div class="row g-3">
+      {% if not resultat %}
+      <div class="col-md-12">
+        <label class="form-label">Examen *</label>
+        <select name="examen" class="form-select" required>
+          <option value="">-- Choisir --</option>
+          {% for e in examens %}
+            <option value="{{ e.id }}" {% if examen_id|add:0 == e.id %}selected{% endif %}>
+              #{{ e.id }} - {{ e.patient }} - {{ e.type_examen }} ({{ e.statut }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <div class="col-12">
+        <label class="form-label">Examen</label>
+        <input type="text" class="form-control" value="{{ resultat.examen }}" disabled>
+      </div>
+      {% endif %}
+
+      <div class="col-12">
+        <label class="form-label">Resultat *</label>
+        <textarea name="resultat" class="form-control" rows="5" required>{{ resultat.resultat|default:'' }}</textarea>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Observations</label>
+        <textarea name="observations" class="form-control" rows="3">{{ resultat.observations|default:'' }}</textarea>
+      </div>
+    </div>
+  </div>
+  <div class="panel-hdr" style="border-top:1px solid var(--card-border);border-bottom:0;justify-content:flex-end">
+    <a href="{% url 'consultation:resultats' %}" class="btn btn-c btn-outline-c">Annuler</a>
+    <button type="submit" class="btn btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>
+  </div>
+</form>
+{% endblock %}

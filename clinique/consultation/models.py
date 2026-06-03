@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from personnel.models import Laborantin, Medecin
 from patients.models import Patient
 from facturation.models import Tarif 
@@ -47,12 +48,16 @@ class Consultation(models.Model):
         related_name="consultations", null=True, blank=True)
     motif = models.TextField()
     diagnostic = models.TextField()
+    observation = models.TextField(blank=True, default='')
     date = models.DateTimeField(auto_now_add=True)
 
     def get_tarif(self):
-        return Tarif.objects.get(
-            type_tarif='consultation',
-            specialite=self.rendez_vous.medecin.specialite)
+        try:
+            return Tarif.objects.get(
+                type_service='consultation',
+                specialite=self.rendez_vous.medecin.specialite)
+        except Tarif.DoesNotExist:
+            return Tarif.objects.filter(type_service='consultation').first()
 
     def save(self, *args, **kwargs):
         if not self.dossier_id:
@@ -86,10 +91,13 @@ class ExamenMedical(models.Model):
 
    
     def get_tarif(self):
-        return Tarif.objects.get(
-            type_tarif='examen',
-            specialite=self.type_examen
-        )
+        try:
+            return Tarif.objects.get(
+                type_service='examen',
+                specialite=self.type_examen
+            )
+        except Tarif.DoesNotExist:
+            return Tarif.objects.filter(type_service='examen').first()
 
     def save(self, *args, **kwargs):
         if not self.dossier_id:
@@ -103,44 +111,81 @@ class ExamenMedical(models.Model):
 
 class ResultatExamen(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    dossier = models.OneToOneField(DossierMedical, on_delete=models.CASCADE, related_name='resultats')
-    examen = models.ForeignKey(ExamenMedical, on_delete=models.CASCADE)
-    medecin = models.ForeignKey("personnel.Medecin", on_delete=models.SET_NULL, null=True)
-    laborantin = models.ForeignKey("personnel.Laborantin", on_delete=models.SET_NULL, null=True)
+    dossier = models.ForeignKey(DossierMedical, on_delete=models.CASCADE, related_name='resultats', null=True, blank=True)
+    examen = models.ForeignKey(ExamenMedical, on_delete=models.CASCADE, related_name='resultats')
+    medecin = models.ForeignKey("personnel.Medecin", on_delete=models.SET_NULL, null=True, blank=True)
+    laborantin = models.ForeignKey("personnel.Laborantin", on_delete=models.SET_NULL, null=True, blank=True)
     resultat = models.TextField()
+    observations = models.TextField(blank=True, default='')
+    transmis = models.BooleanField(default=False)
+    date_transmission = models.DateTimeField(null=True, blank=True)
     date_examen = models.DateTimeField(auto_now_add=True)
 
-    
-         #  Vérifier si le dossier existe
     def save(self, *args, **kwargs):
-        dossier, created = DossierMedical.objects.get_or_create(patient=self.patient)
-        # Lier automatiquement
-        self.dossier = dossier
+        if not self.dossier_id:
+            dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
+            self.dossier = dossier
+        if self.examen and self.examen.statut != 'termine':
+            self.examen.statut = 'termine'
+            self.examen.save()
         super().save(*args, **kwargs)
-    
-    
- 
+
     def __str__(self):
-        return f"{self.patient} - {self.examen}" 
+        return f"{self.patient} - {self.examen}"
 
     
       
     
 class Traitement(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE)
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, null=True, blank=True)
     dossier = models.ForeignKey(DossierMedical, related_name="traitement", on_delete=models.CASCADE, null=True, blank=True)
+    infirmier = models.ForeignKey("personnel.Infirmier", on_delete=models.SET_NULL, null=True, blank=True, related_name='traitements_assignes')
 
     description = models.TextField()
-    duree = models.IntegerField()
+    duree = models.IntegerField(help_text="Duree en jours")
+    statut = models.CharField(max_length=20, choices=[
+        ('prescrit', 'Prescrit'),
+        ('en_cours', 'En cours'),
+        ('termine', 'Termine'),
+    ], default='prescrit')
+    date_creation = models.DateTimeField(default=timezone.now)
 
     def save(self, *args, **kwargs):
-        if not self.dossier:
+        if not self.dossier and self.consultation:
             self.dossier = self.consultation.dossier
+        if not self.dossier and self.patient:
+            self.dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Traitement de {self.consultation}"
+        return f"Traitement de {self.patient}"
+
+
+class AdministrationTraitement(models.Model):
+    traitement = models.ForeignKey(Traitement, on_delete=models.CASCADE, related_name='administrations')
+    infirmier = models.ForeignKey("personnel.Infirmier", on_delete=models.SET_NULL, null=True, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return f"Admin {self.traitement} - {self.date:%Y-%m-%d %H:%M}"
+
+
+class AssistanceInfirmier(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='assistances')
+    dossier = models.ForeignKey(DossierMedical, on_delete=models.CASCADE, related_name='assistances', null=True, blank=True)
+    infirmier = models.ForeignKey("personnel.Infirmier", on_delete=models.SET_NULL, null=True, blank=True)
+    description = models.TextField()
+    date = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.dossier_id and self.patient_id:
+            self.dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Assistance {self.patient} - {self.date:%Y-%m-%d}"
     
 class Ordonnance(models.Model):
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE)
@@ -169,7 +214,9 @@ class Hospitalisation(models.Model):
     date_sortie = models.DateField(null=True, blank=True)
     
     def get_tarif(self):
-        tarif = Tarif.objects.get(type_tarif='hospitalisation')
+        tarif = Tarif.objects.filter(type_service='hospitalisation').first()
+        if not tarif:
+            return 0
         return tarif.prix * self.nombre_jours
 
     def save(self, *args, **kwargs):

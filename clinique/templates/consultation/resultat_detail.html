@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Detail resultat{% endblock %}
+{% block page_title %}Resultat d'examen{% endblock %}
+{% block page_heading %}{{ resultat.examen.type_examen }} - {{ resultat.patient }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:resultats' %}">Resultats</a></li>
+  <li class="breadcrumb-item active">Detail</li>
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-body">
+    <div class="row g-3 mb-3">
+      <div class="col-md-4"><strong>Patient :</strong> {{ resultat.patient }}</div>
+      <div class="col-md-4"><strong>Examen :</strong> {{ resultat.examen.type_examen }}</div>
+      <div class="col-md-4"><strong>Date :</strong> {{ resultat.date_examen|date:"d/m/Y H:i" }}</div>
+      <div class="col-md-4"><strong>Medecin :</strong> {{ resultat.medecin|default:'-' }}</div>
+      <div class="col-md-4"><strong>Laborantin :</strong> {{ resultat.laborantin|default:'-' }}</div>
+      <div class="col-md-4"><strong>Statut :</strong>
+        {% if resultat.transmis %}<span class="pill pill-success">Transmis le {{ resultat.date_transmission|date:"d/m/Y H:i" }}</span>
+        {% else %}<span class="pill pill-warn">Non transmis</span>{% endif %}
+      </div>
+    </div>
+    <hr>
+    <h6 class="fw-bold">Resultat</h6>
+    <p style="white-space:pre-wrap">{{ resultat.resultat }}</p>
+    {% if resultat.observations %}
+    <hr>
+    <h6 class="fw-bold">Observations</h6>
+    <p style="white-space:pre-wrap">{{ resultat.observations }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}Utilisateur{% endblock %}
+{% block page_title %}{% if profil %}Modifier l'utilisateur{% else %}Nouvel utilisateur{% endif %}{% endblock %}
+{% block page_heading %}{% if profil %}Modifier {{ edit_user.username }}{% else %}Nouvel utilisateur{% endif %}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'comptes:utilisateurs_liste' %}">Utilisateurs</a></li>
+  <li class="breadcrumb-item active">{% if profil %}Modifier{% else %}Ajouter{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="panel">
+  {% csrf_token %}
+  <div class="panel-body">
+    <div class="row g-3">
+      {% if not profil %}
+      <div class="col-md-6">
+        <label class="form-label">Nom d'utilisateur *</label>
+        <input type="text" name="username" class="form-control" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Mot de passe *</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      {% else %}
+      <div class="col-md-6">
+        <label class="form-label">Nom d'utilisateur</label>
+        <input type="text" class="form-control" value="{{ edit_user.username }}" disabled>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+        <input type="password" name="password" class="form-control">
+      </div>
+      {% endif %}
+
+      <div class="col-md-6">
+        <label class="form-label">Prenom</label>
+        <input type="text" name="first_name" class="form-control" value="{{ edit_user.first_name|default:'' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Nom</label>
+        <input type="text" name="last_name" class="form-control" value="{{ edit_user.last_name|default:'' }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" value="{{ edit_user.email|default:'' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Telephone</label>
+        <input type="text" name="telephone" class="form-control" value="{{ profil.telephone|default:'' }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Role *</label>
+        <select name="role" id="roleSelect" class="form-select" required>
+          <option value="">-- Choisir --</option>
+          {% for r in roles %}
+            <option value="{{ r.id }}" data-code="{{ r.code }}" {% if profil and profil.role_id == r.id %}selected{% endif %}>{{ r.libelle }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Lier a un membre du personnel (optionnel)</label>
+        <select name="personnel_id" id="personnelSelect" class="form-select">
+          <option value="">-- Aucun --</option>
+          <optgroup label="Medecins" data-role="medecin">
+            {% for m in medecins %}<option value="{{ m.id }}" data-role="medecin" {% if profil and profil.medecin_id == m.id %}selected{% endif %}>{{ m }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="Infirmiers" data-role="infirmier">
+            {% for i in infirmiers %}<option value="{{ i.id }}" data-role="infirmier" {% if profil and profil.infirmier_id == i.id %}selected{% endif %}>{{ i }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="Laborantins" data-role="laborantin">
+            {% for l in laborantins %}<option value="{{ l.id }}" data-role="laborantin" {% if profil and profil.laborantin_id == l.id %}selected{% endif %}>{{ l }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="Receptionnistes" data-role="receptionniste">
+            {% for rc in receptionnistes %}<option value="{{ rc.id }}" data-role="receptionniste" {% if profil and profil.receptionniste_id == rc.id %}selected{% endif %}>{{ rc }}</option>{% endfor %}
+          </optgroup>
+        </select>
+        <small class="text-muted">Filtre selon le role choisi.</small>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Adresse</label>
+        <textarea name="adresse" class="form-control" rows="2">{{ profil.adresse|default:'' }}</textarea>
+      </div>
+
+      {% if profil %}
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="is_active" id="actif" {% if edit_user.is_active %}checked{% endif %}>
+          <label class="form-check-label" for="actif">Compte actif</label>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="panel-hdr" style="border-top:1px solid var(--card-border);border-bottom:0;justify-content:flex-end">
+    <a href="{% url 'comptes:utilisateurs_liste' %}" class="btn btn-c btn-outline-c">Annuler</a>
+    <button type="submit" class="btn btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>
+  </div>
+</form>
+
+<script>
+function filterPersonnel(){
+  const roleSel = document.getElementById('roleSelect');
+  const persoSel = document.getElementById('personnelSelect');
+  const opt = roleSel.options[roleSel.selectedIndex];
+  const code = opt ? opt.getAttribute('data-code') : '';
+  Array.from(persoSel.querySelectorAll('optgroup')).forEach(og => {
+    og.style.display = (og.getAttribute('data-role') === code) ? '' : 'none';
+  });
+  Array.from(persoSel.options).forEach(o => {
+    if (!o.value) return;
+    o.hidden = o.getAttribute('data-role') !== code;
+  });
+}
+document.getElementById('roleSelect').addEventListener('change', filterPersonnel);
+filterPersonnel();
+</script>
+{% endblock %}

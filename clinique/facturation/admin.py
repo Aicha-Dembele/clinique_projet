@@ -25,7 +25,7 @@ class PaiementAdmin(admin.ModelAdmin):
     def patient(self, obj):
         return obj.facture.patient
     def mode_paiement(self, obj):
-        return obj.facture.mode_paiement
+        return obj.mode_paiement
     def date(self, obj):
         return obj.date
     patient.short_description = "Patient"

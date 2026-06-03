@@ -4,8 +4,10 @@ from django.contrib.auth.decorators import login_required
 
 from .models import Facture, Paiement, Tarif
 from patients.models import Patient
+from comptes.decorators import role_required
 
-@login_required
+
+@role_required('admin', 'receptionniste')
 def facture_liste(request):
     qs = Facture.objects.all().order_by('-id')
     total_paye = sum(f.montant_total for f in qs.filter(statut='payé'))
@@ -18,12 +20,12 @@ def facture_liste(request):
         'total_factures': qs.count(),
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def facture_detail(request, pk):
     facture = get_object_or_404(Facture, pk=pk)
     return render(request, 'facturation/detail.html', {'facture': facture})
 
-@login_required
+@role_required('admin', 'receptionniste')
 def facture_ajouter(request):
     if request.method == 'POST':
         try:
@@ -47,7 +49,7 @@ def facture_ajouter(request):
         'action': 'Créer',
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def facture_modifier(request, pk):
     facture = get_object_or_404(Facture, pk=pk)
     if request.method == 'POST':
@@ -73,7 +75,7 @@ def facture_modifier(request, pk):
         'action': 'Modifier',
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def facture_supprimer(request, pk):
     facture = get_object_or_404(Facture, pk=pk)
     if request.method == 'POST':
@@ -87,7 +89,7 @@ def facture_supprimer(request, pk):
 
 # ── Paiements ────────────────────────────────────────────
 
-@login_required
+@role_required('admin', 'receptionniste')
 def paiement_liste(request):
     paiements = Paiement.objects.all().order_by('-date')
     total = sum(p.montant for p in paiements)
@@ -96,7 +98,7 @@ def paiement_liste(request):
         'total_encaisse': f"{int(total):,}".replace(',', ' '),
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def paiement_ajouter(request):
     facture_id = request.GET.get('facture')
     if request.method == 'POST':
@@ -121,7 +123,7 @@ def paiement_ajouter(request):
         'action': 'Enregistrer',
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def paiement_modifier(request, pk):
     paiement = get_object_or_404(Paiement, pk=pk)
     if request.method == 'POST':
@@ -145,7 +147,7 @@ def paiement_modifier(request, pk):
         'action': 'Modifier',
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def paiement_supprimer(request, pk):
     paiement = get_object_or_404(Paiement, pk=pk)
     if request.method == 'POST':
@@ -161,12 +163,12 @@ def paiement_supprimer(request, pk):
         'retour_url': '/facturation/paiements/',
     })
 
-@login_required
+@role_required('admin', 'receptionniste')
 def paiement_recu(request, pk):
     paiement = get_object_or_404(Paiement, pk=pk)
     return render(request, 'facturation/recu.html', {'paiement': paiement})
 
-@login_required
+@role_required('admin')
 def rapports(request):
     paiements = Paiement.objects.all()
     factures = Facture.objects.all()
@@ -187,7 +189,7 @@ def rapports(request):
 
 # ── Tarifs ───────────────────────────────────────────────
 
-@login_required
+@role_required('admin', 'receptionniste')
 def tarif_liste(request):
     tarifs = Tarif.objects.all().order_by('type_service', 'prix')
     return render(request, 'facturation/tarifs.html', {
@@ -197,7 +199,7 @@ def tarif_liste(request):
         'nb_hospit': tarifs.filter(type_service='hospitalisation').count(),
     })
 
-@login_required
+@role_required('admin')
 def tarif_ajouter(request):
     if request.method == 'POST':
         try:
@@ -217,7 +219,7 @@ def tarif_ajouter(request):
         'action': 'Créer',
     })
 
-@login_required
+@role_required('admin')
 def tarif_modifier(request, pk):
     tarif = get_object_or_404(Tarif, pk=pk)
     if request.method == 'POST':
@@ -238,7 +240,7 @@ def tarif_modifier(request, pk):
         'action': 'Modifier',
     })
 
-@login_required
+@role_required('admin')
 def tarif_supprimer(request, pk):
     tarif = get_object_or_404(Tarif, pk=pk)
     if request.method == 'POST':

@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Roles{% endblock %}
+{% block page_title %}Rôles & Permissions{% endblock %}
+{% block page_heading %}Rôles & Permissions{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Rôles</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'comptes:permissions_liste' %}" class="btn-c btn-outline-c"><i class="bi bi-key"></i> Voir les permissions</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1.1rem; }
+  .role-card {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 1.15rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+    animation: fadeUp .5s ease both;
+  }
+  .role-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--rc, var(--primary)); }
+  .role-card::before {
+    content: ''; position: absolute; inset: 0 0 auto 0; height: 4px;
+    background: linear-gradient(90deg, var(--rc, var(--primary)), var(--rc2, var(--accent)));
+  }
+  .role-hd {
+    display: flex; align-items: center; gap: .85rem;
+    padding: 1.2rem 1.3rem 1rem;
+  }
+  .role-ico {
+    width: 52px; height: 52px; border-radius: .95rem; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; color: #fff;
+    background: linear-gradient(135deg, var(--rc, var(--primary)), var(--rc2, var(--accent)));
+    box-shadow: 0 8px 20px -8px var(--rc, var(--primary));
+  }
+  .role-meta { flex: 1; min-width: 0; }
+  .role-name {
+    font-family: 'Fraunces', serif; font-weight: 600;
+    font-size: 1.22rem; color: var(--text-primary); line-height: 1.15;
+    letter-spacing: -.01em;
+  }
+  .role-code {
+    font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--rc, var(--primary)); margin-top: .15rem;
+  }
+  .role-count {
+    flex-shrink: 0; text-align: center; padding: .4rem .7rem; border-radius: .7rem;
+    background: var(--input-bg); border: 1px solid var(--card-border);
+  }
+  .role-count b { font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--text-primary); display: block; line-height: 1; }
+  .role-count span { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+  .role-desc {
+    padding: 0 1.3rem; font-size: .82rem; color: var(--text-muted);
+    margin-bottom: .9rem; line-height: 1.5;
+  }
+  .role-perms {
+    padding: 0 1.3rem 1.1rem;
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    max-height: 168px; overflow-y: auto;
+  }
+  .role-perms::-webkit-scrollbar { width: 6px; }
+  .role-perms::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 99px; }
+  .perm-chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .72rem; font-weight: 600;
+    padding: .32em .7em; border-radius: 999px;
+    background: color-mix(in srgb, var(--rc, var(--primary)) 9%, transparent);
+    color: var(--rc, var(--primary));
+    border: 1px solid color-mix(in srgb, var(--rc, var(--primary)) 20%, transparent);
+    white-space: nowrap;
+  }
+  .perm-chip i { font-size: .62rem; opacity: .8; }
+  .perm-empty { font-size: .8rem; color: var(--text-muted); font-style: italic; }
+  .role-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .85rem 1.3rem; border-top: 1px solid var(--card-border-2);
+    background: var(--input-bg);
+  }
+  .role-foot small { font-size: .72rem; color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="role-grid">
+  {% for r in roles %}
+  <div class="role-card"
+       style="
+       {% if r.code == 'admin' %}--rc:#0f766e;--rc2:#2dd4bf;
+       {% elif r.code == 'medecin' %}--rc:#1d4ed8;--rc2:#38bdf8;
+       {% elif r.code == 'laborantin' %}--rc:#7c3aed;--rc2:#c084fc;
+       {% elif r.code == 'infirmier' %}--rc:#0d9488;--rc2:#5eead4;
+       {% elif r.code == 'receptionniste' %}--rc:#c69a4e;--rc2:#e3c178;
+       {% else %}--rc:#0f766e;--rc2:#2dd4bf;{% endif %}
+       animation-delay:{{ forloop.counter0|add:1 }}0ms">
+    <div class="role-hd">
+      <div class="role-ico">
+        {% if r.code == 'admin' %}<i class="bi bi-shield-lock-fill"></i>
+        {% elif r.code == 'medecin' %}<i class="bi bi-heart-pulse-fill"></i>
+        {% elif r.code == 'laborantin' %}<i class="bi bi-eyedropper"></i>
+        {% elif r.code == 'infirmier' %}<i class="bi bi-bandaid-fill"></i>
+        {% elif r.code == 'receptionniste' %}<i class="bi bi-headset"></i>
+        {% else %}<i class="bi bi-person-badge-fill"></i>{% endif %}
+      </div>
+      <div class="role-meta">
+        <div class="role-name">{{ r.libelle }}</div>
+        <div class="role-code">{{ r.code }}</div>
+      </div>
+      <div class="role-count">
+        <b>{{ r.permissions.all|length }}</b>
+        <span>perms</span>
+      </div>
+    </div>
+
+    {% if r.description %}
+    <div class="role-desc">{{ r.description }}</div>
+    {% endif %}
+
+    <div class="role-perms">
+      {% for p in r.permissions.all %}
+        <span class="perm-chip"><i class="bi bi-check-circle-fill"></i>{{ p.libelle }}</span>
+      {% empty %}
+        <span class="perm-empty">Aucune permission attribuée.</span>
+      {% endfor %}
+    </div>
+
+    <div class="role-foot">
+      <small><i class="bi bi-people"></i> {{ r.profils.all|length }} utilisateur{{ r.profils.all|length|pluralize }}</small>
+      <a href="{% url 'comptes:role_modifier' r.pk %}" class="btn-c btn-sm-c btn-primary-c"><i class="bi bi-sliders"></i> Gérer les accès</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

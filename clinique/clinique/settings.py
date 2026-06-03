@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'personnel',
     'consultation',
     'facturation',
-    
+    'comptes',
 ]
 
 MIDDLEWARE = [
@@ -66,6 +66,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'comptes.context_processors.role_context',
             ],
         },
     },
@@ -122,4 +123,4 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'consultation:liste'
+LOGIN_REDIRECT_URL = 'dashboard'

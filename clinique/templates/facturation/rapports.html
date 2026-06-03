@@ -137,7 +137,7 @@
 <script>
 (function(){
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const data = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_moov|default:0 }}, {{ pct_carte|default:0 }}];
+  const data = [{{ pct_especes|default:(0) }} + {{ pct_orange|default:(0) }} + {{ pct_moov|default:(0) }} + {{ pct_carte|default:(0) }}, {{ pct_especes|default:(0) }} + {{ pct_orange|default:0 }} + {{ pct_moov|default:0 }} + {{ pct_carte|default:0 }}, {{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_moov|default:0 }}, {{ pct_carte|default:0 }}];
   const total = data.reduce((a,b) => a+b, 0);
   const ctx = document.getElementById('paymentChart');
   if (ctx) {

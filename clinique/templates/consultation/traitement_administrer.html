@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Administrer traitement{% endblock %}
+{% block page_title %}Administrer un traitement{% endblock %}
+{% block page_heading %}Administration{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:traitements' %}">Traitements</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'consultation:traitement_detail' traitement.pk %}">#{{ traitement.id }}</a></li>
+  <li class="breadcrumb-item active">Administrer</li>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="panel">
+  {% csrf_token %}
+  <div class="panel-body">
+    <div class="alert-c bg-info bg-opacity-10 text-info mb-3">
+      <i class="bi bi-info-circle-fill"></i>
+      <span><strong>Patient :</strong> {{ traitement.patient }} | <strong>Description :</strong> {{ traitement.description|truncatechars:100 }}</span>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Note d'administration (observations, dose, reaction du patient...)</label>
+      <textarea name="note" class="form-control" rows="4"></textarea>
+    </div>
+    <p class="text-muted small">
+      L'administration sera enregistree dans le dossier medical du patient.
+      Le statut du traitement passera automatiquement a "En cours".
+    </p>
+  </div>
+  <div class="panel-hdr" style="border-top:1px solid var(--card-border);border-bottom:0;justify-content:flex-end">
+    <a href="{% url 'consultation:traitement_detail' traitement.pk %}" class="btn btn-c btn-outline-c">Annuler</a>
+    <button type="submit" class="btn btn-c btn-primary-c"><i class="bi bi-bandaid-fill"></i> Confirmer l'administration</button>
+  </div>
+</form>
+{% endblock %}

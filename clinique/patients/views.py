@@ -1,10 +1,11 @@
-from django.shortcuts import render, get_object_or_404, redirect
+﻿from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils import timezone
 
 from patients.models import Patient
+from comptes.decorators import role_required
 
 
 @login_required
@@ -113,7 +114,7 @@ def dashboard(request):
 # ──────────────────────────────────────────────
 
 
-@login_required
+@role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
 def patient_liste(request):
     q = request.GET.get('q', '')
     sexe = request.GET.get('sexe', '')
@@ -132,7 +133,7 @@ def patient_liste(request):
     return render(request, 'patients/liste.html', {'patients': qs, 'q': q})
 
 
-@login_required
+@role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
 def patient_detail(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     from consultation.models import DossierMedical, Rendez_vous, Consultation, ExamenMedical
@@ -153,7 +154,7 @@ def patient_detail(request, pk):
     })
 
 
-@login_required
+@role_required('admin', 'receptionniste')
 def patient_ajouter(request):
     if request.method == 'POST':
         try:
@@ -175,7 +176,7 @@ def patient_ajouter(request):
     return render(request, 'patients/form.html', {'action': 'Ajouter'})
 
 
-@login_required
+@role_required('admin', 'receptionniste')
 def patient_modifier(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     if request.method == 'POST':
@@ -197,7 +198,7 @@ def patient_modifier(request, pk):
     return render(request, 'patients/form.html', {'patient': patient, 'action': 'Modifier'})
 
 
-@login_required
+@role_required('admin', 'receptionniste')
 def patient_supprimer(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     if request.method == 'POST':
@@ -211,7 +212,7 @@ def patient_supprimer(request, pk):
     })
 
 
-@login_required
+@role_required('admin', 'receptionniste')
 def accueil_patients(request):
     from consultation.models import Rendez_vous
     rdvs = Rendez_vous.objects.filter(date__date=timezone.now().date()).order_by('date')

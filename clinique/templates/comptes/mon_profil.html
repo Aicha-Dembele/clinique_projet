@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Mon profil{% endblock %}
+{% block page_title %}Mon profil{% endblock %}
+{% block page_heading %}{{ request.user.get_full_name|default:request.user.username }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Mon profil</li>{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-body">
+    <div class="row g-3">
+      <div class="col-md-6"><strong>Nom d'utilisateur:</strong><br>{{ request.user.username }}</div>
+      <div class="col-md-6"><strong>Email:</strong><br>{{ request.user.email|default:'-' }}</div>
+      <div class="col-md-6"><strong>Nom complet:</strong><br>{{ request.user.get_full_name|default:'-' }}</div>
+      <div class="col-md-6"><strong>Role:</strong><br>
+        {% if request.user.profil %}<span class="pill pill-info">{{ request.user.profil.role.libelle }}</span>{% else %}<span class="pill pill-success">Administrateur</span>{% endif %}
+      </div>
+      {% if request.user.profil %}
+      <div class="col-md-6"><strong>Telephone:</strong><br>{{ request.user.profil.telephone|default:'-' }}</div>
+      <div class="col-md-6"><strong>Adresse:</strong><br>{{ request.user.profil.adresse|default:'-' }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

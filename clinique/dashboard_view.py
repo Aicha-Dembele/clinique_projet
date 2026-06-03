@@ -12,9 +12,10 @@ def dashboard(request):
     """
     role = 'admin'  # défaut
     try:
-        role = request.user.profil.role
+        role = request.user.profil.role.code
     except Exception:
-        pass
+        if request.user.is_superuser:
+            role = 'admin'
 
     aujourd_hui = timezone.now().date()
 
@@ -92,13 +93,19 @@ def dashboard(request):
 
     # ── LABORANTIN ─────────────────────────────────────────────────
     elif role == 'laborantin':
+        from consultation.models import ResultatExamen
+        try:
+            laborantin = request.user.profil.laborantin
+        except Exception:
+            laborantin = None
+        examens_qs = ExamenMedical.objects.all()
         ctx = {
             **base_ctx,
-            'examens_liste':       ExamenMedical.objects.filter(statut__in=['en_attente','en_cours']).order_by('id')[:10],
-            'examens_en_cours':    ExamenMedical.objects.filter(statut='en_cours').count(),
-            'examens_termines':    ExamenMedical.objects.filter(statut='termine').count(),
-            'total_examens_mois':  ExamenMedical.objects.count(),
-            'derniers_resultats':  ExamenMedical.objects.filter(statut='termine').order_by('-id')[:4],
+            'examens_liste':       examens_qs.filter(statut__in=['en_attente','en_cours']).order_by('id')[:10],
+            'examens_en_cours':    examens_qs.filter(statut='en_cours').count(),
+            'examens_termines':    examens_qs.filter(statut='termine').count(),
+            'total_examens_mois':  examens_qs.count(),
+            'derniers_resultats':  ResultatExamen.objects.order_by('-date_examen')[:4],
         }
         return render(request, 'laborantin/dashboard.html', ctx)
 

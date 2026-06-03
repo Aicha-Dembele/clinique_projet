@@ -77,7 +77,7 @@ admin.site.register(ExamenMedical, ExamenMedicalAdmin)
 class ResultatExamenAdmin(admin.ModelAdmin):
     list_display = ('patient', 'examen', 'medecin', 'laborantin', 'date_examen')
     list_filter = ('date_examen', 'medecin', 'laborantin')
-    search_fields = ('patient__nom', 'examen__nom')
+    search_fields = ('patient__nom', 'examen__type_examen')
     ordering = ('-date_examen',)
     readonly_fields = ('date_examen',)
 

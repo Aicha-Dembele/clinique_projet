@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Utilisateurs{% endblock %}
+{% block page_title %}Gestion des utilisateurs{% endblock %}
+{% block page_heading %}Utilisateurs{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Utilisateurs</li>{% endblock %}
+{% block page_actions %}
+  <a href="{% url 'comptes:utilisateur_ajouter' %}" class="btn btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouvel utilisateur</a>
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-hdr">
+    <div class="panel-title"><i class="bi bi-people-fill"></i> Liste des comptes</div>
+    <form method="get" class="d-flex gap-2">
+      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Rechercher..." style="max-width:200px">
+      <select name="role" class="form-select form-select-sm" style="max-width:160px">
+        <option value="">Tous les roles</option>
+        {% for r in roles %}<option value="{{ r.code }}" {% if r.code == role_filter %}selected{% endif %}>{{ r.libelle }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-c btn-outline-c btn-sm-c">Filtrer</button>
+    </form>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>Utilisateur</th><th>Nom complet</th><th>Email</th><th>Role</th><th>Statut</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in profils %}
+        <tr>
+          <td><strong>{{ p.user.username }}</strong></td>
+          <td>{{ p.user.get_full_name|default:'-' }}</td>
+          <td>{{ p.user.email|default:'-' }}</td>
+          <td><span class="pill pill-info">{{ p.role.libelle }}</span></td>
+          <td>{% if p.user.is_active %}<span class="pill pill-success">Actif</span>{% else %}<span class="pill pill-danger">Inactif</span>{% endif %}</td>
+          <td class="text-end">
+            <a href="{% url 'comptes:utilisateur_modifier' p.pk %}" class="btn btn-c btn-outline-c btn-sm-c"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'comptes:utilisateur_supprimer' p.pk %}" class="btn btn-c btn-danger-c btn-sm-c"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Aucun utilisateur</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

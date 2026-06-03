@@ -59,7 +59,7 @@ class Facture(models.Model):
             self.statut = 'payé'
         else:
             self.statut = 'non payé'
-            self.save()        
+        self.save()
     def __str__(self):
         return f" {self.patient}  {self.montant_total} FCFA  {self.statut}"    
         

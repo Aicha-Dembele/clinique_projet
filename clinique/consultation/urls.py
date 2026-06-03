@@ -27,6 +27,13 @@ urlpatterns = [
     path('examens/<int:pk>/modifier/', views.examen_modifier, name='examen_modifier'),
     path('examens/<int:pk>/supprimer/', views.examen_supprimer, name='examen_supprimer'),
 
+    # Resultats
+    path('resultats/', views.resultats, name='resultats'),
+    path('resultats/ajouter/', views.resultat_ajouter, name='resultat_ajouter'),
+    path('resultats/<int:pk>/', views.resultat_detail, name='resultat_detail'),
+    path('resultats/<int:pk>/modifier/', views.resultat_modifier, name='resultat_modifier'),
+    path('resultats/<int:pk>/transmettre/', views.resultat_transmettre, name='resultat_transmettre'),
+
     # Ordonnances
     path('ordonnances/', views.ordonnances, name='ordonnances'),
     path('ordonnances/ajouter/', views.ordonnance_ajouter, name='ordonnance_ajouter'),
@@ -41,4 +48,12 @@ urlpatterns = [
 
     # Traitements
     path('traitements/', views.traitements, name='traitements'),
+    path('traitements/ajouter/', views.traitement_ajouter, name='traitement_ajouter'),
+    path('traitements/<int:pk>/', views.traitement_detail, name='traitement_detail'),
+    path('traitements/<int:pk>/administrer/', views.traitement_administrer, name='traitement_administrer'),
+    path('traitements/<int:pk>/supprimer/', views.traitement_supprimer, name='traitement_supprimer'),
+
+    # Assistances infirmier
+    path('assistances/', views.assistances, name='assistances'),
+    path('assistances/ajouter/', views.assistance_ajouter, name='assistance_ajouter'),
 ]

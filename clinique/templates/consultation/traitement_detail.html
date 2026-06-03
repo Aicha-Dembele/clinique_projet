@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Detail traitement{% endblock %}
+{% block page_title %}Traitement - {{ traitement.patient }}{% endblock %}
+{% block page_heading %}Traitement #{{ traitement.id }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:traitements' %}">Traitements</a></li>
+  <li class="breadcrumb-item active">Detail</li>
+{% endblock %}
+{% block page_actions %}
+  {% if is_admin or is_infirmier %}
+    <a href="{% url 'consultation:traitement_administrer' traitement.pk %}" class="btn btn-c btn-primary-c"><i class="bi bi-bandaid-fill"></i> Administrer</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="panel">
+      <div class="panel-hdr"><div class="panel-title">Informations</div></div>
+      <div class="panel-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6"><strong>Patient :</strong> {{ traitement.patient }}</div>
+          <div class="col-md-6"><strong>Statut :</strong>
+            {% if traitement.statut == 'prescrit' %}<span class="pill pill-warn">Prescrit</span>
+            {% elif traitement.statut == 'en_cours' %}<span class="pill pill-info">En cours</span>
+            {% else %}<span class="pill pill-success">Termine</span>{% endif %}
+          </div>
+          <div class="col-md-6"><strong>Duree :</strong> {{ traitement.duree }} jour(s)</div>
+          <div class="col-md-6"><strong>Infirmier :</strong> {{ traitement.infirmier|default:'-' }}</div>
+          <div class="col-md-6"><strong>Cree le :</strong> {{ traitement.date_creation|date:"d/m/Y H:i" }}</div>
+        </div>
+        <hr>
+        <h6 class="fw-bold">Description</h6>
+        <p style="white-space:pre-wrap">{{ traitement.description }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="panel">
+      <div class="panel-hdr"><div class="panel-title"><i class="bi bi-clock-history"></i> Administrations</div></div>
+      <div class="panel-body p-0">
+        <table class="ctable">
+          <thead><tr><th>Date</th><th>Infirmier</th><th>Note</th></tr></thead>
+          <tbody>
+            {% for a in traitement.administrations.all %}
+            <tr>
+              <td>{{ a.date|date:"d/m/Y H:i" }}</td>
+              <td>{{ a.infirmier|default:'-' }}</td>
+              <td>{{ a.note|default:'-' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-3">Aucune administration enregistree.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

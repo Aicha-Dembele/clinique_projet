@@ -1,11 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from comptes.decorators import role_required, admin_required
 
 from .models import Medecin, Infirmier, Laborantin, AgentAdministratif, Receptionniste
 
 
-@login_required
+@admin_required
 def personnel_liste(request):
     return render(request, "personnel/liste.html", {
         "medecins":        Medecin.objects.all(),
@@ -16,7 +17,7 @@ def personnel_liste(request):
     })
 
 
-@login_required
+@admin_required
 def medecin_ajouter(request):
     if request.method == "POST":
         try:
@@ -37,7 +38,7 @@ def medecin_ajouter(request):
     return render(request, "personnel/medecin_form.html", {"action": "Ajouter"})
 
 
-@login_required
+@admin_required
 def medecin_modifier(request, pk):
     medecin = get_object_or_404(Medecin, pk=pk)
     if request.method == "POST":
@@ -52,7 +53,7 @@ def medecin_modifier(request, pk):
     return render(request, "personnel/medecin_form.html", {"medecin": medecin, "action": "Modifier"})
 
 
-@login_required
+@admin_required
 def medecin_supprimer(request, pk):
     medecin = get_object_or_404(Medecin, pk=pk)
     if request.method == "POST":
@@ -65,7 +66,7 @@ def medecin_supprimer(request, pk):
     })
 
 
-@login_required
+@admin_required
 def infirmier_ajouter(request):
     if request.method == "POST":
         try:
@@ -85,7 +86,7 @@ def infirmier_ajouter(request):
     return render(request, "personnel/infirmier_form.html", {"action": "Ajouter"})
 
 
-@login_required
+@admin_required
 def laborantin_ajouter(request):
     if request.method == "POST":
         try:
@@ -106,7 +107,7 @@ def laborantin_ajouter(request):
     return render(request, "personnel/laborantin_form.html", {"action": "Ajouter"})
 
 
-@login_required
+@admin_required
 def receptionniste_ajouter(request):
     if request.method == "POST":
         try:

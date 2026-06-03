@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Resultats d'examens{% endblock %}
+{% block page_title %}Resultats d'examens{% endblock %}
+{% block page_heading %}Resultats{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Resultats</li>{% endblock %}
+{% block page_actions %}
+  {% if is_admin or is_laborantin %}
+    <a href="{% url 'consultation:resultat_ajouter' %}" class="btn btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouveau resultat</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>Patient</th><th>Examen</th><th>Date</th><th>Medecin</th><th>Statut</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resultats %}
+        <tr>
+          <td><strong>{{ r.patient }}</strong></td>
+          <td>{{ r.examen.type_examen }}</td>
+          <td>{{ r.date_examen|date:"d/m/Y H:i" }}</td>
+          <td>{{ r.medecin|default:'-' }}</td>
+          <td>
+            {% if r.transmis %}
+              <span class="pill pill-success"><i class="bi bi-check-circle-fill"></i> Transmis</span>
+            {% else %}
+              <span class="pill pill-warn">En attente de transmission</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'consultation:resultat_detail' r.pk %}" class="btn btn-c btn-outline-c btn-sm-c"><i class="bi bi-eye"></i></a>
+            {% if is_admin or is_laborantin %}
+              <a href="{% url 'consultation:resultat_modifier' r.pk %}" class="btn btn-c btn-outline-c btn-sm-c"><i class="bi bi-pencil"></i></a>
+              {% if not r.transmis %}
+                <form method="post" action="{% url 'consultation:resultat_transmettre' r.pk %}" style="display:inline">
+                  {% csrf_token %}
+                  <button class="btn btn-c btn-primary-c btn-sm-c"><i class="bi bi-send"></i> Transmettre</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Aucun resultat enregistre.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
