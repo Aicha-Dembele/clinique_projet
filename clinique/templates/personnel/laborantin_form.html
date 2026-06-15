@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-personnel-bg{% endblock %}
+{% block title %}{{ action }} un(e) laborantin{% endblock %}
+{% block nav_personnel %}active{% endblock %}
+{% block page_title %}Personnel{% endblock %}
+{% block page_heading %}{{ action }} un(e) laborantin{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'personnel:liste' %}">Personnel</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block page_actions %}
+  <a href="{% url 'personnel:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}<style>
+.form-section { background:var(--card-bg); border:1px solid var(--card-border); border-radius:1.1rem; padding:1.5rem 1.6rem; box-shadow:var(--shadow-sm); margin-bottom:1rem; animation:fadeUp .5s ease both; max-width:720px; margin-left:auto; margin-right:auto; }
+.form-section-hdr { display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem; padding-bottom:.9rem; border-bottom:1px solid var(--card-border); }
+.form-section-ico { width:42px; height:42px; border-radius:.75rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.1rem; }
+.form-section-title { font-size:1rem; font-weight:800; color:var(--text-primary); }
+.form-section-sub { font-size:.73rem; color:var(--text-muted); margin-top:1px; }
+.req { color:#ef4444; }
+.actions-row { max-width:720px; margin-left:auto; margin-right:auto; }
+</style>{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-person-fill"></i></span>
+      <div>
+        <div class="form-section-title">Informations personnelles</div>
+        <div class="form-section-sub">Renseignez les informations du membre du personnel</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Nom <span class="req">*</span></label>
+        <input type="text" name="nom" class="f-input" required placeholder="Nom de famille"
+               value="{% if laborantin %}{{ laborantin.nom }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Prénom <span class="req">*</span></label>
+        <input type="text" name="prenom" class="f-input" required placeholder="Prénom"
+               value="{% if laborantin %}{{ laborantin.prenom }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Téléphone <span class="req">*</span></label>
+        <input type="text" name="telephone" class="f-input" required placeholder="+225 00 00 00 00"
+               value="{% if laborantin %}{{ laborantin.telephone }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Spécialité <span class="req">*</span></label>
+        <input type="text" name="specialite" class="f-input" required placeholder="Ex: Hématologie, Biochimie, Microbiologie…"
+               value="{% if laborantin %}{{ laborantin.specialite }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Service</label>
+        <input type="text" name="service" class="f-input" placeholder="Laboratoire"
+               value="{% if laborantin %}{{ laborantin.service }}{% else %}Laboratoire{% endif %}">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Adresse</label>
+        <input type="text" name="adresse" class="f-input" placeholder="Adresse"
+               value="{% if laborantin %}{{ laborantin.adresse }}{% endif %}">
+      </div>
+      {% if not laborantin %}
+      <div class="col-12 col-md-6">
+        <label class="f-label">Mot de passe <span class="req">*</span></label>
+        <input type="password" name="mot_de_passe" class="f-input" required placeholder="••••••••">
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="actions-row d-flex gap-2 justify-content-end">
+    <a href="{% url 'personnel:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}

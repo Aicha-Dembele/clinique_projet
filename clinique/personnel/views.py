@@ -8,12 +8,36 @@ from .models import Medecin, Infirmier, Laborantin, AgentAdministratif, Receptio
 
 @admin_required
 def personnel_liste(request):
-    return render(request, "personnel/liste.html", {
-        "medecins":        Medecin.objects.all(),
-        "infirmiers":      Infirmier.objects.all(),
-        "laborantins":     Laborantin.objects.all(),
-        "agents":          AgentAdministratif.objects.all(),
-        "receptionnistes": Receptionniste.objects.all(),
+    filtre = request.GET.get('filtre', 'tous')
+    q      = request.GET.get('q', '').strip()
+
+    medecins        = Medecin.objects.all()
+    infirmiers      = Infirmier.objects.all()
+    laborantins     = Laborantin.objects.all()
+    agents          = AgentAdministratif.objects.all()
+    receptionnistes = Receptionniste.objects.all()
+
+    if q:
+        medecins        = medecins.filter(nom__icontains=q) | medecins.filter(prenom__icontains=q)
+        infirmiers      = infirmiers.filter(nom__icontains=q) | infirmiers.filter(prenom__icontains=q)
+        laborantins     = laborantins.filter(nom__icontains=q) | laborantins.filter(prenom__icontains=q)
+        receptionnistes = receptionnistes.filter(nom__icontains=q) | receptionnistes.filter(prenom__icontains=q)
+
+    total_medecins   = Medecin.objects.count()
+    total_infirmiers = Infirmier.objects.count()
+    total_personnel  = total_medecins + total_infirmiers + Laborantin.objects.count() + Receptionniste.objects.count()
+
+    return render(request, 'personnel/liste.html', {
+        'medecins':        medecins,
+        'infirmiers':      infirmiers,
+        'laborantins':     laborantins,
+        'agents':          agents,
+        'receptionnistes': receptionnistes,
+        'filtre':          filtre,
+        'q':               q,
+        'total_medecins':  total_medecins,
+        'total_infirmiers':total_infirmiers,
+        'total_personnel': total_personnel,
     })
 
 
@@ -45,6 +69,7 @@ def medecin_modifier(request, pk):
         medecin.nom = request.POST["nom"]
         medecin.prenom = request.POST["prenom"]
         medecin.telephone = request.POST["telephone"]
+        medecin.adresse = request.POST.get("adresse", "")
         medecin.service = request.POST["service"]
         medecin.specialite = request.POST["specialite"]
         medecin.save()
@@ -87,6 +112,34 @@ def infirmier_ajouter(request):
 
 
 @admin_required
+def infirmier_modifier(request, pk):
+    infirmier = get_object_or_404(Infirmier, pk=pk)
+    if request.method == "POST":
+        infirmier.nom = request.POST["nom"]
+        infirmier.prenom = request.POST["prenom"]
+        infirmier.telephone = request.POST["telephone"]
+        infirmier.adresse = request.POST.get("adresse", "")
+        infirmier.service = request.POST["service"]
+        infirmier.save()
+        messages.success(request, "Infirmier modifié.")
+        return redirect("personnel:liste")
+    return render(request, "personnel/infirmier_form.html", {"infirmier": infirmier, "action": "Modifier"})
+
+
+@admin_required
+def infirmier_supprimer(request, pk):
+    infirmier = get_object_or_404(Infirmier, pk=pk)
+    if request.method == "POST":
+        infirmier.delete()
+        messages.success(request, "Infirmier supprimé.")
+        return redirect("personnel:liste")
+    return render(request, "partials/confirmer_suppression.html", {
+        "objet": f"Inf. {infirmier.nom} {infirmier.prenom}",
+        "retour_url": "/personnel/",
+    })
+
+
+@admin_required
 def laborantin_ajouter(request):
     if request.method == "POST":
         try:
@@ -108,6 +161,35 @@ def laborantin_ajouter(request):
 
 
 @admin_required
+def laborantin_modifier(request, pk):
+    laborantin = get_object_or_404(Laborantin, pk=pk)
+    if request.method == "POST":
+        laborantin.nom = request.POST["nom"]
+        laborantin.prenom = request.POST["prenom"]
+        laborantin.telephone = request.POST["telephone"]
+        laborantin.adresse = request.POST.get("adresse", "")
+        laborantin.specialite = request.POST.get("specialite", "")
+        laborantin.service = request.POST.get("service", "Laboratoire")
+        laborantin.save()
+        messages.success(request, "Laborantin modifié.")
+        return redirect("personnel:liste")
+    return render(request, "personnel/laborantin_form.html", {"laborantin": laborantin, "action": "Modifier"})
+
+
+@admin_required
+def laborantin_supprimer(request, pk):
+    laborantin = get_object_or_404(Laborantin, pk=pk)
+    if request.method == "POST":
+        laborantin.delete()
+        messages.success(request, "Laborantin supprimé.")
+        return redirect("personnel:liste")
+    return render(request, "partials/confirmer_suppression.html", {
+        "objet": f"{laborantin.nom} {laborantin.prenom}",
+        "retour_url": "/personnel/",
+    })
+
+
+@admin_required
 def receptionniste_ajouter(request):
     if request.method == "POST":
         try:
@@ -125,3 +207,31 @@ def receptionniste_ajouter(request):
         except Exception as e:
             messages.error(request, f"Erreur : {e}")
     return render(request, "personnel/receptionniste_form.html", {"action": "Ajouter"})
+
+
+@admin_required
+def receptionniste_modifier(request, pk):
+    receptionniste = get_object_or_404(Receptionniste, pk=pk)
+    if request.method == "POST":
+        receptionniste.nom = request.POST["nom"]
+        receptionniste.prenom = request.POST["prenom"]
+        receptionniste.telephone = request.POST["telephone"]
+        receptionniste.adresse = request.POST.get("adresse", "")
+        receptionniste.service = request.POST.get("service", "Accueil")
+        receptionniste.save()
+        messages.success(request, "Réceptionniste modifié.")
+        return redirect("personnel:liste")
+    return render(request, "personnel/receptionniste_form.html", {"receptionniste": receptionniste, "action": "Modifier"})
+
+
+@admin_required
+def receptionniste_supprimer(request, pk):
+    receptionniste = get_object_or_404(Receptionniste, pk=pk)
+    if request.method == "POST":
+        receptionniste.delete()
+        messages.success(request, "Réceptionniste supprimé.")
+        return redirect("personnel:liste")
+    return render(request, "partials/confirmer_suppression.html", {
+        "objet": f"{receptionniste.nom} {receptionniste.prenom}",
+        "retour_url": "/personnel/",
+    })

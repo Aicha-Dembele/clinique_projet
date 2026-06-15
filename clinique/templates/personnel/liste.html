@@ -1,180 +1,402 @@
 {% extends 'base.html' %}
-{% block title %}Personnel{% endblock %}
+{% block body_class %}page-consultation-bg page-personnel-bg{% endblock %}
+{% block title %}Médecins & Personnel{% endblock %}
 {% block nav_personnel %}active{% endblock %}
-{% block page_title %}Personnel{% endblock %}
-{% block page_heading %}Gestion du personnel{% endblock %}
+{% block page_title %}Médecins & Personnel{% endblock %}
+{% block page_heading %}Médecins & personnel{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Personnel</li>{% endblock %}
 {% block page_actions %}
-<a href="{% url 'personnel:medecin_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Ajouter un médecin</a>
+  <div style="position:relative;display:inline-block;z-index:9999" id="add-menu-wrap">
+    <button onclick="toggleAddMenu()" class="btn-c btn-primary-c" style="display:flex;align-items:center;gap:.4rem">
+      <i class="bi bi-plus-circle-fill"></i> Ajouter <i class="bi bi-chevron-down" style="font-size:.7rem"></i>
+    </button>
+    <div id="add-menu" style="display:none;position:fixed;z-index:99999;
+         background:var(--card-bg);border:1px solid var(--card-border);border-radius:.85rem;
+         box-shadow:0 8px 32px rgba(0,0,0,.25);min-width:210px;">
+      <a href="{% url 'personnel:medecin_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(0,136,170,.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(0,136,170,.12);color:#0088aa;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-person-badge-fill"></i></span>
+        Médecin
+      </a>
+      <a href="{% url 'personnel:infirmier_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(16,185,129,.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(16,185,129,.12);color:#10b981;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-heart-pulse-fill"></i></span>
+        Infirmier / Infirmière
+      </a>
+      <a href="{% url 'personnel:laborantin_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(168,85,247,.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(168,85,247,.12);color:#a855f7;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-eyedropper-fill"></i></span>
+        Laborantin
+      </a>
+      <a href="{% url 'personnel:receptionniste_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(245,158,11,.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(245,158,11,.12);color:#f59e0b;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-person-workspace"></i></span>
+        Réceptionniste
+      </a>
+    </div>
+  </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAddMenu() {
+  const btn  = document.getElementById('add-menu-wrap');
+  const menu = document.getElementById('add-menu');
+  if (menu.style.display === 'none' || menu.style.display === '') {
+    /* Rendre visible temporairement pour mesurer la hauteur */
+    menu.style.visibility = 'hidden';
+    menu.style.display = 'block';
+    const menuH = menu.offsetHeight;
+    menu.style.display = 'none';
+    menu.style.visibility = 'visible';
+
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    if (spaceBelow >= menuH + 8) {
+      /* Assez de place en bas → afficher en dessous */
+      menu.style.top    = (rect.bottom + 8) + 'px';
+      menu.style.bottom = 'auto';
+    } else {
+      /* Pas assez de place → afficher AU-DESSUS du bouton */
+      menu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+      menu.style.top    = 'auto';
+    }
+    menu.style.right   = (window.innerWidth - rect.right) + 'px';
+    menu.style.display = 'block';
+  } else {
+    menu.style.display = 'none';
+  }
+}
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('add-menu-wrap').contains(e.target)) {
+    document.getElementById('add-menu').style.display = 'none';
+  }
+});
+</script>
+{% endblock %}
+
 {% block extra_css %}<style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
-.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
-.stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+/* ── Stat cards ── */
+.stat-p { background:var(--card-bg); border:1px solid var(--card-border); border-radius:1rem; padding:1.2rem 1.4rem; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow-sm); animation:fadeUp .5s ease both; }
+.stat-p:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); transition:all .2s; }
+.stat-p-left .lbl { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); }
+.stat-p-left .val { font-size:2rem; font-weight:900; color:var(--text-primary); line-height:1.1; font-family:'Outfit',sans-serif; }
+.stat-p-left .sub { font-size:.75rem; font-weight:700; margin-top:.2rem; }
+.stat-p-ico { width:52px; height:52px; border-radius:.9rem; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
+
+/* ── Filtre tabs ── */
+.filter-tabs { display:inline-flex; background:var(--input-bg); border:1px solid var(--card-border); border-radius:.8rem; padding:4px; gap:2px; flex-wrap:wrap; }
+.ftab { padding:.38rem .9rem; border-radius:.55rem; font-size:.78rem; font-weight:700; color:var(--text-muted); text-decoration:none; transition:all .2s; white-space:nowrap; }
+.ftab:hover { color:var(--text-primary); }
+.ftab.active { background:var(--card-bg); color:var(--text-primary); box-shadow:var(--shadow-sm); }
+
+/* ── Cards personnel (identiques à la capture) ── */
+.pcard {
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:1rem; padding:1.2rem 1.3rem;
+  box-shadow:var(--shadow-sm); transition:all .25s;
+  animation:fadeUp .5s ease both;
+  display:flex; flex-direction:column; gap:.75rem;
+}
+.pcard:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:rgba(0,136,170,.25); }
+
+/* En-tête card */
+.pcard-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem; }
+.pcard-av {
+  width:48px; height:48px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.95rem; font-weight:800; flex-shrink:0; color:#fff;
+}
+.pcard-name { font-size:.95rem; font-weight:800; color:var(--text-primary); line-height:1.2; }
+.pcard-role { font-size:.75rem; color:var(--text-muted); margin-top:.15rem; font-weight:500; }
+
+/* Badge statut */
+.pstatus { font-size:.68rem; font-weight:700; padding:.22em .7em; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+.pstatus-dispo  { background:rgba(16,185,129,.12); color:#10b981; }
+.pstatus-consul { background:rgba(59,130,246,.12);  color:#3b82f6; }
+.pstatus-pause  { background:rgba(245,158,11,.12);  color:#f59e0b; }
+.pstatus-bloc   { background:rgba(239,68,68,.12);   color:#ef4444; }
+.pstatus-conge  { background:rgba(168,85,247,.12);  color:#a855f7; }
+.pstatus-serv   { background:rgba(20,184,166,.12);  color:#14b8a6; }
+
+/* Infos contact */
+.pcard-info { display:flex; flex-direction:column; gap:.28rem; }
+.pcard-info-row { display:flex; align-items:center; gap:.5rem; font-size:.76rem; color:var(--text-muted); }
+.pcard-info-row i { font-size:.8rem; flex-shrink:0; color:var(--text-muted); }
+
+/* Divider */
+.pcard-div { height:1px; background:var(--card-border); }
+
+/* Pied de card */
+.pcard-ftr { display:flex; align-items:center; justify-content:space-between; }
+.pcard-stat-lbl { font-size:.68rem; color:var(--text-muted); font-weight:600; }
+.pcard-stat-val { font-size:1rem; font-weight:800; color:var(--text-primary); font-family:'Outfit',sans-serif; }
+.pcard-btns { display:flex; gap:.4rem; }
+.pcard-btn {
+  padding:.38rem .85rem; border-radius:.6rem; font-size:.75rem; font-weight:700;
+  text-decoration:none; transition:all .15s; border:1px solid;
+}
+.pcard-btn-outline { border-color:var(--card-border); color:var(--text-secondary); background:transparent; }
+.pcard-btn-outline:hover { border-color:var(--primary); color:var(--primary); }
+.pcard-btn-primary { border-color:var(--primary); color:#fff; background:var(--primary); }
+.pcard-btn-primary:hover { filter:brightness(1.1); }
+.pcard-btn-danger { border-color:rgba(239,68,68,.5); color:#ef4444; background:transparent; }
+.pcard-btn-danger:hover { border-color:#ef4444; color:#fff; background:#ef4444; }
+
+/* Couleurs avatars */
+.av-blue   { background:#3b82f6; }
+.av-teal   { background:#0d9488; }
+.av-orange { background:#f59e0b; }
+.av-purple { background:#a855f7; }
+.av-red    { background:#ef4444; }
+.av-green  { background:#10b981; }
+.av-cyan   { background:#0088aa; }
+.av-pink   { background:#ec4899; }
+
+/* Section titre */
+.section-hdr { font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); margin-bottom:.75rem; margin-top:1.5rem; padding-bottom:.4rem; border-bottom:1px solid var(--card-border); }
 </style>{% endblock %}
+
 {% block content %}
+
+<!-- ── Sous-titre ── -->
+<p style="color:var(--text-muted);font-size:.85rem;margin-top:-.5rem;margin-bottom:1.25rem">
+  {{ total_medecins }} médecin{% if total_medecins > 1 %}s{% endif %} · {{ total_infirmiers }} infirmier{% if total_infirmiers > 1 %}s{% endif %} · {{ total_personnel }} personnels soignants au total
+</p>
+
+<!-- ── 4 STAT CARDS ── -->
 <div class="row g-3 mb-4">
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-people-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Total personnel</div>
-        <div class="stat-h-val">{{ total_personnel|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#10b981">Équipe clinique</div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-p" style="animation-delay:.04s">
+      <div class="stat-p-left">
+        <div class="lbl">Total médecins</div>
+        <div class="val">{{ total_medecins }}</div>
+        <div class="sub" style="color:#0088aa">+{% if total_medecins > 0 %}{{ total_medecins }}{% else %}0{% endif %} ce mois</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+      <div class="stat-p-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-person-badge-fill"></i></div>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.08s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-clipboard2-pulse-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Médecins</div>
-        <div class="stat-h-val">{{ medecins|length }}</div>
-        <div class="stat-h-trend" style="color:#14b8a6">Corps médical</div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-p" style="animation-delay:.08s">
+      <div class="stat-p-left">
+        <div class="lbl">Infirmiers</div>
+        <div class="val">{{ total_infirmiers }}</div>
+        <div class="sub" style="color:#10b981">Tous actifs</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+      <div class="stat-p-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-people-fill"></i></div>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-bandaid-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Infirmiers</div>
-        <div class="stat-h-val">{{ infirmiers|length }}</div>
-        <div class="stat-h-trend" style="color:#f59e0b">Soins patients</div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-p" style="animation-delay:.12s">
+      <div class="stat-p-left">
+        <div class="lbl">En service</div>
+        <div class="val">{{ total_personnel }}</div>
+        <div class="sub" style="color:#f59e0b">68% de l'équipe</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+      <div class="stat-p-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-clock-fill"></i></div>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.16s">
-      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-person-badge-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Autres</div>
-        <div class="stat-h-val">{{ autres_personnel|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#a855f7">Support clinique</div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-p" style="animation-delay:.16s">
+      <div class="stat-p-left">
+        <div class="lbl">Laborantins</div>
+        <div class="val">{{ laborantins|length }}</div>
+        <div class="sub" style="color:#a855f7">Cette semaine</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="purple"></canvas>
+      <div class="stat-p-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-person-x-fill"></i></div>
     </div>
   </div>
 </div>
 
-<!-- Médecins -->
-<div class="mb-2 d-flex align-items-center gap-2">
-  <span style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--text-primary)">Médecins</span>
-  <span class="pill pill-info">{{ medecins|length }}</span>
+<!-- ── BARRE FILTRE + RECHERCHE ── -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div class="filter-tabs">
+    <a href="?filtre=tous{% if q %}&q={{ q }}{% endif %}"         class="ftab {% if filtre == 'tous' %}active{% endif %}">Tous</a>
+    <a href="?filtre=medecins{% if q %}&q={{ q }}{% endif %}"     class="ftab {% if filtre == 'medecins' %}active{% endif %}"><i class="bi bi-person-badge me-1"></i>Médecins</a>
+    <a href="?filtre=infirmiers{% if q %}&q={{ q }}{% endif %}"   class="ftab {% if filtre == 'infirmiers' %}active{% endif %}"><i class="bi bi-heart-pulse me-1"></i>Infirmiers</a>
+    <a href="?filtre=laborantins{% if q %}&q={{ q }}{% endif %}"  class="ftab {% if filtre == 'laborantins' %}active{% endif %}">Laborantins</a>
+    <a href="?filtre=recep{% if q %}&q={{ q }}{% endif %}"        class="ftab {% if filtre == 'recep' %}active{% endif %}">Réceptionnistes</a>
+  </div>
+  <form method="get" class="d-flex gap-2" style="min-width:260px">
+    <input type="hidden" name="filtre" value="{{ filtre }}">
+    <div style="position:relative;flex:1">
+      <i class="bi bi-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.85rem"></i>
+      <input type="text" name="q" value="{{ q }}" class="f-input" placeholder="Rechercher un médecin…" style="padding-left:2.1rem;font-size:.82rem">
+    </div>
+    <button class="btn-c btn-outline-c" style="font-size:.82rem">Filtrer</button>
+  </form>
 </div>
-<div class="row g-3 mb-4">
+
+<!-- ══ MÉDECINS ══ -->
+{% if filtre == 'tous' or filtre == 'medecins' %}
+{% if medecins %}
+<div class="section-hdr"><i class="bi bi-person-badge me-2"></i>Médecins</div>
+<div class="row g-3 mb-2">
   {% for m in medecins %}
+  {% with colors="av-blue av-teal av-orange av-purple av-red av-green av-cyan av-pink" %}
+  {% with color=colors|wordcount %}
   <div class="col-12 col-md-6 col-xl-4">
-    <div class="panel" style="height:auto">
-      <div class="panel-body">
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div class="av" style="width:52px;height:52px;font-size:.9rem;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff">{{ m.nom|slice:":1" }}{{ m.prenom|slice:":1" }}</div>
+    <div class="pcard" style="animation-delay:{{ forloop.counter0 }}0ms">
+      <div class="pcard-hdr">
+        <div class="d-flex align-items-center gap-2">
+          <div class="pcard-av av-{% cycle 'blue' 'teal' 'orange' 'purple' 'red' 'green' 'cyan' 'pink' %}">
+            {{ m.nom|slice:":1" }}{{ m.prenom|slice:":1" }}
+          </div>
           <div>
-            <div style="font-weight:800;font-size:.95rem">Dr. {{ m.nom }} {{ m.prenom }}</div>
-            <div style="font-size:.75rem;color:var(--text-muted)">{{ m.specialite }}</div>
-            <span class="pill pill-info" style="margin-top:.25rem;display:inline-block">{{ m.service }}</span>
+            <div class="pcard-name">Dr. {{ m.nom }} {{ m.prenom }}</div>
+            <div class="pcard-role">{{ m.specialite }}</div>
           </div>
         </div>
-        <div class="d-flex align-items-center gap-2 mb-1" style="font-size:.78rem;color:var(--text-secondary)">
-          <i class="bi bi-telephone" style="color:var(--primary)"></i> {{ m.telephone }}
+        <span class="pstatus pstatus-dispo">Disponible</span>
+      </div>
+      <div class="pcard-info">
+        <div class="pcard-info-row"><i class="bi bi-envelope"></i> {{ m.telephone }}</div>
+        <div class="pcard-info-row"><i class="bi bi-geo-alt"></i> {{ m.service }}</div>
+      </div>
+      <div class="pcard-div"></div>
+      <div class="pcard-ftr">
+        <div>
+          <div class="pcard-stat-lbl">Service</div>
+          <div class="pcard-stat-val">{{ m.service|truncatechars:15 }}</div>
         </div>
-        <div class="d-flex gap-2 mt-3">
-          <a href="#" class="btn-c btn-sm-c btn-outline-c flex-grow-1" style="justify-content:center"><i class="bi bi-eye"></i> Voir</a>
-          <a href="#" class="btn-c btn-sm-c btn-outline-c flex-grow-1" style="justify-content:center"><i class="bi bi-pencil"></i> Modifier</a>
+        <div class="pcard-btns">
+          <a href="{% url 'personnel:medecin_modifier' m.pk %}" class="pcard-btn pcard-btn-outline">Profil</a>
+          <a href="{% url 'consultation:rdv_liste' %}" class="pcard-btn pcard-btn-primary">Planning</a>
         </div>
       </div>
     </div>
   </div>
-  {% empty %}
-  <div class="col-12"><div class="panel" style="height:auto"><div class="panel-body text-center py-3" style="color:var(--text-muted)">Aucun médecin enregistré</div></div></div>
+  {% endwith %}{% endwith %}
   {% endfor %}
 </div>
+{% endif %}
+{% endif %}
 
-<!-- Infirmiers -->
-<div class="mb-2 d-flex align-items-center gap-2">
-  <span style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--text-primary)">Infirmiers</span>
-  <span class="pill pill-warn">{{ infirmiers|length }}</span>
-</div>
-<div class="row g-3 mb-4">
-  {% for i in infirmiers %}
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="panel" style="height:auto">
-      <div class="panel-body text-center">
-        <div class="av mx-auto mb-2" style="width:46px;height:46px;font-size:.85rem;background:rgba(245,158,11,.15);color:#f59e0b">{{ i.nom|slice:":1" }}{{ i.prenom|slice:":1" }}</div>
-        <div style="font-weight:700">{{ i.nom }} {{ i.prenom }}</div>
-        <div style="font-size:.72rem;color:var(--text-muted)">{{ i.service }}</div>
-        <div style="font-size:.72rem;color:var(--text-secondary);margin-top:.25rem">{{ i.telephone }}</div>
+<!-- ══ INFIRMIERS ══ -->
+{% if filtre == 'tous' or filtre == 'infirmiers' %}
+{% if infirmiers %}
+<div class="section-hdr"><i class="bi bi-heart-pulse me-2"></i>Infirmiers</div>
+<div class="row g-3 mb-2">
+  {% for inf in infirmiers %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="pcard" style="animation-delay:{{ forloop.counter0 }}0ms">
+      <div class="pcard-hdr">
+        <div class="d-flex align-items-center gap-2">
+          <div class="pcard-av {% cycle 'av-green' 'av-teal' 'av-blue' 'av-pink' %}">
+            {{ inf.nom|slice:":1" }}{{ inf.prenom|slice:":1" }}
+          </div>
+          <div>
+            <div class="pcard-name">Inf. {{ inf.nom }} {{ inf.prenom }}</div>
+            <div class="pcard-role">Infirmier{{ inf.nom|slice:"0" }}</div>
+          </div>
+        </div>
+        <span class="pstatus pstatus-serv">En service</span>
+      </div>
+      <div class="pcard-info">
+        <div class="pcard-info-row"><i class="bi bi-telephone"></i> {{ inf.telephone }}</div>
+        <div class="pcard-info-row"><i class="bi bi-building"></i> {{ inf.service }}</div>
+      </div>
+      <div class="pcard-div"></div>
+      <div class="pcard-ftr">
+        <div>
+          <div class="pcard-stat-lbl">Service</div>
+          <div class="pcard-stat-val">{{ inf.service|truncatechars:15 }}</div>
+        </div>
+        <div class="pcard-btns">
+          <a href="{% url 'personnel:infirmier_modifier' inf.pk %}" class="pcard-btn pcard-btn-outline">Profil</a>
+          <a href="{% url 'personnel:infirmier_supprimer' inf.pk %}" class="pcard-btn pcard-btn-danger">Supprimer</a>
+        </div>
       </div>
     </div>
   </div>
-  {% empty %}
-  <div class="col-12"><p style="color:var(--text-muted);font-size:.85rem">Aucun infirmier enregistré.</p></div>
   {% endfor %}
 </div>
+{% endif %}
+{% endif %}
 
-<!-- Laborantins -->
-<div class="mb-2 d-flex align-items-center gap-2">
-  <span style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--text-primary)">Laborantins</span>
-  <span class="pill pill-gray">{{ laborantins|length }}</span>
-</div>
-<div class="row g-3 mb-4">
-  {% for l in laborantins %}
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="panel" style="height:auto">
-      <div class="panel-body text-center">
-        <div class="av mx-auto mb-2" style="width:46px;height:46px;font-size:.85rem;background:rgba(168,85,247,.15);color:#a855f7">{{ l.nom|slice:":1" }}{{ l.prenom|slice:":1" }}</div>
-        <div style="font-weight:700">{{ l.nom }} {{ l.prenom }}</div>
-        <div style="font-size:.72rem;color:var(--text-muted)">{{ l.specialite }}</div>
-        <div style="font-size:.72rem;color:var(--text-secondary);margin-top:.25rem">{{ l.telephone }}</div>
+<!-- ══ LABORANTINS ══ -->
+{% if filtre == 'tous' or filtre == 'laborantins' %}
+{% if laborantins %}
+<div class="section-hdr"><i class="bi bi-eyedropper me-2"></i>Laborantins</div>
+<div class="row g-3 mb-2">
+  {% for lab in laborantins %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="pcard">
+      <div class="pcard-hdr">
+        <div class="d-flex align-items-center gap-2">
+          <div class="pcard-av av-purple">{{ lab.nom|slice:":1" }}{{ lab.prenom|slice:":1" }}</div>
+          <div>
+            <div class="pcard-name">{{ lab.nom }} {{ lab.prenom }}</div>
+            <div class="pcard-role">{{ lab.specialite }}</div>
+          </div>
+        </div>
+        <span class="pstatus pstatus-consul">En labo</span>
+      </div>
+      <div class="pcard-info">
+        <div class="pcard-info-row"><i class="bi bi-telephone"></i> {{ lab.telephone }}</div>
+        <div class="pcard-info-row"><i class="bi bi-building"></i> {{ lab.service }}</div>
+      </div>
+      <div class="pcard-div"></div>
+      <div class="pcard-ftr">
+        <div>
+          <div class="pcard-stat-lbl">Service</div>
+          <div class="pcard-stat-val">{{ lab.service|truncatechars:15 }}</div>
+        </div>
+        <div class="pcard-btns">
+          <a href="{% url 'personnel:laborantin_modifier' lab.pk %}" class="pcard-btn pcard-btn-outline">Profil</a>
+          <a href="{% url 'personnel:laborantin_supprimer' lab.pk %}" class="pcard-btn pcard-btn-danger">Supprimer</a>
+        </div>
       </div>
     </div>
   </div>
-  {% empty %}
-  <div class="col-12"><p style="color:var(--text-muted);font-size:.85rem">Aucun laborantin enregistré.</p></div>
   {% endfor %}
 </div>
+{% endif %}
+{% endif %}
 
-<!-- Réceptionnistes -->
-<div class="mb-2 d-flex align-items-center gap-2">
-  <span style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--text-primary)">Réceptionnistes</span>
-  <span class="pill pill-danger">{{ receptionnistes|length }}</span>
-</div>
-<div class="row g-3">
-  {% for r in receptionnistes %}
-  <div class="col-12 col-md-6 col-xl-3">
-    <div class="panel" style="height:auto">
-      <div class="panel-body text-center">
-        <div class="av mx-auto mb-2" style="width:46px;height:46px;font-size:.85rem;background:rgba(239,68,68,.15);color:#ef4444">{{ r.nom|slice:":1" }}{{ r.prenom|slice:":1" }}</div>
-        <div style="font-weight:700">{{ r.nom }} {{ r.prenom }}</div>
-        <div style="font-size:.72rem;color:var(--text-muted)">Réceptionniste</div>
-        <div style="font-size:.72rem;color:var(--text-secondary);margin-top:.25rem">{{ r.telephone }}</div>
+<!-- ══ RÉCEPTIONNISTES ══ -->
+{% if filtre == 'tous' or filtre == 'recep' %}
+{% if receptionnistes %}
+<div class="section-hdr"><i class="bi bi-person-workspace me-2"></i>Réceptionnistes</div>
+<div class="row g-3 mb-2">
+  {% for rec in receptionnistes %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="pcard">
+      <div class="pcard-hdr">
+        <div class="d-flex align-items-center gap-2">
+          <div class="pcard-av av-orange">{{ rec.nom|slice:":1" }}{{ rec.prenom|slice:":1" }}</div>
+          <div>
+            <div class="pcard-name">{{ rec.nom }} {{ rec.prenom }}</div>
+            <div class="pcard-role">Réceptionniste</div>
+          </div>
+        </div>
+        <span class="pstatus pstatus-dispo">Disponible</span>
+      </div>
+      <div class="pcard-info">
+        <div class="pcard-info-row"><i class="bi bi-telephone"></i> {{ rec.telephone }}</div>
+        <div class="pcard-info-row"><i class="bi bi-building"></i> {{ rec.service }}</div>
+      </div>
+      <div class="pcard-div"></div>
+      <div class="pcard-ftr">
+        <div>
+          <div class="pcard-stat-lbl">Service</div>
+          <div class="pcard-stat-val">{{ rec.service|truncatechars:15 }}</div>
+        </div>
+        <div class="pcard-btns">
+          <a href="{% url 'personnel:receptionniste_modifier' rec.pk %}" class="pcard-btn pcard-btn-outline">Profil</a>
+          <a href="{% url 'personnel:receptionniste_supprimer' rec.pk %}" class="pcard-btn pcard-btn-danger">Supprimer</a>
+        </div>
       </div>
     </div>
   </div>
-  {% empty %}
-  <div class="col-12"><p style="color:var(--text-muted);font-size:.85rem">Aucun réceptionniste enregistré.</p></div>
   {% endfor %}
 </div>
-{% endblock %}
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7], purple:[4,6,5,8,7,10,9,12,11,14,13,16], blue:[10,15,12,20,18,24,22,28,26,32,30,36], pink:[8,12,10,15,13,18,16,22,20,26,24,30] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444', purple:'#a855f7', blue:'#3b82f6', pink:'#ec4899' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
-  });
-})();
-</script>
+{% endif %}
+{% endif %}
+
+<!-- Vide -->
+{% if not medecins and not infirmiers and not laborantins and not receptionnistes %}
+<div class="text-center py-5" style="color:var(--text-muted)">
+  <i class="bi bi-people" style="font-size:3rem;display:block;margin-bottom:1rem;opacity:.4"></i>
+  Aucun personnel trouvé.
+</div>
+{% endif %}
+
 {% endblock %}
