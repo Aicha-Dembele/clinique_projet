@@ -81,13 +81,15 @@ class ExamenMedical(models.Model):
     laborantin = models.ForeignKey("personnel.Laborantin", on_delete=models.CASCADE, null=True, blank=True)
     medecin = models.ForeignKey("personnel.Medecin", on_delete=models.CASCADE, null=True, blank=True)
     type_examen = models.CharField(max_length=100)
+    motif = models.CharField(max_length=255, blank=True, default='')
+    date = models.DateField(null=True, blank=True)
     STATUT_CHOICES = [
     ('en_attente', 'En attente'),
     ('en_cours', 'En cours'),
     ('termine', 'Terminé'),
 ]
 
-    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_attente')
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_cours')
 
    
     def get_tarif(self):
@@ -213,11 +215,20 @@ class Hospitalisation(models.Model):
     date_entree = models.DateField()
     date_sortie = models.DateField(null=True, blank=True)
     
+    def get_prix_nuit(self):
+        """Retourne le prix par nuit selon le type de chambre."""
+        tarif = (
+            Tarif.objects.filter(
+                type_service='hospitalisation',
+                specialite__iexact=self.type_chambre
+            ).first()
+            or Tarif.objects.filter(type_service='hospitalisation').first()
+        )
+        return tarif.prix if tarif else 0
+
     def get_tarif(self):
-        tarif = Tarif.objects.filter(type_service='hospitalisation').first()
-        if not tarif:
-            return 0
-        return tarif.prix * self.nombre_jours
+        """Retourne le total = prix_nuit x nombre_jours."""
+        return self.get_prix_nuit() * self.nombre_jours
 
     def save(self, *args, **kwargs):
         if not self.dossier_id:
@@ -228,9 +239,30 @@ class Hospitalisation(models.Model):
     def statut(self):
         return "En cours" if not self.date_sortie else "Sorti"
 
-    statut.short_description = "Statut"     
+    statut.short_description = "Statut"
+
+    def date_sortie_prevue(self):
+        """Date de sortie : reelle si renseignee, sinon estimee (entree + nombre de jours)."""
+        from datetime import timedelta
+        if self.date_sortie:
+            return self.date_sortie
+        if self.date_entree:
+            return self.date_entree + timedelta(days=self.nombre_jours or 0)
+        return None
+
+    def etat(self):
+        """Etat clinique affiche dans la liste (Stable / Post-op / Critique / Sortie auj.)."""
+        from datetime import date
+        if self.date_sortie:
+            if self.date_sortie == date.today():
+                return {'code': 'sortie', 'label': 'Sortie auj.'}
+            return {'code': 'sorti', 'label': 'Sorti'}
+        t = (self.type_chambre or '').lower()
+        if 'intensif' in t or 'usi' in t or 'rea' in t or 'soins int' in t:
+            return {'code': 'critique', 'label': 'Critique'}
+        if 'chirurgie' in t or 'chir' in t or 'post' in t or 'bloc' in t:
+            return {'code': 'postop', 'label': 'Post-op'}
+        return {'code': 'stable', 'label': 'Stable'}
+
     def __str__(self):
-        return f"Hospitalisation {self.patient}"    
-    
-
-
+        return f"Hospitalisation {self.patient}"

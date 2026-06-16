@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
+from django.db import models
 
 from .models import (
     Rendez_vous,
@@ -30,18 +31,63 @@ def _get_personnel(user, attr):
 
 @role_required('admin', 'medecin', 'receptionniste')
 def rdv_liste(request):
-    rdvs = Rendez_vous.objects.all().order_by('-date')
+    import calendar as cal_module
+    from datetime import date
+
+    today = date.today()
+
+    try:
+        year  = int(request.GET.get('year',  today.year))
+        month = int(request.GET.get('month', today.month))
+    except (ValueError, TypeError):
+        year, month = today.year, today.month
+
+    if month < 1:  month = 12; year -= 1
+    if month > 12: month = 1;  year += 1
+
+    all_rdvs = Rendez_vous.objects.select_related('patient', 'medecin').all()
     role = getattr(getattr(request.user, 'profil', None), 'role', None)
     if role and role.code == 'medecin':
         medecin = _get_personnel(request.user, 'medecin')
         if medecin:
-            rdvs = rdvs.filter(medecin=medecin)
+            all_rdvs = all_rdvs.filter(medecin=medecin)
+
+    cal = cal_module.Calendar(firstweekday=0)
+    weeks = cal.monthdatescalendar(year, month)
+
+    first_day = weeks[0][0]
+    last_day  = weeks[-1][6]
+    month_rdvs = all_rdvs.filter(date__date__gte=first_day, date__date__lte=last_day).order_by('date')
+
+    rdvs_by_date = {}
+    for rdv in month_rdvs:
+        key = rdv.date.date().isoformat()
+        rdvs_by_date.setdefault(key, []).append(rdv)
+
+    today_rdvs = all_rdvs.filter(date__date=today).order_by('date')
+    month_rdvs_count = all_rdvs.filter(date__year=year, date__month=month).count()
+
+    MOIS_FR = ['','Janvier','Fevrier','Mars','Avril','Mai','Juin',
+               'Juillet','Aout','Septembre','Octobre','Novembre','Decembre']
+
+    prev_month = month - 1 or 12
+    prev_year  = year - 1 if month == 1 else year
+    next_month = month % 12 + 1
+    next_year  = year + 1 if month == 12 else year
+
     return render(request, 'consultation/rdv_liste.html', {
-        'rdvs': rdvs,
-        'rdv_termines': rdvs.filter(statut='termine').count(),
-        'rdv_en_cours': rdvs.filter(statut='programme').count(),
-        'rdv_programmes': rdvs.filter(statut='programme').count(),
-        'rdv_annules_count': rdvs.filter(statut='annule').count(),
+        'weeks':              weeks,
+        'rdvs_by_date':       rdvs_by_date,
+        'today_rdvs':         today_rdvs,
+        'today':              today,
+        'year':               year,
+        'month':              month,
+        'month_name':         MOIS_FR[month],
+        'month_rdvs_count':   month_rdvs_count,
+        'prev_year':          prev_year,
+        'prev_month':         prev_month,
+        'next_year':          next_year,
+        'next_month':         next_month,
     })
 
 
@@ -108,8 +154,29 @@ def rdv_supprimer(request, pk):
 
 @role_required('admin', 'medecin', 'infirmier')
 def dossiers(request):
+    qs = DossierMedical.objects.select_related('patient').all().order_by('-date_creation')
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            models.Q(patient__nom__icontains=q) |
+            models.Q(patient__prenom__icontains=q)
+        )
+
+    today = timezone.localdate()
+    base = DossierMedical.objects.all()
+    total_dossiers     = base.count()
+    nouveaux_mois      = base.filter(date_creation__year=today.year, date_creation__month=today.month).count()
+    patients_suivis    = base.values('patient').distinct().count()
+    avec_consultations = base.filter(consultations__isnull=False).distinct().count()
+
     return render(request, 'consultation/dossiers.html', {
-        'dossiers': DossierMedical.objects.all().order_by('-date_creation'),
+        'dossiers':           qs,
+        'q':                  q,
+        'total_dossiers':     total_dossiers,
+        'nouveaux_mois':      nouveaux_mois,
+        'patients_suivis':    patients_suivis,
+        'avec_consultations': avec_consultations,
     })
 
 
@@ -199,21 +266,34 @@ def consultation_supprimer(request, pk):
 
 @role_required('admin', 'medecin', 'laborantin')
 def examens(request):
-    qs = ExamenMedical.objects.all().order_by('-id')
+    qs = ExamenMedical.objects.select_related(
+        'consultation__rendez_vous__patient',
+        'consultation__rendez_vous__medecin',
+    ).all().order_by('-id')
     role = getattr(getattr(request.user, 'profil', None), 'role', None)
     if role and role.code == 'medecin':
         medecin = _get_personnel(request.user, 'medecin')
         if medecin:
-            qs = qs.filter(medecin=medecin)
+            qs = qs.filter(consultation__rendez_vous__medecin=medecin)
     elif role and role.code == 'laborantin':
         labo = _get_personnel(request.user, 'laborantin')
         if labo:
             qs = qs.filter(laborantin=labo) | qs.filter(laborantin__isnull=True)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            models.Q(type_examen__icontains=q) |
+            models.Q(consultation__rendez_vous__patient__nom__icontains=q) |
+            models.Q(consultation__rendez_vous__patient__prenom__icontains=q)
+        )
+
+    qs = qs.prefetch_related('resultats')
+    all_qs = ExamenMedical.objects.all()
     return render(request, 'consultation/examens.html', {
-        'examens': qs,
-        'examens_attente_count': qs.filter(statut='en_attente').count(),
-        'examens_cours_count': qs.filter(statut='en_cours').count(),
-        'examens_termines_count': qs.filter(statut='termine').count(),
+        'examens':          qs,
+        'examens_termines': all_qs.filter(resultats__isnull=False).distinct().count(),
+        'examens_encours':  all_qs.filter(resultats__isnull=True).count(),
     })
 
 
@@ -231,7 +311,8 @@ def examen_ajouter(request):
                 laborantin_id=request.POST.get('laborantin') or None,
                 medecin_id=medecin_id,
                 type_examen=request.POST['type_examen'],
-                statut=request.POST.get('statut', 'en_attente'),
+                motif=request.POST.get('motif', ''),
+                date=request.POST.get('date') or None,
             )
             messages.success(request, 'Examen demande.')
             return redirect('consultation:examens')
@@ -252,7 +333,8 @@ def examen_modifier(request, pk):
     examen = get_object_or_404(ExamenMedical, pk=pk)
     if request.method == 'POST':
         examen.type_examen = request.POST.get('type_examen', examen.type_examen)
-        examen.statut = request.POST.get('statut', examen.statut)
+        examen.motif = request.POST.get('motif', examen.motif)
+        examen.date = request.POST.get('date') or examen.date
         if request.POST.get('laborantin'):
             examen.laborantin_id = request.POST['laborantin']
         examen.save()
@@ -397,6 +479,18 @@ def ordonnance_detail(request, pk):
 
 
 @role_required('admin', 'medecin')
+def ordonnance_imprimer(request, pk):
+    ordonnance = get_object_or_404(
+        Ordonnance.objects.select_related(
+            'consultation__rendez_vous__patient',
+            'consultation__rendez_vous__medecin',
+        ),
+        pk=pk,
+    )
+    return render(request, 'consultation/ordonnance_imprimer.html', {'ordonnance': ordonnance})
+
+
+@role_required('admin', 'medecin')
 def ordonnance_supprimer(request, pk):
     ordonnance = get_object_or_404(Ordonnance, pk=pk)
     if request.method == 'POST':
@@ -414,12 +508,87 @@ def ordonnance_supprimer(request, pk):
 
 @role_required('admin', 'medecin', 'infirmier', 'receptionniste')
 def hospitalisations(request):
-    qs = Hospitalisation.objects.all().order_by('-date_entree')
+    from datetime import date, timedelta
+    qs = Hospitalisation.objects.select_related('patient', 'medecin').all().order_by('-date_entree')
+
+    # Filtre service (type_chambre)
+    service_filtre = request.GET.get('service', '')
+    if service_filtre:
+        qs = qs.filter(type_chambre__iexact=service_filtre)
+
+    # Recherche (patient, médecin, chambre)
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            models.Q(patient__nom__icontains=q) |
+            models.Q(patient__prenom__icontains=q) |
+            models.Q(medecin__nom__icontains=q) |
+            models.Q(numero_chambre__icontains=q) |
+            models.Q(type_chambre__icontains=q)
+        )
+
+    total_en_cours   = Hospitalisation.objects.filter(date_sortie__isnull=True).count()
+    chambres_libres  = max(0, 40 - total_en_cours)
+    soins_intensifs  = Hospitalisation.objects.filter(type_chambre__icontains='intensif', date_sortie__isnull=True).count()
+    today = date.today()
+    sorties_prevues  = Hospitalisation.objects.filter(date_sortie=today).count()
+
+    # Services distincts pour le filtre
+    services = Hospitalisation.objects.values_list('type_chambre', flat=True).distinct().order_by('type_chambre')
+
+    # Grille chambres : numéros 101-110, 201-210, 301-310, 401-410
+    chambres_occupees = set(
+        Hospitalisation.objects.filter(date_sortie__isnull=True)
+        .values_list('numero_chambre', flat=True)
+    )
+    chambres_nettoyage = set(
+        Hospitalisation.objects.filter(date_sortie=today)
+        .values_list('numero_chambre', flat=True)
+    )
+    chambres_soins_int = set(
+        Hospitalisation.objects.filter(type_chambre__icontains='intensif', date_sortie__isnull=True)
+        .values_list('numero_chambre', flat=True)
+    )
+
+    # Occupant actuel de chaque chambre (pour le plan des chambres)
+    occupants = {}
+    for h in Hospitalisation.objects.filter(date_sortie__isnull=True).select_related('patient', 'medecin'):
+        occupants[h.numero_chambre] = h
+
+    etages = []
+    for centaine in [100, 200, 300, 400]:
+        rangee = []
+        for i in range(1, 11):
+            num = str(centaine + i)
+            if num in chambres_soins_int:
+                statut_c = 'soins'
+            elif num in chambres_nettoyage:
+                statut_c = 'nettoyage'
+            elif num in chambres_occupees:
+                statut_c = 'occupee'
+            else:
+                statut_c = 'libre'
+            occ = occupants.get(num)
+            rangee.append({
+                'num': num,
+                'statut': statut_c,
+                'patient': f'{occ.patient.prenom} {occ.patient.nom}' if occ else '',
+                'service': occ.type_chambre if occ else '',
+                'medecin': f'Dr. {occ.medecin.nom}' if occ else '',
+            })
+        etages.append(rangee)
+
     return render(request, 'consultation/hospitalisations.html', {
         'hospitalisations': qs,
-        'total_en_cours': qs.filter(date_sortie__isnull=True).count(),
-        'total_sorties': qs.filter(date_sortie__isnull=False).count(),
-        'longues_durees': qs.filter(nombre_jours__gt=7).count(),
+        'total_en_cours':   total_en_cours,
+        'chambres_libres':  chambres_libres,
+        'soins_intensifs':  soins_intensifs,
+        'sorties_prevues':  sorties_prevues,
+        'services':         services,
+        'service_filtre':   service_filtre,
+        'q':                q,
+        'etages':           etages,
+        'total_chambres':   40,
     })
 
 
@@ -486,8 +655,29 @@ def hospit_supprimer(request, pk):
 
 @role_required('admin', 'medecin', 'infirmier')
 def traitements(request):
+    qs = Traitement.objects.select_related(
+        'patient',
+        'consultation__rendez_vous__patient',
+        'consultation__rendez_vous__medecin',
+    ).order_by('-id')
+
+    # Recherche (patient, médecin, description)
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            models.Q(patient__nom__icontains=q) |
+            models.Q(patient__prenom__icontains=q) |
+            models.Q(consultation__rendez_vous__medecin__nom__icontains=q) |
+            models.Q(description__icontains=q)
+        )
+
+    base = Traitement.objects.all()
     return render(request, 'consultation/traitements.html', {
-        'traitements': Traitement.objects.all().order_by('-id'),
+        'traitements': qs,
+        'q': q,
+        'traitements_prescrits_count': base.filter(statut='prescrit').count(),
+        'traitements_en_cours_count': base.filter(statut='en_cours').count(),
+        'traitements_termines_count': base.filter(statut='termine').count(),
     })
 
 

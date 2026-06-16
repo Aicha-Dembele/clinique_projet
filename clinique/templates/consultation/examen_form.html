@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block body_class %}page-examen-bg{% endblock %}
+
 {% block title %}{{ action }} un examen{% endblock %}
 {% block nav_examens %}active{% endblock %}
 {% block page_title %}Examens médicaux{% endblock %}
@@ -56,7 +58,7 @@
       <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-flask-fill"></i></span>
       <div>
         <div class="form-section-title">Détails de l'examen</div>
-        <div class="form-section-sub">Type, statut et praticien assigné</div>
+        <div class="form-section-sub">Type, date, motif et praticien assigné</div>
       </div>
     </div>
     <div class="row g-3">
@@ -65,12 +67,12 @@
         <input type="text" name="type_examen" class="f-input" value="{% if examen %}{{ examen.type_examen }}{% endif %}" placeholder="Ex : Prise de sang, Radio..." required>
       </div>
       <div class="col-12 col-md-6">
-        <label class="f-label">Statut</label>
-        <select name="statut" class="f-input f-select">
-          <option value="en_attente" {% if not examen or examen.statut == 'en_attente' %}selected{% endif %}>En attente</option>
-          <option value="en_cours" {% if examen and examen.statut == 'en_cours' %}selected{% endif %}>En cours</option>
-          <option value="termine" {% if examen and examen.statut == 'termine' %}selected{% endif %}>Terminé</option>
-        </select>
+        <label class="f-label">Date</label>
+        <input type="date" name="date" class="f-input" value="{% if examen and examen.date %}{{ examen.date|date:'Y-m-d' }}{% endif %}">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Motif</label>
+        <input type="text" name="motif" class="f-input" value="{% if examen %}{{ examen.motif }}{% endif %}" placeholder="Motif de l'examen...">
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Laborantin</label>
@@ -90,11 +92,11 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-12">
-        <label class="f-label">Résultat</label>
-        <textarea name="resultat" class="f-input" rows="4" placeholder="Résultat de l'examen...">{% if examen %}{{ examen.resultat }}{% endif %}</textarea>
-      </div>
     </div>
+    <p style="font-size:.73rem;color:var(--text-muted);margin:1rem 0 0;display:flex;align-items:flex-start;gap:.4rem">
+      <i class="bi bi-info-circle" style="margin-top:2px"></i>
+      <span>Le statut passe automatiquement à « Terminé » dès qu'un résultat est saisi pour cet examen ; sinon il reste « En cours ».</span>
+    </p>
   </div>
 
   <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
