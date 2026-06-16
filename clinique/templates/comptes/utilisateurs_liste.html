@@ -1,47 +1,124 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-personnel-bg{% endblock %}
 {% block title %}Utilisateurs{% endblock %}
 {% block page_title %}Gestion des utilisateurs{% endblock %}
 {% block page_heading %}Utilisateurs{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Utilisateurs</li>{% endblock %}
 {% block page_actions %}
-  <a href="{% url 'comptes:utilisateur_ajouter' %}" class="btn btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouvel utilisateur</a>
+  <a href="{% url 'comptes:utilisateur_ajouter' %}" class="btn-c btn-primary-c">
+    <i class="bi bi-plus-lg"></i> Nouvel utilisateur
+  </a>
 {% endblock %}
 
 {% block content %}
 <div class="panel">
   <div class="panel-hdr">
-    <div class="panel-title"><i class="bi bi-people-fill"></i> Liste des comptes</div>
-    <form method="get" class="d-flex gap-2">
-      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Rechercher..." style="max-width:200px">
-      <select name="role" class="form-select form-select-sm" style="max-width:160px">
-        <option value="">Tous les roles</option>
-        {% for r in roles %}<option value="{{ r.code }}" {% if r.code == role_filter %}selected{% endif %}>{{ r.libelle }}</option>{% endfor %}
+    <span class="panel-title"><i class="bi bi-people-fill me-2"></i>Liste des comptes</span>
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <input type="text" name="q" value="{{ q }}" class="f-input" placeholder="Rechercher..." style="max-width:200px;padding:.38rem .75rem;font-size:.82rem">
+      <select name="role" class="f-input f-select" style="max-width:180px;padding:.38rem .75rem;font-size:.82rem">
+        <option value="">Tous les rôles</option>
+        {% for r in roles %}
+          <option value="{{ r.code }}" {% if r.code == role_filter %}selected{% endif %}>{{ r.libelle }}</option>
+        {% endfor %}
       </select>
-      <button class="btn btn-c btn-outline-c btn-sm-c">Filtrer</button>
+      <button class="btn-c btn-outline-c" style="font-size:.82rem;padding:.38rem .85rem">Filtrer</button>
     </form>
   </div>
   <div class="panel-body p-0">
     <table class="ctable">
       <thead>
         <tr>
-          <th>Utilisateur</th><th>Nom complet</th><th>Email</th><th>Role</th><th>Statut</th><th></th>
+          <th>Utilisateur</th>
+          <th>Nom complet</th>
+          <th>Email</th>
+          <th>Rôle</th>
+          <th>Statut</th>
+          <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for p in profils %}
         <tr>
           <td><strong>{{ p.user.username }}</strong></td>
-          <td>{{ p.user.get_full_name|default:'-' }}</td>
-          <td>{{ p.user.email|default:'-' }}</td>
-          <td><span class="pill pill-info">{{ p.role.libelle }}</span></td>
-          <td>{% if p.user.is_active %}<span class="pill pill-success">Actif</span>{% else %}<span class="pill pill-danger">Inactif</span>{% endif %}</td>
+          <td>{{ p.user.get_full_name|default:'—' }}</td>
+          <td style="color:var(--text-muted)">{{ p.user.email|default:'—' }}</td>
+          <td>
+            {% if p.role.code == 'admin' %}
+              <span class="pill" style="background:rgba(239,68,68,.12);color:#ef4444">{{ p.role.libelle }}</span>
+            {% elif p.role.code == 'medecin' %}
+              <span class="pill" style="background:rgba(59,130,246,.12);color:#3b82f6">{{ p.role.libelle }}</span>
+            {% elif p.role.code == 'infirmier' %}
+              <span class="pill" style="background:rgba(16,185,129,.12);color:#10b981">{{ p.role.libelle }}</span>
+            {% elif p.role.code == 'receptionniste' %}
+              <span class="pill" style="background:rgba(245,158,11,.12);color:#f59e0b">{{ p.role.libelle }}</span>
+            {% elif p.role.code == 'laborantin' %}
+              <span class="pill" style="background:rgba(139,92,246,.12);color:#8b5cf6">{{ p.role.libelle }}</span>
+            {% else %}
+              <span class="pill pill-info">{{ p.role.libelle }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.user.is_active %}
+              <span class="pill pill-success"><i class="bi bi-check-circle-fill me-1"></i>Actif</span>
+            {% else %}
+              <span class="pill pill-danger"><i class="bi bi-x-circle-fill me-1"></i>Inactif</span>
+            {% endif %}
+          </td>
           <td class="text-end">
-            <a href="{% url 'comptes:utilisateur_modifier' p.pk %}" class="btn btn-c btn-outline-c btn-sm-c"><i class="bi bi-pencil"></i></a>
-            <a href="{% url 'comptes:utilisateur_supprimer' p.pk %}" class="btn btn-c btn-danger-c btn-sm-c"><i class="bi bi-trash"></i></a>
+            <div class="d-flex justify-content-end gap-1">
+              <!-- Modifier -->
+              <a href="{% url 'comptes:utilisateur_modifier' p.pk %}"
+                 class="btn-c btn-sm-c" style="background:#f59e0b;color:#fff;border:none" title="Modifier">
+                <i class="bi bi-pencil-fill"></i>
+              </a>
+
+              <!-- Réinitialiser mot de passe -->
+              <a href="{% url 'comptes:utilisateur_reset_password' p.pk %}"
+                 class="btn-c btn-sm-c"
+                 style="background:#8b5cf6;color:#fff;border:none"
+                 title="Réinitialiser le mot de passe">
+                <i class="bi bi-key-fill"></i>
+              </a>
+
+              <!-- Activer / Désactiver -->
+              {% if p.user != request.user %}
+                <form method="post" action="{% url 'comptes:utilisateur_toggle_actif' p.pk %}" style="display:inline">
+                  {% csrf_token %}
+                  {% if p.user.is_active %}
+                    <button type="submit" class="btn-c btn-sm-c"
+                      style="background:#ef4444;color:#fff;border:none"
+                      title="Désactiver ce compte"
+                      onclick="return confirm('Désactiver le compte {{ p.user.username }} ?')">
+                      <i class="bi bi-slash-circle"></i>
+                    </button>
+                  {% else %}
+                    <button type="submit" class="btn-c btn-sm-c"
+                      style="background:#10b981;color:#fff;border:none"
+                      title="Activer ce compte"
+                      onclick="return confirm('Activer le compte {{ p.user.username }} ?')">
+                      <i class="bi bi-check-circle"></i>
+                    </button>
+                  {% endif %}
+                </form>
+              {% else %}
+                <!-- Propre compte : bouton désactivé -->
+                <button class="btn-c btn-sm-c" disabled
+                  style="border:1px solid var(--card-border);color:var(--text-muted);background:transparent;opacity:.4;cursor:not-allowed"
+                  title="Vous ne pouvez pas désactiver votre propre compte">
+                  <i class="bi bi-slash-circle"></i>
+                </button>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-4">Aucun utilisateur</td></tr>
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>
+            Aucun utilisateur trouvé
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
