@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}Reçu paiement #{{ paiement.pk }}{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Reçu de paiement{% endblock %}
