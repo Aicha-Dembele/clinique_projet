@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Reçu paiement #{{ paiement.pk }}{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Reçu de paiement{% endblock %}
@@ -31,11 +32,11 @@
 .recu-row:last-child { border-bottom: none; }
 .recu-row-lbl { color: var(--text-muted); font-weight: 600; }
 .recu-row-val { color: var(--text-primary); font-weight: 700; text-align: right; }
-.recu-total { background: rgba(16,185,129,.08); border: 1px dashed rgba(16,185,129,.4); border-radius: .85rem; padding: 1.25rem 1.5rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.recu-total { background: rgba(0,136,170,.08); border: 1px dashed rgba(0,136,170,.4); border-radius: .85rem; padding: 1.25rem 1.5rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
 .recu-total-lbl { font-size: .78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.recu-total-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: #10b981; letter-spacing: -.02em; }
+.recu-total-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: #0088aa; letter-spacing: -.02em; }
 .recu-footer { padding: 1.25rem 2rem; background: var(--input-bg); border-top: 1px dashed var(--card-border); text-align: center; font-size: .78rem; color: var(--text-muted); font-weight: 500; }
-.recu-stamp { position: absolute; right: 1.25rem; top: 1.25rem; transform: rotate(-12deg); border: 3px solid #10b981; color: #10b981; padding: .35rem 1rem; border-radius: .55rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; opacity: .85; }
+.recu-stamp { position: absolute; right: 1.25rem; top: 1.25rem; transform: rotate(-12deg); border: 3px solid #0088aa; color: #0088aa; padding: .35rem 1rem; border-radius: .55rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; opacity: .85; }
 @media print {
   .no-print, .topbar, #sidebar, nav, .breadcrumb-c { display: none !important; }
   #main, body, .page { margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -49,9 +50,9 @@
   <div class="recu-card">
     <div class="recu-hdr">
       <div class="recu-brand">
-        <div class="recu-brand-ico"><i class="bi bi-heart-pulse-fill"></i></div>
+        <div class="recu-brand-ico" style="overflow:hidden;background:#fff"><img src="{% static 'consultation/img/logo_clinique.jpg' %}" alt="Logo Nevroglie" style="width:100%;height:100%;object-fit:cover"></div>
         <div>
-          <div class="recu-brand-name">MédiClinic</div>
+          <div class="recu-brand-name">Nevroglie</div>
           <div class="recu-brand-tag">Reçu officiel de paiement</div>
         </div>
       </div>
@@ -85,7 +86,7 @@
       <div class="recu-row">
         <span class="recu-row-lbl">Mode de paiement</span>
         <span class="recu-row-val">
-          {% if paiement.mode_paiement == 'cash' %}<i class="bi bi-cash-stack me-1" style="color:#10b981"></i>Espèces
+          {% if paiement.mode_paiement == 'cash' %}<i class="bi bi-cash-stack me-1" style="color:#0088aa"></i>Espèces
           {% elif paiement.mode_paiement == 'orange_money' %}<i class="bi bi-phone-fill me-1" style="color:#f97316"></i>Orange Money
           {% elif paiement.mode_paiement == 'moov_money' %}<i class="bi bi-phone-fill me-1" style="color:#3b82f6"></i>Moov Money
           {% elif paiement.mode_paiement == 'carte' %}<i class="bi bi-credit-card-fill me-1" style="color:#a855f7"></i>Carte bancaire
@@ -119,7 +120,7 @@
     </div>
 
     <div class="recu-footer">
-      Merci de votre confiance — Clinique MédiClinic<br>
+      Merci de votre confiance — Clinique Nevroglie<br>
       Ce reçu fait foi de paiement. Conservez-le précieusement.
     </div>
   </div>

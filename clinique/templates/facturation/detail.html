@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load static %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}Facture FAC-{{ facture.pk|stringformat:"04d" }}{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Détail de la facture{% endblock %}
@@ -10,27 +12,60 @@
 {% block page_actions %}
 <button type="button" onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer"></i> Imprimer</button>
 <a href="{% url 'facturation:modifier' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-pencil"></i> Modifier</a>
+<a href="{% url 'facturation:recalculer' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-clockwise"></i> Recalculer</a>
 <a href="{% url 'facturation:supprimer' facture.pk %}" class="btn-c btn-danger-c no-print"><i class="bi bi-trash"></i> Supprimer</a>
-{% if facture.statut == 'non payé' %}
-<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ facture.pk }}" class="btn-c btn-primary-c no-print"><i class="bi bi-cash-stack"></i> Payer</a>
+{% if facture.statut != 'payé' %}
+<a href="{% url 'facturation:paiement_ajouter' %}?facture={{ facture.pk }}" class="btn-c btn-primary-c no-print"><i class="bi bi-cash-stack"></i> {% if facture.statut == 'partiel' %}Payer le reste{% else %}Payer{% endif %}</a>
 {% endif %}
 <a href="{% url 'facturation:liste' %}" class="btn-c btn-secondary-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}
 <style>
-.invoice-hero { background: linear-gradient(135deg, rgba(16,185,129,.05), rgba(20,184,166,.03)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.6rem 1.8rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; animation: fadeUp .5s ease both; }
+.invoice-hero { background: linear-gradient(135deg, rgba(0,136,170,.05), rgba(20,184,166,.03)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.6rem 1.8rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; animation: fadeUp .5s ease both; }
 .invoice-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; }
 .invoice-meta { font-size: .82rem; color: var(--text-muted); margin-top: .35rem; }
-.total-box { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border-radius: 1rem; padding: 1.4rem 1.7rem; box-shadow: 0 12px 28px -8px rgba(16,185,129,.45); display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; }
+.total-box { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border-radius: 1rem; padding: 1.4rem 1.7rem; box-shadow: 0 12px 28px -8px rgba(0,136,170,.45); display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; }
 .total-box-lbl { font-size: .82rem; opacity: .9; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .total-box-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; }
 .info-cell { padding: 1rem 1.1rem; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .85rem; }
 .info-cell-lbl { font-size: .68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
 .info-cell-val { font-size: .92rem; color: var(--text-primary); font-weight: 600; line-height: 1.4; }
-@media print { .no-print, .topbar, #sidebar { display: none !important; } #main { margin-left: 0 !important; } }
+@media print {
+  .no-print, .topbar, #sidebar, nav, .breadcrumb, .page-actions { display: none !important; }
+  #main { margin-left: 0 !important; padding: 0 !important; }
+  body { background: #fff !important; font-family: Arial, sans-serif; font-size: 12px; }
+  .invoice-hero { border: 1px solid #ddd !important; background: #f9f9f9 !important; box-shadow: none !important; border-radius: 6px; }
+  .panel { border: 1px solid #ddd !important; box-shadow: none !important; break-inside: avoid; }
+  .total-box { background: #1a7a5e !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .print-header { display: block !important; }
+  .ctable th, .ctable td { border: 1px solid #e0e0e0 !important; padding: 6px 10px !important; }
+}
+.print-header { display: none; }
 </style>
 {% endblock %}
 {% block content %}
+<!-- EN-TÊTE D'IMPRESSION SEULEMENT -->
+<div class="print-header" style="margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid #0088aa">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div style="display:flex;align-items:center;gap:.9rem">
+      <img src="{% static 'consultation/img/logo_clinique.jpg' %}" alt="Logo Nevroglie" style="width:58px;height:58px;border-radius:.6rem;object-fit:cover;border:1px solid #e3e8ee">
+      <div>
+        <div style="font-size:1.4rem;font-weight:900;color:#0088aa;letter-spacing:-.02em">Nevroglie</div>
+        <div style="font-size:.8rem;color:#555;margin-top:2px">Poly Clinique — Neurologie</div>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1.1rem;font-weight:800;color:#1a1a1a">FACTURE FAC-{{ facture.pk|stringformat:"04d" }}</div>
+      <div style="font-size:.8rem;color:#555">Date : {{ facture.date_creation|date:"d/m/Y"|default:"—" }}</div>
+      {% if facture.statut == "payé" %}
+      <div style="display:inline-block;border:2px solid #0088aa;color:#0088aa;font-weight:900;font-size:.9rem;padding:.15em .7em;border-radius:4px;margin-top:4px;letter-spacing:.05em">✓ PAYÉ</div>
+      {% else %}
+      <div style="display:inline-block;border:2px solid #ef4444;color:#ef4444;font-weight:900;font-size:.9rem;padding:.15em .7em;border-radius:4px;margin-top:4px;letter-spacing:.05em">NON PAYÉ</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
 <div class="invoice-hero">
   <div>
     <div class="invoice-num">FACTURE FAC-{{ facture.pk|stringformat:"04d" }}</div>
@@ -50,7 +85,7 @@
   <div class="col-12 col-lg-6">
     <div class="info-cell h-100">
       <div class="info-cell-lbl">Émetteur</div>
-      <div class="info-cell-val">Clinique MédiClinic<br>Service facturation<br>Référence : FAC-{{ facture.pk|stringformat:"04d" }}</div>
+      <div class="info-cell-val">Clinique Nevroglie<br>Service facturation<br>Référence : FAC-{{ facture.pk|stringformat:"04d" }}</div>
     </div>
   </div>
   <div class="col-12 col-lg-6">
@@ -80,51 +115,70 @@
         {% if facture.lignes.exists %}
           {% for ligne in facture.lignes.all %}
           <tr>
-            <td>{{ ligne.type_service }}</td>
-            <td>{{ ligne.type_service }}</td>
+            <td>
+              {% if ligne.type_service == 'consultation' %}
+                <span class="pill" style="background:rgba(59,130,246,.12);color:#3b82f6;font-size:.68rem">Consultation</span>
+              {% elif ligne.type_service == 'examen' %}
+                <span class="pill" style="background:rgba(139,92,246,.12);color:#8b5cf6;font-size:.68rem">Examen</span>
+              {% elif ligne.type_service == 'hospitalisation' %}
+                <span class="pill" style="background:rgba(245,158,11,.12);color:#f59e0b;font-size:.68rem">Hospitalisation</span>
+              {% endif %}
+            </td>
+            <td style="font-weight:600">{{ ligne.description }}</td>
             <td>{{ ligne.prix_unitaire|floatformat:0 }} FCFA</td>
-            <td>{{ ligne.quantite }}</td>
-            <td>{{ ligne.sous_total|floatformat:0 }} FCFA</td>
+            <td>
+              {% if ligne.type_service == 'hospitalisation' %}
+                {{ ligne.quantite }} nuit{% if ligne.quantite > 1 %}s{% endif %}
+              {% else %}
+                {{ ligne.quantite }}
+              {% endif %}
+            </td>
+            <td style="font-weight:800;color:var(--text-primary)">{{ ligne.sous_total|floatformat:0 }} FCFA</td>
           </tr>
           {% endfor %}
-        {% elif facture.consultation %}
-        <tr>
-          <td>Consultation</td>
-          <td>Dr. {{ facture.consultation.rendez_vous.medecin }} - {{ facture.consultation.rendez_vous.date|date:'d/m/Y H:i' }}</td>
-          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
-          <td>1</td>
-          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
-        </tr>
-        {% elif facture.examen %}
-        <tr>
-          <td>Examen médical</td>
-          <td>{{ facture.examen.type_examen }}</td>
-          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
-          <td>1</td>
-          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
-        </tr>
-        {% elif facture.hospitalisation %}
-        <tr>
-          <td>Hospitalisation</td>
-          <td>Chambre {{ facture.hospitalisation.numero_chambre }} - {{ facture.hospitalisation.nombre_jours }} jour(s)</td>
-          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
-          <td>1</td>
-          <td>{{ facture.montant_total|floatformat:0 }} FCFA</td>
-        </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center">Aucun service associé à cette facture.</td>
+          <td colspan="5" class="text-center py-4" style="color:var(--text-muted)">
+            <i class="bi bi-receipt" style="font-size:1.5rem;display:block;margin-bottom:.5rem;opacity:.4"></i>
+            Aucune ligne — 
+            <a href="{% url 'facturation:recalculer' facture.pk %}" style="color:var(--primary)">Cliquez ici pour recalculer</a>
+          </td>
         </tr>
         {% endif %}
       </tbody>
     </table>
 
+    <!-- Récapitulatif totaux -->
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;padding:1rem 1.25rem;border-top:2px solid var(--card-border)">
+      <div style="display:flex;justify-content:space-between;width:280px;font-size:.85rem;color:var(--text-muted)">
+        <span>Sous-total</span>
+        <span style="font-weight:700;color:var(--text-primary)">{{ facture.montant_total|floatformat:0 }} FCFA</span>
+      </div>
+      {% if facture.paiements.exists %}
+      <div style="display:flex;justify-content:space-between;width:280px;font-size:.85rem">
+        <span style="color:#0088aa;font-weight:600">Déjà payé</span>
+        <span style="font-weight:700;color:#0088aa">- {{ montant_paye|floatformat:0 }} FCFA</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;width:280px;font-size:.85rem;border-top:1px solid var(--card-border);padding-top:.4rem">
+        <span style="color:#ef4444;font-weight:600">Reste à payer</span>
+        <span style="font-weight:800;color:#ef4444">{{ montant_restant|floatformat:0 }} FCFA</span>
+      </div>
+      {% endif %}
+    </div>
+
     <div class="total-box">
       <div>
-        <div class="total-box-lbl">Total à payer</div>
-        <div style="font-size:.78rem;opacity:.82">Tous montants exprimés en FCFA</div>
+        <div class="total-box-lbl">Total de la facture</div>
+        <div style="font-size:.78rem;opacity:.82">{{ facture.lignes.count }} prestation{% if facture.lignes.count > 1 %}s{% endif %} · FCFA</div>
       </div>
-      <div class="total-box-val">{{ facture.montant_total|floatformat:0 }} FCFA</div>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <a href="{% url 'facturation:recalculer' facture.pk %}" class="no-print"
+           style="font-size:.72rem;font-weight:700;padding:.3em .75em;border-radius:.45rem;background:rgba(255,255,255,.2);color:#fff;text-decoration:none"
+           title="Recalculer si les tarifs ont changé">
+          <i class="bi bi-arrow-clockwise"></i> Recalculer
+        </a>
+        <div class="total-box-val">{{ facture.montant_total|floatformat:0 }} FCFA</div>
+      </div>
     </div>
   </div>
 </div>
@@ -148,7 +202,7 @@
         {% for paiement in facture.paiements.all %}
         <tr>
           <td>{{ paiement.date|date:'d/m/Y H:i' }}</td>
-          <td style="font-weight:800;color:#10b981">{{ paiement.montant|floatformat:0 }} FCFA</td>
+          <td style="font-weight:800;color:#0088aa">{{ paiement.montant|floatformat:0 }} FCFA</td>
           <td>{{ paiement.get_mode_paiement_display }}</td>
           <td class="text-end no-print">
             <div class="d-flex gap-1 justify-content-end">
