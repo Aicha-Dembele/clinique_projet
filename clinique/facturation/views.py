@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db.models import Sum
 from decimal import Decimal
 
@@ -38,8 +39,9 @@ def facture_liste(request):
     total_paye    = all_f.filter(statut='payé').aggregate(t=Sum('montant_total'))['t'] or 0
     total_attente = all_f.filter(statut='non payé').aggregate(t=Sum('montant_total'))['t'] or 0
 
+    page = Paginator(qs, 25).get_page(request.GET.get('page'))
     return render(request, 'facturation/liste.html', {
-        'factures':          qs,
+        'factures':          page,
         'total_paye':        _fmt(total_paye),
         'total_attente':     _fmt(total_attente),
         'factures_impayees': all_f.filter(statut='non payé').count(),
@@ -303,6 +305,47 @@ def rapports(request):
         'pct_moov':       pct('moov_money'),
         'pct_carte':      pct('carte'),
     })
+
+
+# ── Exports CSV (Excel) ──────────────────────────────────────────
+
+@role_required('admin', 'receptionniste')
+def factures_export(request):
+    """Exporte la liste des factures (filtres de recherche appliqués) en CSV."""
+    from .exports import csv_response
+    qs = Facture.objects.select_related('patient', 'assurance').prefetch_related('paiements').order_by('-id')
+    statut = request.GET.get('statut', '')
+    q = request.GET.get('q', '').strip()
+    if statut:
+        qs = qs.filter(statut=statut)
+    if q:
+        qs = qs.filter(patient__nom__icontains=q) | qs.filter(patient__prenom__icontains=q)
+
+    headers = ['Facture', 'Patient', 'Date', 'Montant total', 'Part assurance',
+               'Part patient', 'Payé', 'Statut']
+    rows = [[
+        f'FAC-{f.pk:04d}',
+        f'{f.patient.nom} {f.patient.prenom}',
+        f.date_creation.strftime('%d/%m/%Y') if f.date_creation else '',
+        int(f.montant_total), int(f.part_assurance()), int(f.part_patient()),
+        int(f.montant_paye()), f.get_statut_display(),
+    ] for f in qs]
+    return csv_response('factures.csv', headers, rows)
+
+
+@role_required('admin')
+def paiements_export(request):
+    """Exporte le journal de caisse (paiements) en CSV."""
+    from .exports import csv_response
+    qs = Paiement.objects.select_related('facture', 'facture__patient').order_by('-date')
+    headers = ['Date', 'Facture', 'Patient', 'Montant', 'Mode de paiement']
+    rows = [[
+        p.date.strftime('%d/%m/%Y %H:%M'),
+        f'FAC-{p.facture_id:04d}',
+        f'{p.facture.patient.nom} {p.facture.patient.prenom}',
+        int(p.montant), p.get_mode_paiement_display(),
+    ] for p in qs]
+    return csv_response('journal_caisse.csv', headers, rows)
 
 
 # ── Tarifs ───────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ app_name = 'patients'
 
 urlpatterns = [
     path('', views.patient_liste, name='liste'),
+    path('export/', views.patient_export, name='export'),
     path('ajouter/', views.patient_ajouter, name='ajouter'),
     path('<int:pk>/', views.patient_detail, name='detail'),
     path('<int:pk>/modifier/', views.patient_modifier, name='modifier'),

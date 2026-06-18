@@ -5,6 +5,7 @@ app_name = 'facturation'
 
 urlpatterns = [
     path('',                              views.facture_liste,      name='liste'),
+    path('export/',                       views.factures_export,    name='factures_export'),
     path('ajouter/',                      views.facture_ajouter,    name='ajouter'),
     path('<int:pk>/',                     views.facture_detail,     name='detail'),
     path('<int:pk>/pdf/',                 views.facture_pdf,        name='facture_pdf'),
@@ -12,6 +13,7 @@ urlpatterns = [
     path('<int:pk>/supprimer/',           views.facture_supprimer,  name='supprimer'),
     path('<int:pk>/recalculer/',          views.facture_recalculer, name='recalculer'),
     path('paiements/',                    views.paiement_liste,     name='paiements'),
+    path('paiements/export/',             views.paiements_export,   name='paiements_export'),
     path('paiements/ajouter/',            views.paiement_ajouter,   name='paiement_ajouter'),
     path('paiements/<int:pk>/modifier/',  views.paiement_modifier,  name='paiement_modifier'),
     path('paiements/<int:pk>/supprimer/', views.paiement_supprimer, name='paiement_supprimer'),

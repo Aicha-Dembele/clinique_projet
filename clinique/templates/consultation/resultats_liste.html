@@ -175,7 +175,7 @@
 <div class="panel">
   <div class="panel-hdr">
     <span class="panel-title"><i class="bi bi-clipboard2-pulse-fill me-2" style="color:var(--accent)"></i>Tous les résultats</span>
-    <span style="font-size:.75rem;color:var(--text-muted);font-weight:600">{{ resultats|length }} résultat{% if resultats|length > 1 %}s{% endif %}</span>
+    <span style="font-size:.75rem;color:var(--text-muted);font-weight:600">{{ resultats.paginator.count }} résultat{{ resultats.paginator.count|pluralize }}</span>
   </div>
   <div class="panel-body p-0" style="overflow-x:auto">
     <table class="modern-table">
@@ -241,5 +241,6 @@
     </table>
   </div>
 </div>
+{% include 'partials/pagination.html' with page_obj=resultats %}
 
 {% endblock %}

@@ -7,6 +7,7 @@
 {% block breadcrumb %}<li class="breadcrumb-item active">Facturation</li>{% endblock %}
 {% block page_actions %}
 <a href="{% url 'facturation:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-receipt-cutoff"></i> Nouvelle facture</a>
+<a href="{% url 'facturation:factures_export' %}?{{ request.GET.urlencode }}" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter (CSV/Excel)</a>
 {% endblock %}
 
 {% block extra_css %}<style>
@@ -185,6 +186,7 @@
     </table>
   </div>
 </div>
+{% include 'partials/pagination.html' with page_obj=factures %}
 {% endblock %}
 
 {% block extra_js %}{% endblock %}

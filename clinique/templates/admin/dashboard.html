@@ -289,7 +289,7 @@
       <div class="panel-hdr">
         <div>
           <div class="panel-title"><i class="bi bi-graph-up-arrow" style="color:var(--primary)"></i> Activité de la clinique</div>
-          <div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Consultations sur les 7 derniers mois</div>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Consultations sur les 6 derniers mois</div>
         </div>
         <div class="tabs">
           <button class="tab-b active" data-period="7">7j</button>
@@ -445,9 +445,17 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ stats_labels|json_script:"stats-labels" }}
+{{ stats_revenus|json_script:"stats-revenus" }}
+{{ stats_consultations|json_script:"stats-consultations" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function(){
+  // Données réelles (6 derniers mois) injectées depuis la vue.
+  const STATS_LABELS = JSON.parse(document.getElementById('stats-labels').textContent);
+  const STATS_REVENUS = JSON.parse(document.getElementById('stats-revenus').textContent);
+  const STATS_CONSULTATIONS = JSON.parse(document.getElementById('stats-consultations').textContent);
+
   const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
   const txtMuted = () => isDark() ? '#64748b' : '#94a3b8';
   const grid     = () => isDark() ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
@@ -465,10 +473,10 @@
     new Chart(activityCtx, {
       type: 'line',
       data: {
-        labels: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'],
+        labels: STATS_LABELS,
         datasets: [{
           label: 'Consultations',
-          data: [{{ rdv_count|default:0 }}+8, {{ rdv_count|default:0 }}+12, {{ rdv_count|default:0 }}+9, {{ rdv_count|default:0 }}+18, {{ rdv_count|default:0 }}+22, {{ rdv_count|default:0 }}+5, {{ rdv_count|default:0 }}],
+          data: STATS_CONSULTATIONS,
           borderColor: '#10b981',
           borderWidth: 3,
           tension: .42,
@@ -546,9 +554,9 @@
     new Chart(revCtx, {
       type: 'bar',
       data: {
-        labels: ['L','M','M','J','V','S','D'],
+        labels: STATS_LABELS,
         datasets: [{
-          data: [12,18,15,24,28,9,5],
+          data: STATS_REVENUS,
           backgroundColor: ctx => {
             const g = ctx.chart.ctx.createLinearGradient(0,0,0,200);
             g.addColorStop(0,'#10b981'); g.addColorStop(1,'#14b8a6');

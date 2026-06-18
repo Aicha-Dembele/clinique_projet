@@ -10,6 +10,7 @@
 {% endblock %}
 {% block page_actions %}
 <a href="{% url 'facturation:paiement_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Ajouter un paiement</a>
+<a href="{% url 'facturation:paiements_export' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-spreadsheet"></i> Journal de caisse (CSV/Excel)</a>
 {% endblock %}
 {% block extra_css %}<style>
 .stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }

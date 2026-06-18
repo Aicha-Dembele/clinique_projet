@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db import models
 
@@ -377,7 +378,7 @@ def examen_supprimer(request, pk):
 
 @role_required('admin', 'medecin', 'laborantin')
 def resultats(request):
-    qs = ResultatExamen.objects.all().order_by('-date_examen')
+    qs = ResultatExamen.objects.select_related('patient', 'examen').order_by('-date_examen')
     role = getattr(getattr(request.user, 'profil', None), 'role', None)
     if role and role.code == 'laborantin':
         labo = _get_personnel(request.user, 'laborantin')
@@ -387,7 +388,17 @@ def resultats(request):
         medecin = _get_personnel(request.user, 'medecin')
         if medecin:
             qs = qs.filter(examen__medecin=medecin, transmis=True)
-    return render(request, 'consultation/resultats_liste.html', {'resultats': qs})
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            models.Q(patient__nom__icontains=q) |
+            models.Q(patient__prenom__icontains=q) |
+            models.Q(examen__type_examen__icontains=q)
+        )
+
+    page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    return render(request, 'consultation/resultats_liste.html', {'resultats': page, 'q': q})
 
 
 @role_required('admin', 'laborantin')

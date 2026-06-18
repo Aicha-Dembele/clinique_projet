@@ -7,6 +7,7 @@
 {% block breadcrumb %}<li class="breadcrumb-item active">Patients</li>{% endblock %}
 {% block page_actions %}
 <a href="{% url 'patients:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
+<a href="{% url 'patients:export' %}?{{ request.GET.urlencode }}" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter (CSV/Excel)</a>
 {% endblock %}
 {% block extra_css %}
 <style>
@@ -55,7 +56,7 @@ body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.
       <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:var(--primary)"><i class="bi bi-people-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Total patients</div>
-        <div class="stat-h-val">{{ patients|length }}</div>
+        <div class="stat-h-val">{{ patients.paginator.count }}</div>
         <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>Base active</div>
       </div>
       <div class="stat-h-spark" aria-hidden="true">
@@ -158,7 +159,7 @@ body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.
 
 <div class="panel">
   <div class="panel-hdr">
-    <span class="panel-title"><i class="bi bi-people me-2" style="color:var(--primary)"></i>{{ patients|length }} patient{{ patients|length|pluralize }}</span>
+    <span class="panel-title"><i class="bi bi-people me-2" style="color:var(--primary)"></i>{{ patients.paginator.count }} patient{{ patients.paginator.count|pluralize }}</span>
   </div>
   <div class="panel-body p-0">
     <table class="ctable">
@@ -209,5 +210,6 @@ body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.
     </table>
   </div>
 </div>
+{% include 'partials/pagination.html' with page_obj=patients %}
 {% endblock %}
 {% block extra_js %}{% endblock %}

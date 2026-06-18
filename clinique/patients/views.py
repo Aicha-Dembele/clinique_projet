@@ -1,6 +1,7 @@
 ﻿from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
 
@@ -130,7 +131,34 @@ def patient_liste(request):
     if sexe:
         qs = qs.filter(sexe=sexe)
 
-    return render(request, 'patients/liste.html', {'patients': qs, 'q': q})
+    page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    return render(request, 'patients/liste.html', {'patients': page, 'q': q})
+
+
+@role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
+def patient_export(request):
+    """Exporte la liste des patients (filtres de recherche appliqués) en CSV."""
+    from facturation.exports import csv_response
+    q = request.GET.get('q', '')
+    sexe = request.GET.get('sexe', '')
+    qs = Patient.objects.select_related('assurance').order_by('nom', 'prenom')
+    if q:
+        qs = qs.filter(
+            Q(nom__icontains=q) | Q(prenom__icontains=q) |
+            Q(telephone__icontains=q) | Q(email__icontains=q)
+        )
+    if sexe:
+        qs = qs.filter(sexe=sexe)
+
+    headers = ['Nom', 'Prénom', 'Sexe', 'Date de naissance', 'Téléphone',
+               'Email', 'Adresse', 'Assurance', 'N° assuré']
+    rows = [[
+        p.nom, p.prenom, p.sexe,
+        p.date_naissance.strftime('%d/%m/%Y') if p.date_naissance else '',
+        p.telephone, p.email, p.adresse,
+        p.assurance.nom if p.assurance_id else '', p.numero_assure,
+    ] for p in qs]
+    return csv_response('patients.csv', headers, rows)
 
 
 @role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
