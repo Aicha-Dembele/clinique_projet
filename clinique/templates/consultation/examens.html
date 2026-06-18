@@ -318,7 +318,11 @@
           </td>
           <td>
             <div class="d-flex gap-1">
-              <a href="{% url 'consultation:resultats' %}?examen={{ e.pk }}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a>
+              {% if e.resultats.all %}
+              <a href="{% url 'consultation:resultats' %}?examen={{ e.pk }}" class="act-btn" title="Voir le résultat"><i class="bi bi-eye"></i></a>
+              {% else %}
+              <a href="{% url 'consultation:resultat_ajouter' %}?examen={{ e.pk }}" class="act-btn" title="Saisir le résultat" style="border-color:rgba(16,185,129,.4);color:#10b981"><i class="bi bi-clipboard2-plus"></i></a>
+              {% endif %}
               <a href="{% url 'consultation:examen_modifier' e.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
               <a href="{% url 'consultation:examen_supprimer' e.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
             </div>

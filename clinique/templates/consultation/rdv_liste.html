@@ -1,140 +1,565 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-rdv-bg{% endblock %}
 {% block title %}Rendez-vous{% endblock %}
 {% block nav_rdv %}active{% endblock %}
 {% block page_title %}Rendez-vous{% endblock %}
-{% block page_heading %}Liste des rendez-vous{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Rendez-vous</li>{% endblock %}
-{% block page_actions %}
-<a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
-{% endblock %}
 
 {% block extra_css %}<style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
-.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
-.stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
-.tabs-nav { display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .7rem; padding: 4px; gap: 2px; flex-wrap: wrap; }
-.tab-link { padding: .42rem .85rem; border-radius: .55rem; font-size: .76rem; font-weight: 700; color: var(--text-muted); text-decoration: none; transition: all .2s; display: inline-flex; align-items: center; gap: .35rem; }
-.tab-link:hover { color: var(--text-primary); }
-.tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
-.tab-count { font-size: .62rem; font-weight: 800; padding: .12em .45em; border-radius: 999px; background: var(--card-border); color: var(--text-muted); }
-.tab-link.active .tab-count { background: rgba(16,185,129,.15); color: var(--primary); }
+/* ══ VUE BUTTONS ══ */
+.vue-btn {
+  padding: .38rem .85rem; font-size: .82rem; font-weight: 700;
+  border: 1px solid var(--card-border); background: var(--card-bg);
+  color: var(--text-muted); cursor: pointer; transition: all .15s; line-height: 1;
+}
+.vue-btn:first-child { border-radius: .55rem 0 0 .55rem; }
+.vue-btn:last-child  { border-radius: 0 .55rem .55rem 0; }
+.vue-btn + .vue-btn  { border-left: none; }
+.vue-btn.active, .vue-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ══ CALENDRIER ══ */
+.cal-wrap { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; overflow: hidden; box-shadow: var(--shadow-sm); }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1.3rem; border-bottom: 1px solid var(--card-border); }
+.cal-nav-title { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); }
+.cal-nav-btn {
+  width: 32px; height: 32px; border-radius: .5rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--card-border); background: var(--card-bg);
+  color: var(--text-muted); text-decoration: none; font-size: .9rem; transition: all .15s;
+}
+.cal-nav-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cal-today-btn {
+  padding: .32rem .85rem; font-size: .78rem; font-weight: 700;
+  border: 1px solid var(--card-border); border-radius: .5rem;
+  background: var(--card-bg); color: var(--text-secondary); text-decoration: none; transition: all .15s;
+}
+.cal-today-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.cal-grid { width: 100%; border-collapse: collapse; }
+.cal-grid thead th {
+  text-align: center; font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted);
+  padding: .55rem 0; border-bottom: 1px solid var(--card-border);
+}
+.cal-grid tbody td {
+  vertical-align: top; width: 14.28%; height: 95px;
+  border: 1px solid var(--card-border); padding: .4rem .45rem .3rem;
+  transition: background .12s; position: relative;
+}
+.cal-grid tbody td:hover { background: rgba(16,185,129,.04); }
+.cal-day-num { font-size: .85rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: .2rem; }
+.cal-other-month .cal-day-num { color: var(--text-muted); opacity: .35; }
+.cal-today-cell { background: linear-gradient(135deg, rgba(34,211,238,.48), rgba(0,136,170,.55)) !important; }
+.cal-today-cell .cal-day-num { color: #fff; }
+.cal-today-cell .cal-chip { background: rgba(255,255,255,.25); color: #fff !important; }
+.cal-today-cell:hover { background: linear-gradient(135deg, rgba(34,211,238,.62), rgba(0,136,170,.70)) !important; }
+
+/* Chips RDV dans la cellule */
+.cal-chip {
+  display: block; font-size: .64rem; font-weight: 700;
+  color: var(--primary); background: rgba(16,185,129,.12);
+  border-radius: .28rem; padding: .1em .38em; margin-bottom: .15rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.55;
+  cursor: pointer; transition: opacity .12s;
+}
+.cal-chip:hover { opacity: .8; }
+.cal-chip.chip-future { background: rgba(59,130,246,.12); color: #3b82f6; }
+.cal-chip.chip-past   { background: rgba(107,114,128,.1); color: #6b7280; cursor: pointer; }
+.cal-chip.chip-count  { background: rgba(59,130,246,.12); color: #3b82f6; }
+
+/* ══ SIDE PANEL ══ */
+.side-panel {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 1rem; box-shadow: var(--shadow-sm); overflow: hidden;
+  position: sticky; top: 1rem;
+}
+.side-panel-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .9rem 1.15rem; border-bottom: 1px solid var(--card-border);
+}
+.side-panel-title { font-size: .95rem; font-weight: 800; color: var(--text-primary); }
+.side-count { font-size: .72rem; font-weight: 800; padding: .2em .65em; border-radius: 999px; background: rgba(59,130,246,.12); color: #3b82f6; }
+
+.rdv-row {
+  display: flex; align-items: flex-start; gap: .7rem;
+  padding: .75rem 1.1rem; border-bottom: 1px solid var(--card-border);
+  transition: background .12s;
+}
+.rdv-row:last-child { border-bottom: none; }
+.rdv-row:hover { background: rgba(16,185,129,.04); }
+.rdv-time { font-size: .88rem; font-weight: 800; color: var(--primary); min-width: 38px; padding-top: 2px; }
+.rdv-info { flex: 1; min-width: 0; }
+.rdv-name { font-size: .86rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdv-sub  { font-size: .72rem; color: var(--text-muted); margin-top: 1px; }
+.rdv-actions { display: flex; gap: .3rem; margin-top: .35rem; flex-wrap: wrap; }
+.rdv-act-btn {
+  font-size: .62rem; font-weight: 700; padding: .15em .52em;
+  border-radius: .3rem; text-decoration: none; border: 1px solid; transition: all .12s; cursor: pointer; background: transparent;
+}
+.rdv-act-btn.edit   { color: #3b82f6; border-color: rgba(59,130,246,.35); }
+.rdv-act-btn.edit:hover   { background: #3b82f6; color: #fff; }
+.rdv-act-btn.cancel { color: #f59e0b; border-color: rgba(245,158,11,.35); }
+.rdv-act-btn.cancel:hover { background: #f59e0b; color: #fff; }
+.rdv-act-btn.del    { color: #ef4444; border-color: rgba(239,68,68,.35); }
+.rdv-act-btn.del:hover    { background: #ef4444; color: #fff; }
+.rdv-act-btn.view   { color: #6b7280; border-color: rgba(107,114,128,.3); }
+.rdv-act-btn.view:hover   { background: #6b7280; color: #fff; }
+
+.rdv-badge { font-size: .64rem; font-weight: 700; padding: .2em .55em; border-radius: 999px; flex-shrink: 0; align-self: flex-start; margin-top: 3px; white-space: nowrap; }
+.badge-prog { background: rgba(16,185,129,.12);  color: #10b981; }
+.badge-att  { background: rgba(245,158,11,.12);  color: #f59e0b; }
+.badge-ann  { background: rgba(239,68,68,.12);   color: #ef4444; }
+.badge-new  { background: rgba(139,92,246,.12);  color: #8b5cf6; }
+.badge-term { background: rgba(107,114,128,.12); color: #6b7280; }
+
+/* ══ POPOVER (tooltip RDV à venir sur le calendrier) ══ */
+.rdv-popover {
+  position: absolute; z-index: 999; left: 50%; top: 100%;
+  transform: translateX(-50%);
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: .7rem; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  padding: .75rem .9rem; min-width: 200px; max-width: 240px;
+  display: none; margin-top: 4px;
+}
+.rdv-popover.show { display: block; }
+.rdv-popover-name { font-size: .85rem; font-weight: 800; color: var(--text-primary); margin-bottom: .2rem; }
+.rdv-popover-sub  { font-size: .73rem; color: var(--text-muted); margin-bottom: .55rem; }
+.rdv-popover-btns { display: flex; gap: .35rem; flex-wrap: wrap; }
+
+/* ══ MODAL (RDV passé) ══ */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 1050; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-box {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 1.1rem; box-shadow: 0 24px 64px rgba(0,0,0,.22);
+  width: 100%; max-width: 440px; margin: 1rem;
+  transform: translateY(20px); transition: transform .2s;
+}
+.modal-overlay.open .modal-box { transform: translateY(0); }
+.modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--card-border);
+}
+.modal-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.modal-close {
+  width: 30px; height: 30px; border-radius: .45rem; border: 1px solid var(--card-border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: .9rem;
+  transition: all .12s;
+}
+.modal-close:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+.modal-body { padding: 1.2rem 1.4rem; }
+.modal-row { display: flex; gap: .75rem; margin-bottom: .8rem; align-items: flex-start; }
+.modal-ico { width: 32px; height: 32px; border-radius: .5rem; display: flex; align-items: center; justify-content: center; font-size: .85rem; flex-shrink: 0; }
+.modal-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.modal-val { font-size: .88rem; font-weight: 700; color: var(--text-primary); margin-top: .1rem; }
+.modal-ftr {
+  display: flex; gap: .5rem; justify-content: flex-end;
+  padding: .9rem 1.4rem; border-top: 1px solid var(--card-border);
+}
+
+/* ══ Traitement identique à consultation : cartes blanches translucides + flou, fond assombri ══ */
+body.page-rdv-bg .cal-wrap,
+body.page-rdv-bg .side-panel {
+  background: rgba(255,255,255,.08) !important;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.20) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,.06) !important;
+}
+body.page-rdv-bg .cal-nav,
+body.page-rdv-bg .side-panel-hdr {
+  background: rgba(255,255,255,.06) !important;
+  border-color: rgba(255,255,255,.15) !important;
+}
+body.page-rdv-bg .cal-grid tbody td {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.14);
+}
+body.page-rdv-bg .cal-grid thead th { border-color: rgba(255,255,255,.18); }
+body.page-rdv-bg .cal-grid tbody td:hover { background: rgba(255,255,255,.12); }
+
+/* Texte foncé lisible (comme consultation) */
+body.page-rdv-bg .cal-nav-title,
+body.page-rdv-bg .cal-grid thead th,
+body.page-rdv-bg .cal-day-num,
+body.page-rdv-bg .side-panel-title,
+body.page-rdv-bg .rdv-name { color: #011e2a !important; }
+body.page-rdv-bg .rdv-time { color: #0088aa !important; }
+body.page-rdv-bg .rdv-sub,
+body.page-rdv-bg .cal-other-month .cal-day-num { color: #033a50 !important; }
+body.page-rdv-bg .rdv-row { border-bottom-color: rgba(255,255,255,.14); }
+
+/* Cellule « aujourd'hui » : cyan translucide lisible sur la photo */
+body.page-rdv-bg .cal-today-cell { box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); }
+body.page-rdv-bg .cal-today-cell .cal-day-num { color: #fff !important; text-shadow: 0 1px 4px rgba(0,0,0,.45); }
+body.page-rdv-bg .cal-today-cell .cal-chip { background: rgba(255,255,255,.88) !important; color: #0a6f8c !important; }
+
+/* Pastilles RDV lisibles par-dessus la photo */
+body.page-rdv-bg .cal-chip.chip-future,
+body.page-rdv-bg .cal-chip.chip-count { background: rgba(255,255,255,.82); color: #1e40af; }
+body.page-rdv-bg .cal-chip.chip-past  { background: rgba(255,255,255,.72); color: #475569; }
+
+/* Boutons translucides (façon barre de recherche consultation) */
+body.page-rdv-bg .vue-btn,
+body.page-rdv-bg .cal-nav-btn,
+body.page-rdv-bg .cal-today-btn {
+  background: rgba(255,255,255,.40) !important;
+  color: #011e2a !important;
+  border-color: rgba(255,255,255,.55) !important;
+}
+body.page-rdv-bg .vue-btn.active,
+body.page-rdv-bg .vue-btn:hover,
+body.page-rdv-bg .cal-nav-btn:hover,
+body.page-rdv-bg .cal-today-btn:hover {
+  background: #0088aa !important;
+  color: #fff !important;
+  border-color: #0088aa !important;
+}
+
+/* En-tête de page : titre blanc lisible sur la photo assombrie */
+body.page-rdv-bg .rdv-page-head h1 { color: #fff !important; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+
+/* ── Variante thème sombre (comme consultation) ── */
+[data-theme="dark"] body.page-rdv-bg .cal-wrap,
+[data-theme="dark"] body.page-rdv-bg .side-panel {
+  background: rgba(5,15,25,.42) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] body.page-rdv-bg .cal-nav,
+[data-theme="dark"] body.page-rdv-bg .side-panel-hdr {
+  background: rgba(5,15,25,.30) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+[data-theme="dark"] body.page-rdv-bg .cal-nav-title,
+[data-theme="dark"] body.page-rdv-bg .cal-grid thead th,
+[data-theme="dark"] body.page-rdv-bg .cal-day-num,
+[data-theme="dark"] body.page-rdv-bg .side-panel-title,
+[data-theme="dark"] body.page-rdv-bg .rdv-name { color: #eaf6fb !important; }
+[data-theme="dark"] body.page-rdv-bg .rdv-sub,
+[data-theme="dark"] body.page-rdv-bg .cal-other-month .cal-day-num { color: #a9c7d4 !important; }
+[data-theme="dark"] body.page-rdv-bg .vue-btn,
+[data-theme="dark"] body.page-rdv-bg .cal-nav-btn,
+[data-theme="dark"] body.page-rdv-bg .cal-today-btn {
+  background: rgba(255,255,255,.10) !important;
+  color: #eaf6fb !important;
+  border-color: rgba(255,255,255,.18) !important;
+}
 </style>{% endblock %}
 
 {% block content %}
-<!-- 4 stat-h -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-check-circle-fill"></i></div>
-      <div class="stat-h-info"><div class="stat-h-lbl">Terminés</div><div class="stat-h-val">{{ rdv_termines|default:0 }}</div><div class="stat-h-trend" style="color:var(--primary)">Consultations effectuées</div></div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
-    </div>
+
+<!-- HEADER -->
+<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2 rdv-page-head">
+  <div>
+    <h1 style="font-size:1.7rem;font-weight:900;color:var(--text-primary);margin:0;letter-spacing:-.02em">
+      Agenda des rendez-vous
+    </h1>
+    <p style="color:var(--text-muted);font-size:.85rem;margin:.25rem 0 0">
+      {{ month_name }} {{ year }} — {{ month_rdvs_count }} rendez-vous ce mois
+    </p>
   </div>
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hourglass-split"></i></div>
-      <div class="stat-h-info"><div class="stat-h-lbl">En cours</div><div class="stat-h-val">{{ rdv_en_cours|default:0 }}</div><div class="stat-h-trend" style="color:#f59e0b">Aujourd'hui</div></div>
-      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+  <div class="d-flex align-items-center gap-2">
+    <div style="display:inline-flex">
+      <button class="vue-btn">Jour</button>
+      <button class="vue-btn">Semaine</button>
+      <button class="vue-btn active">Mois</button>
     </div>
-  </div>
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.20s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-event"></i></div>
-      <div class="stat-h-info"><div class="stat-h-lbl">Programmés</div><div class="stat-h-val">{{ rdv_programmes|default:0 }}</div><div class="stat-h-trend" style="color:#14b8a6">À venir</div></div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
-    </div>
-  </div>
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.28s">
-      <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-x-circle-fill"></i></div>
-      <div class="stat-h-info"><div class="stat-h-lbl">Annulés</div><div class="stat-h-val">{{ rdv_annules_count|default:0 }}</div><div class="stat-h-trend" style="color:#ef4444">Reprogrammer</div></div>
-      <canvas class="stat-h-spark" data-spark="red"></canvas>
-    </div>
+    <a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-primary-c">
+      <i class="bi bi-plus-lg"></i> Nouveau RDV
+    </a>
   </div>
 </div>
 
-<!-- Recherche + tabs filtres -->
-<div class="panel mb-3">
-  <div class="panel-body" style="padding:.95rem 1.25rem">
-    <div class="d-flex gap-3 align-items-center flex-wrap">
-      <form method="get" class="d-flex gap-2 align-items-center" style="flex:1;min-width:240px">
-        <input type="hidden" name="statut" value="{{ request.GET.statut }}">
-        <div style="position:relative;flex:1">
-          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
-          <input type="text" name="q" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher patient ou médecin…" value="{{ request.GET.q }}">
+<!-- LAYOUT -->
+<div class="row g-3 align-items-start">
+
+  <!-- CALENDRIER -->
+  <div class="col-12 col-xl-8">
+    <div class="cal-wrap">
+      <div class="cal-nav">
+        <div class="d-flex align-items-center gap-2">
+          <a href="?year={{ prev_year }}&month={{ prev_month }}" class="cal-nav-btn"><i class="bi bi-chevron-left"></i></a>
+          <span class="cal-nav-title">{{ month_name }} {{ year }}</span>
+          <a href="?year={{ next_year }}&month={{ next_month }}" class="cal-nav-btn"><i class="bi bi-chevron-right"></i></a>
         </div>
-        <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i></button>
-        {% if request.GET.q %}<a href="{% url 'consultation:rdv_liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i></a>{% endif %}
-      </form>
-      <div class="tabs-nav">
-        <a href="?{% if request.GET.q %}q={{ request.GET.q }}{% endif %}" class="tab-link {% if not request.GET.statut %}active{% endif %}">Tous <span class="tab-count">{{ rdvs|length }}</span></a>
-        <a href="?statut=programme{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'programme' %}active{% endif %}"><i class="bi bi-calendar-event"></i> Programmés</a>
-        <a href="?statut=termine{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'termine' %}active{% endif %}"><i class="bi bi-check-circle"></i> Terminés</a>
-        <a href="?statut=annule{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'annule' %}active{% endif %}"><i class="bi bi-x-circle"></i> Annulés</a>
+        <a href="{% url 'consultation:rdv_liste' %}" class="cal-today-btn">Aujourd'hui</a>
+      </div>
+      <table class="cal-grid">
+        <thead>
+          <tr>
+            <th>LUN</th><th>MAR</th><th>MER</th><th>JEU</th><th>VEN</th><th>SAM</th><th>DIM</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for week in weeks %}
+          <tr>
+            {% for day in week %}
+            {% with day_key=day|date:"Y-m-d" %}
+            <td class="{% if day.month != month %}cal-other-month{% endif %}{% if day == today %} cal-today-cell{% endif %}"
+                style="position:relative">
+              <span class="cal-day-num">{{ day.day }}</span>
+              {% for key, rdv_list in rdvs_by_date.items %}
+                {% if key == day_key %}
+                  {% if rdv_list|length <= 2 %}
+                    {% for rdv in rdv_list %}
+                      {% if day < today %}
+                        {# RDV PASSÉ — cliquable, ouvre modal #}
+                        <span class="cal-chip chip-past"
+                              onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom }} {{ rdv.patient.prenom }}', 'Dr. {{ rdv.medecin.nom }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste" }}', '{{ rdv.statut }}')">
+                          <i class="bi bi-clock-history" style="font-size:.58rem"></i> {{ rdv.patient.nom }}
+                        </span>
+                      {% else %}
+                        {# RDV FUTUR/AUJOURD'HUI — affiche popover #}
+                        <span class="cal-chip chip-future"
+                              onclick="togglePopover('pop-{{ rdv.pk }}', event)">
+                          <i class="bi bi-calendar-check" style="font-size:.58rem"></i> {{ rdv.patient.nom }}
+                        </span>
+                        <div class="rdv-popover" id="pop-{{ rdv.pk }}">
+                          <div class="rdv-popover-name">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</div>
+                          <div class="rdv-popover-sub">
+                            {{ rdv.date|date:"H:i" }} · Dr. {{ rdv.medecin.nom }}<br>
+                            {{ rdv.medecin.specialite|default:"Généraliste" }}
+                          </div>
+                          <div class="rdv-popover-btns">
+                            <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="rdv-act-btn edit"><i class="bi bi-pencil-fill"></i> Modifier</a>
+                            <a href="{% url 'consultation:rdv_modifier' rdv.pk %}?annuler=1" class="rdv-act-btn cancel"><i class="bi bi-x-circle"></i> Annuler</a>
+                            <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="rdv-act-btn del"><i class="bi bi-trash-fill"></i> Suppr.</a>
+                          </div>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    {# Plusieurs RDV — affiche compteur avec popover liste #}
+                    <span class="cal-chip chip-count"
+                          onclick="togglePopover('pop-day-{{ day_key }}', event)">
+                      {{ rdv_list|length }} RDV
+                    </span>
+                    <div class="rdv-popover" id="pop-day-{{ day_key }}" style="min-width:220px">
+                      {% for rdv in rdv_list %}
+                      <div style="padding:.35rem 0;border-bottom:1px solid var(--card-border);{% if forloop.last %}border:none;padding-bottom:0{% endif %}">
+                        <div style="font-size:.78rem;font-weight:700;color:var(--text-primary)">
+                          {{ rdv.date|date:"H:i" }} — {{ rdv.patient.nom }} {{ rdv.patient.prenom }}
+                        </div>
+                        <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.3rem">Dr. {{ rdv.medecin.nom }}</div>
+                        <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+                          {% if day < today %}
+                            <span class="rdv-act-btn view" style="cursor:pointer"
+                                  onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom }} {{ rdv.patient.prenom }}', 'Dr. {{ rdv.medecin.nom }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste" }}', '{{ rdv.statut }}'); closeAllPopovers()">
+                              <i class="bi bi-eye"></i> Voir
+                            </span>
+                          {% else %}
+                            <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="rdv-act-btn edit"><i class="bi bi-pencil-fill"></i> Modifier</a>
+                            <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="rdv-act-btn del"><i class="bi bi-trash-fill"></i> Suppr.</a>
+                          {% endif %}
+                        </div>
+                      </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            </td>
+            {% endwith %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div class="col-12 col-xl-4">
+    <div class="side-panel">
+      <div class="side-panel-hdr">
+        <span class="side-panel-title">
+          Aujourd'hui — {{ today|date:"j" }}
+          {% with m=today.month %}
+            {% if m == 1 %}Janvier{% elif m == 2 %}Février{% elif m == 3 %}Mars{% elif m == 4 %}Avril{% elif m == 5 %}Mai{% elif m == 6 %}Juin{% elif m == 7 %}Juillet{% elif m == 8 %}Août{% elif m == 9 %}Septembre{% elif m == 10 %}Octobre{% elif m == 11 %}Novembre{% else %}Décembre{% endif %}
+          {% endwith %}
+        </span>
+        <span class="side-count">{{ today_rdvs|length }} RDV</span>
+      </div>
+
+      <div style="overflow-y:auto;max-height:560px">
+        {% for rdv in today_rdvs %}
+        <div class="rdv-row">
+          <div class="rdv-time">{{ rdv.date|date:"H:i" }}</div>
+          <div class="rdv-info">
+            <div class="rdv-name">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</div>
+            <div class="rdv-sub">{{ rdv.medecin.specialite|default:"Généraliste" }} — Dr. {{ rdv.medecin.nom }}</div>
+            <div class="rdv-actions">
+              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="rdv-act-btn edit">
+                <i class="bi bi-pencil-fill"></i> Modifier
+              </a>
+              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}?annuler=1" class="rdv-act-btn cancel">
+                <i class="bi bi-x-circle"></i> Annuler
+              </a>
+              <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="rdv-act-btn del">
+                <i class="bi bi-trash-fill"></i> Supprimer
+              </a>
+            </div>
+          </div>
+          {% if rdv.statut == 'programme' %}
+            <span class="rdv-badge badge-prog">Confirmé</span>
+          {% elif rdv.statut == 'annule' %}
+            <span class="rdv-badge badge-ann">Annulé</span>
+          {% elif rdv.statut == 'termine' %}
+            <span class="rdv-badge badge-term">Terminé</span>
+          {% else %}
+            <span class="rdv-badge badge-new">Nouveau</span>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted)">
+          <i class="bi bi-calendar-x" style="font-size:2rem;opacity:.4;display:block;margin-bottom:.5rem"></i>
+          <span style="font-size:.82rem">Aucun rendez-vous aujourd'hui</span>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
+
 </div>
 
-<div class="panel">
-  <div class="panel-hdr">
-    <span class="panel-title"><i class="bi bi-calendar-check me-2" style="color:var(--accent)"></i>{{ rdvs|length }} rendez-vous{{ rdvs|length|pluralize }}</span>
+<!-- ══ RENDEZ-VOUS PASSÉS ══ -->
+<div class="side-panel" style="position:static;margin-top:1rem">
+  <div class="side-panel-hdr">
+    <span class="side-panel-title"><i class="bi bi-clock-history me-2" style="color:var(--text-muted)"></i>Rendez-vous passés</span>
+    <span class="side-count" style="background:rgba(107,114,128,.14);color:#6b7280">{{ past_rdvs_count }}</span>
   </div>
-  <div class="panel-body p-0">
-    <table class="ctable">
-      <thead><tr><th>#</th><th>Patient</th><th>Médecin</th><th>Date & Heure</th><th>Statut</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for rdv in rdvs %}
-        <tr>
-          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:var(--text-muted)">RDV-{{ rdv.pk|stringformat:"04d" }}</td>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <div class="av" style="background:rgba(16,185,129,.12);color:var(--primary)">{{ rdv.patient.nom|slice:":1" }}{{ rdv.patient.prenom|slice:":1" }}</div>
-              <a href="{% url 'patients:detail' rdv.patient.pk %}" style="font-weight:700;color:var(--text-primary);text-decoration:none">{{ rdv.patient }}</a>
-            </div>
-          </td>
-          <td>Dr. {{ rdv.medecin }}</td>
-          <td><i class="bi bi-clock me-1" style="color:var(--text-muted)"></i>{{ rdv.date|date:"d/m/Y à H:i" }}</td>
-          <td>
-            {% if rdv.statut == 'termine' %}<span class="pill pill-success"><i class="bi bi-check-circle-fill"></i> Terminé</span>
-            {% elif rdv.statut == 'annule' %}<span class="pill pill-danger"><i class="bi bi-x-circle-fill"></i> Annulé</span>
-            {% else %}<span class="pill pill-info"><i class="bi bi-calendar-event"></i> Programmé</span>{% endif %}
-          </td>
-          <td>
-            <div class="d-flex gap-1">
-              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
-              <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
-            </div>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
-          <i class="bi bi-calendar-x" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
-          Aucun rendez-vous trouvé
-        </td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div style="overflow-y:auto;max-height:460px">
+    {% for rdv in past_rdvs %}
+    <div class="rdv-row">
+      <div class="rdv-time" style="min-width:50px;text-align:center;line-height:1.15">
+        {{ rdv.date|date:"d/m" }}
+        <div style="font-size:.66rem;font-weight:600;opacity:.85">{{ rdv.date|date:"H:i" }}</div>
+      </div>
+      <div class="rdv-info">
+        <div class="rdv-name">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</div>
+        <div class="rdv-sub">{{ rdv.medecin.specialite|default:"Généraliste" }} — Dr. {{ rdv.medecin.nom }}</div>
+        <div class="rdv-actions">
+          <span class="rdv-act-btn view" style="cursor:pointer"
+                onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom|escapejs }} {{ rdv.patient.prenom|escapejs }}', 'Dr. {{ rdv.medecin.nom|escapejs }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste"|escapejs }}', '{{ rdv.statut }}')">
+            <i class="bi bi-eye"></i> Voir
+          </span>
+        </div>
+      </div>
+      {% if rdv.statut == 'programme' %}
+        <span class="rdv-badge badge-prog">Confirmé</span>
+      {% elif rdv.statut == 'annule' %}
+        <span class="rdv-badge badge-ann">Annulé</span>
+      {% elif rdv.statut == 'termine' %}
+        <span class="rdv-badge badge-term">Terminé</span>
+      {% else %}
+        <span class="rdv-badge badge-new">Nouveau</span>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted)">
+      <i class="bi bi-calendar-x" style="font-size:2rem;opacity:.4;display:block;margin-bottom:.5rem"></i>
+      <span style="font-size:.82rem">Aucun rendez-vous passé</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% if past_rdvs_count > 50 %}
+  <div style="padding:.6rem 1.15rem;border-top:1px solid var(--card-border);font-size:.74rem;color:var(--text-muted);text-align:center">
+    Les 50 plus récents affichés (sur {{ past_rdvs_count }} au total).
+  </div>
+  {% endif %}
+</div>
+
+<!-- ══ MODAL RDV PASSÉ ══ -->
+<div class="modal-overlay" id="rdv-modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="modal-title"><i class="bi bi-calendar-check me-2" style="color:var(--primary)"></i>Détails du rendez-vous</span>
+      <button class="modal-close" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-row">
+        <div class="modal-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-person-fill"></i></div>
+        <div><div class="modal-lbl">Patient</div><div class="modal-val" id="m-patient">—</div></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-person-badge-fill"></i></div>
+        <div><div class="modal-lbl">Médecin</div><div class="modal-val" id="m-medecin">—</div></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-stethoscope"></i></div>
+        <div><div class="modal-lbl">Spécialité</div><div class="modal-val" id="m-specialite">—</div></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-ico" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="bi bi-calendar-event-fill"></i></div>
+        <div>
+          <div class="modal-lbl">Date &amp; Heure</div>
+          <div class="modal-val"><span id="m-date">—</span> à <span id="m-heure">—</span></div>
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:0">
+        <div class="modal-ico" style="background:rgba(107,114,128,.1);color:#6b7280"><i class="bi bi-flag-fill"></i></div>
+        <div><div class="modal-lbl">Statut</div><div class="modal-val" id="m-statut">—</div></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <a id="m-btn-modifier" href="#" class="btn-c btn-outline-c" style="font-size:.82rem">
+        <i class="bi bi-pencil-fill"></i> Modifier
+      </a>
+      <a id="m-btn-supprimer" href="#" class="btn-c btn-danger-c" style="font-size:.82rem">
+        <i class="bi bi-trash-fill"></i> Supprimer
+      </a>
+    </div>
   </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-(function(){
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
-  });
-})();
+// ── Popover (RDV à venir sur le calendrier) ──
+function closeAllPopovers() {
+  document.querySelectorAll('.rdv-popover.show').forEach(p => p.classList.remove('show'));
+}
+function togglePopover(id, event) {
+  event.stopPropagation();
+  const el = document.getElementById(id);
+  if (!el) return;
+  const wasOpen = el.classList.contains('show');
+  closeAllPopovers();
+  if (!wasOpen) el.classList.add('show');
+}
+document.addEventListener('click', closeAllPopovers);
+
+// ── Modal (RDV passé) ──
+const MODIFIER_URL = "{% url 'consultation:rdv_modifier' 0 %}";
+const SUPPRIMER_URL = "{% url 'consultation:rdv_supprimer' 0 %}";
+
+const STATUT_LABELS = {
+  'programme': '<span style="background:rgba(16,185,129,.12);color:#10b981;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Confirmé</span>',
+  'annule':    '<span style="background:rgba(239,68,68,.12);color:#ef4444;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Annulé</span>',
+  'termine':   '<span style="background:rgba(107,114,128,.12);color:#6b7280;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Terminé</span>',
+};
+
+function openModal(pk, patient, medecin, date, heure, specialite, statut) {
+  document.getElementById('m-patient').textContent   = patient;
+  document.getElementById('m-medecin').textContent   = medecin;
+  document.getElementById('m-specialite').textContent = specialite;
+  document.getElementById('m-date').textContent      = date;
+  document.getElementById('m-heure').textContent     = heure;
+  document.getElementById('m-statut').innerHTML      = STATUT_LABELS[statut] || statut;
+  document.getElementById('m-btn-modifier').href     = MODIFIER_URL.replace('/0/', '/' + pk + '/');
+  document.getElementById('m-btn-supprimer').href    = SUPPRIMER_URL.replace('/0/', '/' + pk + '/');
+  document.getElementById('rdv-modal').classList.add('open');
+}
+function closeModal(event) {
+  if (!event || event.target === document.getElementById('rdv-modal') || event.currentTarget?.classList.contains('modal-close')) {
+    document.getElementById('rdv-modal').classList.remove('open');
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 {% endblock %}

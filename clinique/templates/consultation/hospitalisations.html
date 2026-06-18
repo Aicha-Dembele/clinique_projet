@@ -1,129 +1,361 @@
 {% extends 'base.html' %}
-{% block title %}Hospitalisations{% endblock %}
+{% load static %}
+{% block body_class %}page-consultation-bg page-hospitalisation-bg{% endblock %}
+
+{% block title %}Hospitalisation{% endblock %}
 {% block nav_consultations %}active{% endblock %}
-{% block page_title %}Hospitalisations{% endblock %}
-{% block page_heading %}Gestion des hospitalisations{% endblock %}
-{% block breadcrumb %}
-  <li class="breadcrumb-item active">Hospitalisations</li>
-{% endblock %}
+{% block page_heading %}Hospitalisation<div class="hdr-sub">{{ total_en_cours }} patient{{ total_en_cours|pluralize }} hospitalisé{{ total_en_cours|pluralize }} · {{ total_en_cours }} chambre{{ total_en_cours|pluralize }} occupée{{ total_en_cours|pluralize }} sur {{ total_chambres }}</div>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Hospitalisation</li>{% endblock %}
 {% block page_actions %}
-  <a href="{% url 'consultation:hospit_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-hospital-fill"></i> Nouvelle hospitalisation</a>
+<button type="button" class="btn-c btn-outline-c" onclick="openPlanChambres()"><i class="bi bi-grid-3x3-gap-fill"></i> Plan des chambres</button>
+<a href="{% url 'consultation:hospit_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouvelle admission</a>
 {% endblock %}
+
 {% block extra_css %}<style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
-.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
-.stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── Sous-titre d'en-tête ── */
+.hdr-sub {
+  font-size: .8rem; font-weight: 500; margin-top: .3rem;
+  color: var(--text-muted);
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
+
+/* ── Cartes statistiques (style image) ── */
+.stat-h {
+  border-radius: 1rem; padding: 1.15rem 1.25rem;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition: transform .25s, box-shadow .25s;
+  animation: fadeUp .5s ease both;
+  min-height: 120px;
+}
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.stat-h-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.stat-h-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.stat-h-ico { width: 42px; height: 42px; border-radius: .7rem; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+.stat-h-val { font-size: 2rem; font-weight: 800; line-height: 1; margin-top: .55rem; color: var(--text-primary); letter-spacing: -.02em; }
+.stat-h-trend { font-size: .73rem; font-weight: 600; margin-top: .35rem; color: var(--text-muted); }
+
+/* ── Outils d'en-tête de panneau (recherche + filtre) ── */
+.hdr-tools { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.hdr-search { position: relative; }
+.hdr-search i { position: absolute; left: .65rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: .85rem; }
+.hdr-search .f-input { padding-left: 2rem; border-radius: .6rem; height: 36px; font-size: .82rem; min-width: 170px; }
+.hdr-tools .f-select { border-radius: .6rem; height: 36px; font-size: .82rem; }
+
+/* ── Tableau moderne ── */
+.modern-table { width: 100%; border-collapse: collapse; }
+.modern-table thead th {
+  font-size: .67rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted);
+  padding: .7rem 1rem; border-bottom: 2px solid var(--card-border);
+  background: var(--card-bg); white-space: nowrap; text-align: left;
+}
+.modern-table tbody tr { border-bottom: 1px solid var(--card-border); transition: background .12s; }
+.modern-table tbody tr:last-child { border-bottom: none; }
+.modern-table tbody tr:hover { background: rgba(0,136,170,.04); }
+.modern-table tbody td { padding: .8rem 1rem; font-size: .83rem; vertical-align: middle; white-space: nowrap; }
+
+/* ── Avatar patient ── */
+.av-sm {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 800; flex-shrink: 0;
+  background: rgba(0,136,170,.14); color: #0088aa;
+}
+
+/* ── Badges d'état clinique ── */
+.etat-badge {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .68rem; font-weight: 700; padding: .26em .7em;
+  border-radius: 999px; white-space: nowrap;
+}
+body.page-consultation-bg .etat-stable   { background: #16a34a; color: #fff !important; }
+body.page-consultation-bg .etat-postop    { background: #f59e0b; color: #fff !important; }
+body.page-consultation-bg .etat-critique  { background: #ef4444; color: #fff !important; box-shadow: 0 0 0 3px rgba(239,68,68,.18); }
+body.page-consultation-bg .etat-sortie    { background: #2563eb; color: #fff !important; }
+body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); color: #fff !important; }
+
+/* ── Boutons d'action ── */
+.act-btn {
+  width: 30px; height: 30px; border-radius: .45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .82rem; text-decoration: none; transition: all .15s;
+  border: 1px solid var(--card-border); color: var(--text-muted); background: transparent;
+}
+.act-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+
+/* ── Grille d'occupation des chambres ── */
+.room-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .45rem; }
+.room {
+  height: 38px; border-radius: .5rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 800; border: 1.5px solid transparent;
+}
+.room-occupee   { background: #2563eb; color: #fff; }
+.room-libre     { background: rgba(255,255,255,.45); color: #16a34a; border-color: #16a34a; }
+.room-nettoyage { background: #f59e0b; color: #fff; }
+.room-soins     { background: #ef4444; color: #fff; }
+
+.legend { display: flex; flex-wrap: wrap; gap: .55rem .9rem; margin-top: 1.1rem; }
+.legend-item { display: flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 600; color: var(--text-muted); }
+.legend-dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── Modale : Plan des chambres ── */
+.plan-modal { position: fixed; inset: 0; z-index: 10050; display: none; align-items: center; justify-content: center; padding: 1.5rem; }
+.plan-modal.open { display: flex; }
+.plan-modal-backdrop { position: absolute; inset: 0; background: rgba(0,15,25,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.plan-modal-card {
+  position: relative; z-index: 1; width: 100%; max-width: 900px; max-height: 88vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 1.1rem; background: var(--card-bg); border: 1px solid var(--card-border);
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  animation: planPop .25s ease both;
+}
+@keyframes planPop { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+.plan-modal-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.4rem; border-bottom: 1px solid var(--card-border); }
+.plan-modal-title { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: .5rem; }
+.plan-modal-title i { color: var(--accent); }
+.plan-modal-sub { font-size: .76rem; color: var(--text-muted); margin-top: .25rem; }
+.plan-modal-close { width: 34px; height: 34px; border-radius: .6rem; border: 1px solid var(--card-border); background: transparent; color: var(--text-muted); cursor: pointer; flex-shrink: 0; transition: all .15s; display: inline-flex; align-items: center; justify-content: center; }
+.plan-modal-close:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+.plan-modal-body { padding: 1.2rem 1.4rem; overflow-y: auto; }
+
+.plan-etage { margin-bottom: 1.1rem; }
+.plan-etage-lbl { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: .5rem; }
+.plan-etage-rooms { display: grid; grid-template-columns: repeat(5, 1fr); gap: .55rem; }
+.plan-room {
+  border-radius: .6rem; padding: .55rem .5rem; min-height: 62px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; border: 1.5px solid transparent; overflow: hidden;
+}
+.plan-room-num { font-size: .95rem; font-weight: 800; line-height: 1.1; }
+.plan-room-occ { font-size: .64rem; font-weight: 600; margin-top: .2rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .95; }
+.plan-room-occupee   { background: #2563eb; color: #fff; }
+.plan-room-libre     { background: rgba(22,163,74,.12); color: #16a34a; border-color: rgba(22,163,74,.45); }
+.plan-room-nettoyage { background: #f59e0b; color: #fff; }
+.plan-room-soins     { background: #ef4444; color: #fff; }
+
+@media (max-width: 575.98px) {
+  .plan-etage-rooms { grid-template-columns: repeat(3, 1fr); }
+}
+
 </style>{% endblock %}
+
 {% block content %}
+
+<!-- ══ CARTES STATISTIQUES ══ -->
 <div class="row g-3 mb-4">
-  <div class="col-12 col-md-6 col-xl-4">
+  <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hospital-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Total hospitalisés</div>
-        <div class="stat-h-val">{{ hospitalisations|length }}</div>
-        <div class="stat-h-trend" style="color:#f59e0b">Dossiers hospitalisation</div>
+      <div class="stat-h-top">
+        <span class="stat-h-lbl">Hospitalisés</span>
+        <span class="stat-h-ico" style="background:rgba(37,99,235,.14);color:#2563eb"><i class="bi bi-hospital-fill"></i></span>
       </div>
-      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+      <div class="stat-h-val">{{ total_en_cours }}</div>
+      <div class="stat-h-trend">Patients actuels</div>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-xl-4">
+  <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.08s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-door-closed-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Chambres occupées</div>
-        <div class="stat-h-val">{{ total_en_cours|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#14b8a6">Hospitalisations actives</div>
+      <div class="stat-h-top">
+        <span class="stat-h-lbl">Chambres libres</span>
+        <span class="stat-h-ico" style="background:rgba(13,148,136,.14);color:#0d9488"><i class="bi bi-door-open-fill"></i></span>
       </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+      <div class="stat-h-val">{{ chambres_libres }}</div>
+      <div class="stat-h-trend" style="color:#16a34a">{% widthratio chambres_libres total_chambres 100 %}% disponibilité</div>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-xl-4">
+  <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-check-circle-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Sortie cette semaine</div>
-        <div class="stat-h-val">{{ sorties_semaine|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#10b981">Patients sortants</div>
+      <div class="stat-h-top">
+        <span class="stat-h-lbl">Soins intensifs</span>
+        <span class="stat-h-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><i class="bi bi-heart-pulse-fill"></i></span>
       </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+      <div class="stat-h-val">{{ soins_intensifs }}</div>
+      <div class="stat-h-trend">/ 5 lits</div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.16s">
+      <div class="stat-h-top">
+        <span class="stat-h-lbl">Sorties prévues</span>
+        <span class="stat-h-ico" style="background:rgba(236,72,153,.14);color:#ec4899"><i class="bi bi-box-arrow-right"></i></span>
+      </div>
+      <div class="stat-h-val">{{ sorties_prevues }}</div>
+      <div class="stat-h-trend">aujourd'hui</div>
     </div>
   </div>
 </div>
 
-<div class="panel">
-  <div class="panel-hdr">
-    <span class="panel-title"><i class="bi bi-hospital me-2" style="color:var(--accent)"></i>Liste des hospitalisations</span>
+<!-- ══ DEUX COLONNES : LISTE + OCCUPATION ══ -->
+<div class="row g-3">
+
+  <!-- ── Liste des patients hospitalisés ── -->
+  <div class="col-12 col-xl-8">
+    <div class="panel" style="animation:fadeUp .5s ease both;animation-delay:.2s">
+      <div class="panel-hdr">
+        <span class="panel-title">
+          <i class="bi bi-hospital me-2" style="color:var(--accent)"></i>
+          Patients hospitalisés
+        </span>
+        <form method="get" class="hdr-tools">
+          <div class="hdr-search">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" class="f-input" placeholder="Rechercher…" value="{{ q }}">
+          </div>
+          <select name="service" class="f-select" onchange="this.form.submit()">
+            <option value="">Tous services</option>
+            {% for s in services %}
+            <option value="{{ s }}" {% if s == service_filtre %}selected{% endif %}>{{ s|capfirst }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      <div class="panel-body p-0" style="overflow-x:auto">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Chambre</th>
+              <th>Service</th>
+              <th>Médecin</th>
+              <th>Admission</th>
+              <th>Sortie prévue</th>
+              <th>État</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for hospit in hospitalisations %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="av-sm">{{ hospit.patient.nom|slice:":1" }}{{ hospit.patient.prenom|slice:":1" }}</div>
+                  <a href="{% url 'patients:detail' hospit.patient.pk %}" style="font-weight:700;color:var(--text-primary);text-decoration:none">
+                    {{ hospit.patient.prenom }} {{ hospit.patient.nom }}
+                  </a>
+                </div>
+              </td>
+              <td style="font-weight:700">{{ hospit.numero_chambre }}</td>
+              <td>{{ hospit.type_chambre|capfirst }}</td>
+              <td>Dr. {{ hospit.medecin.nom }}</td>
+              <td>{{ hospit.date_entree|date:"d/m/Y" }}</td>
+              <td>{{ hospit.date_sortie_prevue|date:"d/m/Y"|default:"—" }}</td>
+              <td><span class="etat-badge etat-{{ hospit.etat.code }}">{{ hospit.etat.label }}</span></td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="{% url 'patients:detail' hospit.patient.pk %}" class="act-btn" title="Dossier"><i class="bi bi-file-earmark-medical"></i></a>
+                  {% if not hospit.date_sortie %}
+                  <form method="post" action="{% url 'consultation:hospit_sortie' hospit.pk %}" style="display:inline" onsubmit="return confirm('Confirmer la sortie de ce patient ?');">
+                    {% csrf_token %}
+                    <button type="submit" class="act-btn" title="Marquer la sortie" style="cursor:pointer;border-color:rgba(37,99,235,.4);color:#2563eb"><i class="bi bi-box-arrow-right"></i></button>
+                  </form>
+                  {% endif %}
+                  <a href="{% url 'consultation:hospit_modifier' hospit.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
+                  <a href="{% url 'consultation:hospit_supprimer' hospit.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-5" style="color:var(--text-muted)">
+                <i class="bi bi-hospital" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+                Aucun patient hospitalisé.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-  <div class="panel-body p-0">
-    <table class="ctable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Patient</th>
-          <th>Médecin</th>
-          <th>Chambre</th>
-          <th>Entrée / Sortie</th>
-          <th>Statut</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for hospit in hospitalisations %}
-        <tr>
-          <td style="font-family:'Sora',sans-serif;font-weight:800;color:var(--text-muted)">{{ hospit.pk }}</td>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <div class="av" style="background:rgba(12,166,120,.15);color:var(--primary)">{{ hospit.patient.nom|slice:":1" }}{{ hospit.patient.prenom|slice:":1" }}</div>
-              <div style="font-weight:700">{{ hospit.patient }}</div>
-            </div>
-          </td>
-          <td>Dr. {{ hospit.medecin }}</td>
-          <td>{{ hospit.type_chambre }} — {{ hospit.numero_chambre }}</td>
-          <td>{{ hospit.date_entree|date:'d/m/Y' }}{% if hospit.date_sortie %} / {{ hospit.date_sortie|date:'d/m/Y' }}{% else %} / —{% endif %}</td>
-          <td>
-            {% if hospit.date_sortie %}
-              <span class="pill pill-success">Sorti</span>
-            {% else %}
-              <span class="pill pill-warning">En cours</span>
-            {% endif %}
-          </td>
-          <td>
-            <div class="d-flex gap-1">
-              <a href="{% url 'consultation:hospit_modifier' hospit.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
-              <a href="{% url 'consultation:hospit_supprimer' hospit.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
-            </div>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="7" class="text-center py-5" style="color:var(--text-muted)">
-            <i class="bi bi-hospital-x" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
-            Aucune hospitalisation enregistrée.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+  <!-- ── Occupation des chambres ── -->
+  <div class="col-12 col-xl-4">
+    <div class="panel" id="occupation" style="animation:fadeUp .5s ease both;animation-delay:.26s">
+      <div class="panel-hdr">
+        <span class="panel-title">
+          <i class="bi bi-grid-3x3-gap-fill me-2" style="color:var(--accent)"></i>
+          Occupation des chambres
+        </span>
+        <span style="font-size:.72rem;color:var(--text-muted);font-weight:600">
+          {{ total_en_cours }} / {{ total_chambres }}
+        </span>
+      </div>
+      <div class="panel-body">
+        <div class="room-grid">
+          {% for etage in etages %}
+            {% for chambre in etage %}
+            <div class="room room-{{ chambre.statut }}">{{ chambre.num }}</div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> Occupée</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#fff;border:1.5px solid #16a34a"></span> Libre</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Nettoyage</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Soins int.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ MODALE : PLAN DES CHAMBRES ══ -->
+<div class="plan-modal" id="planChambresModal">
+  <div class="plan-modal-backdrop" onclick="closePlanChambres()"></div>
+  <div class="plan-modal-card" role="dialog" aria-modal="true" aria-label="Plan des chambres">
+    <div class="plan-modal-hdr">
+      <div>
+        <div class="plan-modal-title"><i class="bi bi-grid-3x3-gap-fill"></i> Plan des chambres</div>
+        <div class="plan-modal-sub">{{ total_en_cours }} occupée{{ total_en_cours|pluralize }} · {{ chambres_libres }} libre{{ chambres_libres|pluralize }} · sur {{ total_chambres }} chambres</div>
+      </div>
+      <button type="button" class="plan-modal-close" onclick="closePlanChambres()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="plan-modal-body">
+      {% for etage in etages %}
+      <div class="plan-etage">
+        <div class="plan-etage-lbl"><i class="bi bi-building me-1"></i>Étage {{ forloop.counter }}</div>
+        <div class="plan-etage-rooms">
+          {% for chambre in etage %}
+          <div class="plan-room plan-room-{{ chambre.statut }}"
+               title="Ch. {{ chambre.num }}{% if chambre.patient %} — {{ chambre.patient }} ({{ chambre.service|capfirst }}){% else %} — Libre{% endif %}">
+            <div class="plan-room-num">{{ chambre.num }}</div>
+            <div class="plan-room-occ">{% if chambre.patient %}{{ chambre.patient }}{% else %}Libre{% endif %}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="legend" style="justify-content:center;margin-top:.5rem">
+        <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> Occupée</span>
+        <span class="legend-item"><span class="legend-dot" style="background:rgba(22,163,74,.2);border:1.5px solid #16a34a"></span> Libre</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Nettoyage</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Soins int.</span>
+      </div>
+    </div>
   </div>
 </div>
+
 {% endblock %}
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7], purple:[4,6,5,8,7,10,9,12,11,14,13,16], blue:[10,15,12,20,18,24,22,28,26,32,30,36], pink:[8,12,10,15,13,18,16,22,20,26,24,30] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444', purple:'#a855f7', blue:'#3b82f6', pink:'#ec4899' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+
+{% block extra_js %}<script>
+  function openPlanChambres() {
+    var m = document.getElementById('planChambresModal');
+    // Sortir la modale du contexte d'empilement de #main pour passer au-dessus de la sidebar
+    if (m.parentElement !== document.body) document.body.appendChild(m);
+    m.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePlanChambres() {
+    document.getElementById('planChambresModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePlanChambres();
   });
-})();
-</script>
-{% endblock %}
+</script>{% endblock %}

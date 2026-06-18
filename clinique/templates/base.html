@@ -639,6 +639,20 @@
     .btn-secondary-c:hover { color: var(--text-primary); border-color: var(--text-muted); }
     .btn-sm-c { padding: .35rem .75rem; font-size: .73rem; border-radius: .55rem; }
 
+    /* ── Boutons d'action de liste (Voir / Modifier / Supprimer) ──
+       Couleurs unifiées dans toute l'appli, identiques à la page Consultation :
+       Voir = cyan, Modifier = ambre, Supprimer = rouge. */
+    .act-btn {
+      width: 30px; height: 30px; border-radius: .45rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .82rem; text-decoration: none; transition: all .15s;
+      border: 1px solid var(--card-border); color: var(--text-muted); background: transparent;
+    }
+    .act-btn[title="Voir"], .act-btn[href*="detail"] { background: #0088aa; border: none; color: #fff; }
+    .act-btn[title="Modifier"], .act-btn[href*="modifier"] { background: #f59e0b; border: none; color: #fff; }
+    .act-btn[title="Supprimer"], .act-btn.danger, .act-btn[href*="supprimer"] { background: #ef4444; border: none; color: #fff; }
+    .act-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+
     /* ═════════════════════════════════════════════════════════════
        PAGE HEADER
     ═════════════════════════════════════════════════════════════ */
@@ -1470,17 +1484,11 @@
     </a>
     {% endif %}
 
-    {% if 'traitement.administrer' in user_permissions %}
-    <a href="{% url 'consultation:assistances' %}" class="sb-link">
-      <i class="bi bi-heart-pulse"></i> Assistance patients
-    </a>
-    {% endif %}
-
     <!-- Laboratoire -->
     {% if 'resultat.view' in user_permissions %}
     <div class="sb-section">Laboratoire</div>
     <a href="{% url 'consultation:resultats' %}" class="sb-link">
-      <i class="bi bi-flask-fill"></i> Résultats d'examens
+      <i class="bi bi-clipboard2-data-fill"></i> Résultats d'examens
     </a>
     {% endif %}
 
@@ -1502,6 +1510,21 @@
     {% if 'tarif.view' in user_permissions %}
     <a href="{% url 'facturation:tarifs' %}" class="sb-link {% block nav_tarifs %}{% endblock %}">
       <i class="bi bi-tags-fill"></i> Tarifs
+    </a>
+    <a href="{% url 'facturation:assurances' %}" class="sb-link {% block nav_assurances %}{% endblock %}">
+      <i class="bi bi-shield-fill-check"></i> Assurances
+    </a>
+    {% endif %}
+
+    <!-- Pharmacie -->
+    {% if is_admin or is_receptionniste %}
+    <div class="sb-section">Pharmacie</div>
+    <a href="{% url 'pharmacie:medicaments' %}" class="sb-link {% block nav_pharmacie %}{% endblock %}">
+      <i class="bi bi-capsule-pill"></i> Médicaments
+      {% if stock_alertes %}<span class="sb-badge sb-badge-danger">{{ stock_alertes }}</span>{% endif %}
+    </a>
+    <a href="{% url 'pharmacie:mouvements' %}" class="sb-link {% block nav_mouvements %}{% endblock %}">
+      <i class="bi bi-arrow-left-right"></i> Mouvements de stock
     </a>
     {% endif %}
 
@@ -1525,6 +1548,11 @@
     {% if 'rapport.view' in user_permissions or is_admin %}
     <a href="{% url 'facturation:rapports' %}" class="sb-link {% block nav_rapports %}{% endblock %}">
       <i class="bi bi-bar-chart-fill"></i> Rapports
+    </a>
+    {% endif %}
+    {% if is_admin %}
+    <a href="{% url 'comptes:journal_audit' %}" class="sb-link {% block nav_audit %}{% endblock %}">
+      <i class="bi bi-clock-history"></i> Journal d'audit
     </a>
     {% endif %}
 
@@ -1598,10 +1626,27 @@
     <div class="dropdown">
       <div class="tb-btn" data-bs-toggle="dropdown" role="button">
         <i class="bi bi-bell-fill"></i>
-        {% if rdv_count or factures_impayees or examens_attente_count %}<span class="tb-dot"></span>{% endif %}
+        {% if notifications_non_lues or rdv_count or factures_impayees or examens_attente_count %}<span class="tb-dot"></span>{% endif %}
       </div>
-      <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:310px">
-        <div class="px-2 py-1 mb-1" style="font-size:.7rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em">Notifications</div>
+      <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:330px">
+        <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-1">
+          <span style="font-size:.7rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em">Notifications</span>
+          {% if notifications_non_lues %}<a href="{% url 'comptes:notifications_tout_lire' %}" style="font-size:.68rem;font-weight:700;text-decoration:none">Tout marquer lu</a>{% endif %}
+        </div>
+        {% for n in notifications_recentes %}
+        <a href="{% url 'comptes:notification_ouvrir' n.pk %}" class="dropdown-item" style="border-radius:.6rem;{% if not n.lu %}background:rgba(16,185,129,.08){% endif %}">
+          <div class="d-flex gap-2 align-items-center">
+            <div style="width:36px;height:36px;border-radius:.6rem;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi {{ n.icone }}" style="color:var(--primary)"></i>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.82rem;font-weight:700" class="text-truncate">{{ n.titre }}</div>
+              <div style="font-size:.7rem;color:var(--text-muted)" class="text-truncate">{{ n.message }}</div>
+            </div>
+            {% if not n.lu %}<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0"></span>{% endif %}
+          </div>
+        </a>
+        {% endfor %}
         {% if rdv_count %}
         <a href="{% url 'consultation:rdv_liste' %}" class="dropdown-item">
           <div class="d-flex gap-2 align-items-center">
@@ -1641,11 +1686,15 @@
           </div>
         </a>
         {% endif %}
-        {% if not rdv_count and not factures_impayees and not examens_attente_count %}
+        {% if not notifications_recentes and not rdv_count and not factures_impayees and not examens_attente_count %}
         <div class="text-center py-3" style="font-size:.82rem;color:var(--text-muted)">
           <i class="bi bi-bell-slash" style="font-size:1.4rem;display:block;margin-bottom:.4rem;opacity:.5"></i>
           Aucune notification
         </div>
+        {% endif %}
+        {% if notifications_recentes %}
+        <div class="dropdown-divider"></div>
+        <a href="{% url 'comptes:notifications_liste' %}" class="dropdown-item text-center" style="font-size:.74rem;font-weight:700;color:var(--primary)">Voir toutes les notifications</a>
         {% endif %}
       </div>
     </div>

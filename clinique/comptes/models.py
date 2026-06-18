@@ -66,3 +66,73 @@ class Profil(models.Model):
         if self.role.code == 'admin':
             return True
         return self.role.has_permission(code)
+
+
+class Notification(models.Model):
+    """Notification destinée à un utilisateur (cloche dans la barre du haut)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    titre = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default='')
+    url = models.CharField(max_length=300, blank=True, default='')
+    icone = models.CharField(max_length=50, default='bi-bell-fill')
+    lu = models.BooleanField(default=False)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_creation']
+
+    def __str__(self):
+        return f"{self.titre} → {self.user.username}"
+
+    @classmethod
+    def creer(cls, user, titre, message='', url='', icone='bi-bell-fill'):
+        """Crée une notification ; ignore silencieusement si user est None."""
+        if not user:
+            return None
+        return cls.objects.create(
+            user=user, titre=titre, message=message, url=url, icone=icone)
+
+
+class JournalAudit(models.Model):
+    """Journal d'audit : trace les actions sensibles (création, modification,
+    suppression, restauration) sur les données médicales et financières.
+    Essentiel pour la confidentialité et la responsabilité en milieu de santé."""
+
+    ACTION_CHOICES = [
+        ('creation', 'Création'),
+        ('modification', 'Modification'),
+        ('suppression', 'Suppression'),
+        ('restauration', 'Restauration'),
+        ('purge', 'Suppression définitive'),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='actions_audit')
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    modele = models.CharField(max_length=100)               # ex. "ResultatExamen"
+    objet_id = models.CharField(max_length=50, blank=True, default='')
+    objet_repr = models.CharField(max_length=300, blank=True, default='')
+    details = models.TextField(blank=True, default='')
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+        verbose_name = "Entrée d'audit"
+        verbose_name_plural = "Journal d'audit"
+
+    def __str__(self):
+        return f"{self.get_action_display()} {self.modele} #{self.objet_id}"
+
+    @classmethod
+    def enregistrer(cls, user, action, objet, details=''):
+        """Enregistre une action dans le journal. `objet` est l'instance
+        concernée (on en extrait le nom de modèle, l'id et la représentation)."""
+        return cls.objects.create(
+            user=user if getattr(user, 'is_authenticated', False) else None,
+            action=action,
+            modele=objet.__class__.__name__,
+            objet_id=str(getattr(objet, 'pk', '') or ''),
+            objet_repr=str(objet)[:300],
+            details=details,
+        )

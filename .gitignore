@@ -1,0 +1,25 @@
+# Secrets / configuration locale (mot de passe email, etc.)
+local_settings.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Base de données locale
+db.sqlite3
+
+# Fichiers téléversés par les utilisateurs et fichiers statiques collectés
+media/
+staticfiles/
+
+# Environnement virtuel
+venv/
+.venv/
+env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

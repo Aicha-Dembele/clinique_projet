@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}{{ action }} une facture{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Facturation{% endblock %}
@@ -7,24 +8,56 @@
   <li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Factures</a></li>
   <li class="breadcrumb-item active">{{ action }}</li>
 {% endblock %}
-{% block extra_css %}
-<style>
-.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; }
-.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+
+{% block extra_css %}<style>
+.form-section {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 1.1rem; padding: 1.5rem 1.6rem;
+  box-shadow: var(--shadow-sm); margin-bottom: 1rem;
+  animation: fadeUp .5s ease both;
+}
+.form-section-hdr {
+  display: flex; align-items: center; gap: .75rem;
+  margin-bottom: 1.25rem; padding-bottom: .9rem;
+  border-bottom: 1px solid var(--card-border);
+}
 .form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
-.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
-.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
 .req-mark { color: #ef4444; }
-.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; font-weight: 500; }
-</style>
-{% endblock %}
+.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
+
+/* ── Aperçu montant ── */
+.montant-preview {
+  background: linear-gradient(135deg, rgba(0,136,170,.07), rgba(20,184,166,.04));
+  border: 1.5px solid rgba(0,136,170,.25);
+  border-radius: 1rem; padding: 1.1rem 1.4rem;
+  margin-top: .5rem; display: none;
+}
+.montant-preview.visible { display: block; }
+.montant-preview-title { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .65rem; }
+.montant-ligne { display: flex; justify-content: space-between; align-items: center; padding: .35rem 0; border-bottom: 1px solid rgba(0,136,170,.1); font-size: .84rem; }
+.montant-ligne:last-of-type { border-bottom: none; }
+.montant-ligne-label { color: var(--text-secondary); font-weight: 600; }
+.montant-ligne-val { font-weight: 800; color: var(--text-primary); }
+.montant-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: .65rem; padding-top: .65rem; border-top: 2px solid rgba(0,136,170,.3); }
+.montant-total-label { font-size: .85rem; font-weight: 700; color: var(--text-primary); }
+.montant-total-val { font-size: 1.35rem; font-weight: 900; color: var(--primary); font-family: 'Outfit', sans-serif; }
+
+/* ── Tag examens ── */
+.exam-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; min-height: 28px; }
+.exam-tag { font-size: .72rem; font-weight: 700; padding: .25em .7em; border-radius: 999px; background: rgba(139,92,246,.12); color: #8b5cf6; border: 1px solid rgba(139,92,246,.2); }
+.exam-tag-none { font-size: .72rem; color: var(--text-muted); font-style: italic; padding: .25em 0; }
+</style>{% endblock %}
+
 {% block content %}
-<form method="post">
+<form method="post" id="facture-form">
   {% csrf_token %}
 
+  <!-- ══ SECTION 1 : PATIENT ══ -->
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-person-vcard-fill"></i></span>
+      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-person-vcard-fill"></i></span>
       <div>
         <div class="form-section-title">Patient</div>
         <div class="form-section-sub">Sélectionnez le patient à facturer</div>
@@ -33,65 +66,156 @@
     <div class="row g-3">
       <div class="col-12">
         <label class="f-label">Patient <span class="req-mark">*</span></label>
-        <select name="patient" class="f-input f-select" required>
+        <select name="patient" id="sel-patient" class="f-input f-select" required>
           <option value="">-- Choisir un patient --</option>
           {% for p in patients %}
-          <option value="{{ p.pk }}" {% if facture and facture.patient_id == p.pk %}selected{% endif %}>{{ p.nom }} {{ p.prenom }}</option>
+          <option value="{{ p.pk }}"
+            {% if facture and facture.patient_id == p.pk %}selected{% endif %}
+            {% if pre_patient == p.pk|stringformat:"s" %}selected{% endif %}>
+            {{ p.nom }} {{ p.prenom }}
+          </option>
           {% endfor %}
         </select>
       </div>
     </div>
   </div>
 
+  <!-- ══ SECTION 2 : SERVICES ══ -->
   <div class="form-section" style="animation-delay:.06s">
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#14b8a6;background:rgba(20,184,166,.12)"><i class="bi bi-receipt-cutoff"></i></span>
       <div>
         <div class="form-section-title">Services à facturer</div>
-        <div class="form-section-sub">Liez la facture à une consultation, un examen et/ou une hospitalisation. Le montant total sera calculé automatiquement à partir des tarifs.</div>
+        <div class="form-section-sub">Sélectionnez une consultation et/ou une hospitalisation. Les examens liés à la consultation sont inclus automatiquement.</div>
       </div>
     </div>
+
     <div class="row g-3">
-      <div class="col-12 col-md-4">
-        <label class="f-label"><i class="bi bi-stethoscope" style="color:#10b981"></i> Consultation</label>
-        <select name="consultation" class="f-input f-select">
+
+      <!-- Consultation -->
+      <div class="col-12 col-md-6">
+        <label class="f-label"><i class="bi bi-stethoscope" style="color:#0088aa"></i> Consultation</label>
+        <select name="consultation" id="sel-consultation" class="f-input f-select">
           <option value="">-- Aucune --</option>
           {% for c in consultations %}
-          <option value="{{ c.pk }}" {% if facture and facture.consultation_id == c.pk %}selected{% endif %}>{{ c.rendez_vous.patient }} — Dr. {{ c.rendez_vous.medecin }} — {{ c.rendez_vous.date|date:'d/m/Y' }}</option>
+          <option value="{{ c.pk }}"
+            data-prix="{{ c.get_tarif.prix|default:0 }}"
+            data-label="{{ c.rendez_vous.medecin.specialite|default:'Générale' }}"
+            {% if facture and facture.consultation_id == c.pk %}selected{% endif %}
+            {% if pre_consultation == c.pk|stringformat:"s" %}selected{% endif %}>
+            {{ c.rendez_vous.patient.nom }} {{ c.rendez_vous.patient.prenom }}
+            — Dr. {{ c.rendez_vous.medecin.nom }}
+            ({{ c.rendez_vous.medecin.specialite|default:"Générale" }})
+            — {{ c.rendez_vous.date|date:'d/m/Y' }}
+          </option>
           {% endfor %}
         </select>
+        <!-- Examens liés affichés dynamiquement -->
+        <div id="examens-lies" style="margin-top:.6rem">
+          <div class="helper"><i class="bi bi-flask me-1" style="color:#8b5cf6"></i> Examens inclus automatiquement :</div>
+          <div class="exam-tags" id="exam-tags-container">
+            <span class="exam-tag-none">Sélectionnez une consultation</span>
+          </div>
+        </div>
       </div>
-      <div class="col-12 col-md-4">
-        <label class="f-label"><i class="bi bi-flask-fill" style="color:#a855f7"></i> Examen</label>
-        <select name="examen" class="f-input f-select">
-          <option value="">-- Aucun --</option>
-          {% for e in examens %}
-          <option value="{{ e.pk }}" {% if facture and facture.examen_id == e.pk %}selected{% endif %}>{{ e.patient }} — {{ e.type_examen }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12 col-md-4">
+
+      <!-- Hospitalisation -->
+      <div class="col-12 col-md-6">
         <label class="f-label"><i class="bi bi-hospital-fill" style="color:#3b82f6"></i> Hospitalisation</label>
-        <select name="hospitalisation" class="f-input f-select">
+        <select name="hospitalisation" id="sel-hospit" class="f-input f-select">
           <option value="">-- Aucune --</option>
           {% for h in hospitalisations %}
-          <option value="{{ h.pk }}" {% if facture and facture.hospitalisation_id == h.pk %}selected{% endif %}>{{ h.patient }} — Ch. {{ h.numero_chambre }} ({{ h.nombre_jours }} j)</option>
+          <option value="{{ h.pk }}"
+            data-prix="{{ h.get_prix_nuit|default:0 }}"
+            data-jours="{{ h.nombre_jours }}"
+            data-type="{{ h.type_chambre }}"
+            {% if facture and facture.hospitalisation_id == h.pk %}selected{% endif %}
+            {% if pre_hospit == h.pk|stringformat:"s" %}selected{% endif %}>
+            {{ h.patient.nom }} {{ h.patient.prenom }}
+            — Ch. {{ h.numero_chambre }}
+            — {{ h.type_chambre|capfirst }}
+            — {{ h.nombre_jours }} nuit{% if h.nombre_jours > 1 %}s{% endif %}
+            ({{ h.date_entree|date:'d/m' }}{% if h.date_sortie %} → {{ h.date_sortie|date:'d/m' }}{% else %} en cours{% endif %})
+          </option>
           {% endfor %}
         </select>
+        <div id="hospit-detail" style="margin-top:.5rem;display:none">
+          <div class="helper">
+            <i class="bi bi-moon-stars me-1" style="color:#3b82f6"></i>
+            <span id="hospit-detail-text"></span>
+          </div>
+        </div>
       </div>
+
       <div class="col-12">
         <div class="helper"><i class="bi bi-info-circle me-1"></i> Au moins un service doit être sélectionné pour générer un montant.</div>
       </div>
     </div>
+
+    <!-- ── Aperçu du montant calculé ── -->
+    <div class="montant-preview" id="montant-preview">
+      <div class="montant-preview-title"><i class="bi bi-calculator me-2"></i>Aperçu du montant calculé</div>
+      <div id="preview-lignes"></div>
+      <div class="montant-total-row">
+        <span class="montant-total-label">Total estimé</span>
+        <span class="montant-total-val" id="preview-total">0 FCFA</span>
+      </div>
+      <div id="preview-assurance-block" style="display:none">
+        <div class="montant-ligne" style="border-bottom:none">
+          <span class="montant-ligne-label" id="preview-assurance-label" style="color:#a855f7;font-weight:700">Pris en charge assurance</span>
+          <span class="montant-ligne-val" id="preview-assurance-val" style="color:#a855f7">0 FCFA</span>
+        </div>
+        <div class="montant-total-row" style="border-top:2px dashed rgba(168,85,247,.4)">
+          <span class="montant-total-label" style="color:#a855f7"><i class="bi bi-person-fill me-1"></i>Reste à charge patient</span>
+          <span class="montant-total-val" id="preview-patient-val" style="color:#a855f7">0 FCFA</span>
+        </div>
+      </div>
+      <div class="helper" style="margin-top:.5rem"><i class="bi bi-exclamation-circle me-1"></i> Montant final calculé après enregistrement selon les tarifs configurés.</div>
+    </div>
+
   </div>
 
+  <!-- ══ SECTION ASSURANCE ══ -->
+  <div class="form-section" style="animation-delay:.09s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#a855f7;background:rgba(168,85,247,.12)"><i class="bi bi-shield-fill-check"></i></span>
+      <div>
+        <div class="form-section-title">Assurance maladie</div>
+        <div class="form-section-sub">L'assurance prend en charge un pourcentage de la facture ; le reste est dû par le patient.</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label"><i class="bi bi-shield-plus" style="color:#a855f7"></i> Assurance</label>
+        <select name="assurance" id="sel-assurance" class="f-input f-select">
+          <option value="" data-taux="0">-- Aucune (patient payant) --</option>
+          {% for a in assurances %}
+          <option value="{{ a.pk }}" data-taux="{{ a.taux_prise_en_charge|floatformat:0 }}"
+            {% if facture and facture.assurance_id == a.pk %}selected{% endif %}>
+            {{ a.nom }} ({{ a.taux_prise_en_charge|floatformat:0 }} %)
+          </option>
+          {% endfor %}
+        </select>
+        <div class="helper" id="assurance-auto" style="display:none"><i class="bi bi-magic me-1"></i> Assurance du patient appliquée automatiquement.</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label"><i class="bi bi-percent" style="color:#a855f7"></i> Taux de prise en charge (%)</label>
+        <input type="number" name="taux_prise_en_charge" id="inp-taux" class="f-input" min="0" max="100" step="1"
+               value="{% if facture and facture.assurance_id %}{{ facture.taux_prise_en_charge|floatformat:0 }}{% endif %}"
+               placeholder="0">
+        <div class="helper"><i class="bi bi-info-circle me-1"></i> Modifiable : laissez le taux par défaut de l'assurance ou ajustez-le pour cette facture.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 3 : STATUT (modification uniquement) ══ -->
   {% if facture %}
   <div class="form-section" style="animation-delay:.12s">
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#f59e0b;background:rgba(245,158,11,.12)"><i class="bi bi-flag-fill"></i></span>
       <div>
         <div class="form-section-title">Statut de la facture</div>
-        <div class="form-section-sub">Marquer comme payée ou non payée</div>
+        <div class="form-section-sub">Montant actuel : <strong style="color:var(--primary)">{{ facture.montant_total|floatformat:0 }} FCFA</strong></div>
       </div>
     </div>
     <div class="row g-3">
@@ -99,19 +223,183 @@
         <label class="f-label">Statut</label>
         <select name="statut" class="f-input f-select">
           <option value="non payé" {% if facture.statut == 'non payé' %}selected{% endif %}>Non payé</option>
-          <option value="payé" {% if facture.statut == 'payé' %}selected{% endif %}>Payé</option>
+          <option value="partiel"  {% if facture.statut == 'partiel'  %}selected{% endif %}>Partiellement payé</option>
+          <option value="payé"     {% if facture.statut == 'payé'     %}selected{% endif %}>Payé</option>
         </select>
-      </div>
-      <div class="col-12 col-md-6 d-flex align-items-end">
-        <div class="helper" style="margin-top:0">Montant actuel : <strong style="color:var(--text-primary);font-size:.95rem">{{ facture.montant_total|floatformat:0 }} FCFA</strong></div>
       </div>
     </div>
   </div>
   {% endif %}
+
+  <!-- ══ NOTES ══ -->
+  <div class="form-section" style="animation-delay:.18s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#6b7280;background:rgba(107,114,128,.1)"><i class="bi bi-chat-left-text-fill"></i></span>
+      <div>
+        <div class="form-section-title">Notes</div>
+        <div class="form-section-sub">Informations complémentaires (optionnel)</div>
+      </div>
+    </div>
+    <textarea name="notes" class="f-input" rows="2" placeholder="Remarques, instructions particulières…">{{ facture.notes|default:'' }}</textarea>
+  </div>
 
   <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
     <a href="{% url 'facturation:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
     <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
   </div>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Données tarifs & examens en JSON pour le JS -->
+<script>
+const TARIFS_CONSULTATION = {
+  {% for c in consultations %}
+  "{{ c.pk }}": {
+    prix: {{ c.get_tarif.prix|default:0 }},
+    label: "Consultation {{ c.rendez_vous.medecin.specialite|default:'Générale' }}",
+    examens: [{% for e in c.examenmedical_set.all %}"{{ e.type_examen }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+    examens_prix: [{% for e in c.examenmedical_set.all %}{{ e.get_tarif.prix|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+    examens_labels: [{% for e in c.examenmedical_set.all %}"{{ e.get_tarif.nom|default:e.type_examen }}"{% if not forloop.last %},{% endif %}{% endfor %}]
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+const TARIFS_HOSPIT = {
+  {% for h in hospitalisations %}
+  "{{ h.pk }}": {
+    prix_nuit: {{ h.get_prix_nuit|default:0 }},
+    jours: {{ h.nombre_jours }},
+    type: "{{ h.type_chambre|capfirst }}",
+    chambre: "{{ h.numero_chambre }}",
+    label: "Chambre {{ h.numero_chambre }} — {{ h.type_chambre|capfirst }}"
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+function fmt(n) {
+  return parseInt(n).toLocaleString('fr-FR') + ' FCFA';
+}
+
+function updatePreview() {
+  const cid = document.getElementById('sel-consultation').value;
+  const hid = document.getElementById('sel-hospit').value;
+  const preview = document.getElementById('montant-preview');
+  const lignesEl = document.getElementById('preview-lignes');
+  const totalEl = document.getElementById('preview-total');
+  const tagsEl = document.getElementById('exam-tags-container');
+  const hospitDetail = document.getElementById('hospit-detail');
+  const hospitDetailText = document.getElementById('hospit-detail-text');
+
+  let lignes = [];
+  let total = 0;
+
+  // Consultation + examens
+  if (cid && TARIFS_CONSULTATION[cid]) {
+    const t = TARIFS_CONSULTATION[cid];
+
+    // Consultation
+    lignes.push({ label: t.label, prix: t.prix, qte: 1 });
+    total += t.prix;
+
+    // Examens liés
+    tagsEl.innerHTML = '';
+    if (t.examens.length > 0) {
+      t.examens.forEach((ex, i) => {
+        const tag = document.createElement('span');
+        tag.className = 'exam-tag';
+        tag.textContent = ex;
+        tagsEl.appendChild(tag);
+        const prixEx = t.examens_prix[i] || 0;
+        const labelEx = t.examens_labels[i] || ex;
+        lignes.push({ label: labelEx + ' (' + ex + ')', prix: prixEx, qte: 1 });
+        total += prixEx;
+      });
+    } else {
+      tagsEl.innerHTML = '<span class="exam-tag-none">Aucun examen lié à cette consultation</span>';
+    }
+  } else {
+    tagsEl.innerHTML = '<span class="exam-tag-none">Sélectionnez une consultation</span>';
+  }
+
+  // Hospitalisation
+  if (hid && TARIFS_HOSPIT[hid]) {
+    const h = TARIFS_HOSPIT[hid];
+    const sousTotal = h.prix_nuit * h.jours;
+    lignes.push({ label: h.label, prix: h.prix_nuit, qte: h.jours, unite: 'nuit' });
+    total += sousTotal;
+
+    hospitDetailText.textContent = h.type + ' · ' + h.jours + ' nuit' + (h.jours > 1 ? 's' : '') + ' × ' + fmt(h.prix_nuit) + ' = ' + fmt(sousTotal);
+    hospitDetail.style.display = 'block';
+  } else {
+    hospitDetail.style.display = 'none';
+  }
+
+  // Affiche/cache l'aperçu
+  if (lignes.length > 0) {
+    preview.classList.add('visible');
+    lignesEl.innerHTML = lignes.map(l => `
+      <div class="montant-ligne">
+        <span class="montant-ligne-label">${l.label}${l.unite ? ' × ' + l.qte + ' ' + l.unite : (l.qte > 1 ? ' × ' + l.qte : '')}</span>
+        <span class="montant-ligne-val">${fmt(l.prix * l.qte)}</span>
+      </div>`).join('');
+    totalEl.textContent = fmt(total);
+
+    // Répartition assurance / patient
+    const tauxVal = parseFloat(document.getElementById('inp-taux').value) || 0;
+    const assBlock = document.getElementById('preview-assurance-block');
+    if (tauxVal > 0) {
+      const partAss = Math.round(total * tauxVal / 100);
+      const partPat = total - partAss;
+      document.getElementById('preview-assurance-label').textContent = 'Pris en charge assurance (' + tauxVal + ' %)';
+      document.getElementById('preview-assurance-val').textContent = '- ' + fmt(partAss);
+      document.getElementById('preview-patient-val').textContent = fmt(partPat);
+      assBlock.style.display = 'block';
+    } else {
+      assBlock.style.display = 'none';
+    }
+  } else {
+    preview.classList.remove('visible');
+  }
+}
+
+// ── Assurance : auto-remplissage depuis le patient + taux par défaut ──
+const PATIENTS_ASSURANCE = {};
+{% for p in patients %}{% if p.assurance_id %}PATIENTS_ASSURANCE["{{ p.pk }}"] = { id: "{{ p.assurance_id }}", taux: {{ p.assurance.taux_prise_en_charge|floatformat:0 }} };
+{% endif %}{% endfor %}
+
+const selPatient   = document.getElementById('sel-patient');
+const selAssurance = document.getElementById('sel-assurance');
+const inpTaux      = document.getElementById('inp-taux');
+const assuranceAuto = document.getElementById('assurance-auto');
+
+selPatient.addEventListener('change', () => {
+  const info = PATIENTS_ASSURANCE[selPatient.value];
+  if (info) {
+    selAssurance.value = info.id;
+    inpTaux.value = info.taux;
+    assuranceAuto.style.display = 'block';
+  } else {
+    selAssurance.value = '';
+    inpTaux.value = '';
+    assuranceAuto.style.display = 'none';
+  }
+  updatePreview();
+});
+
+selAssurance.addEventListener('change', () => {
+  const opt = selAssurance.options[selAssurance.selectedIndex];
+  const taux = opt ? (opt.dataset.taux || '0') : '0';
+  inpTaux.value = (taux === '0') ? '' : taux;
+  assuranceAuto.style.display = 'none';
+  updatePreview();
+});
+
+inpTaux.addEventListener('input', updatePreview);
+document.getElementById('sel-consultation').addEventListener('change', updatePreview);
+document.getElementById('sel-hospit').addEventListener('change', updatePreview);
+
+// Init au chargement (mode modification)
+document.addEventListener('DOMContentLoaded', updatePreview);
+</script>
 {% endblock %}

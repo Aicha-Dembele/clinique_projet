@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Journal d'audit{% endblock %}
+{% block page_title %}Journal d'audit{% endblock %}
+{% block page_heading %}Journal d'audit{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Journal d'audit</li>{% endblock %}
+{% block nav_audit %}active{% endblock %}
+
+{% block extra_css %}<style>
+.audit-badge{display:inline-block;padding:.2rem .6rem;border-radius:.5rem;font-size:.72rem;font-weight:700;border:1px solid;}
+.audit-creation{color:#10b981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08);}
+.audit-modification{color:#3b82f6;border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08);}
+.audit-suppression{color:#f59e0b;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08);}
+.audit-restauration{color:#10b981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08);}
+.audit-purge{color:#ef4444;border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);}
+</style>{% endblock %}
+
+{% block content %}
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+  <select name="action" class="form-select" style="max-width:200px" onchange="this.form.submit()">
+    <option value="">Toutes les actions</option>
+    {% for code, libelle in actions %}
+      <option value="{{ code }}" {% if f_action == code %}selected{% endif %}>{{ libelle }}</option>
+    {% endfor %}
+  </select>
+  <select name="modele" class="form-select" style="max-width:200px" onchange="this.form.submit()">
+    <option value="">Tous les modèles</option>
+    {% for m in modeles %}
+      <option value="{{ m }}" {% if f_modele == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:260px" placeholder="Rechercher…">
+  <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i> Filtrer</button>
+  {% if f_action or f_modele or q %}<a href="{% url 'comptes:journal_audit' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i></a>{% endif %}
+</form>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-clock-history me-2" style="color:var(--accent)"></i>Historique des actions</span>
+    <span style="font-size:.75rem;color:var(--text-muted);font-weight:600">{{ entrees.paginator.count }} entrée{% if entrees.paginator.count > 1 %}s{% endif %}</span>
+  </div>
+  <div class="panel-body p-0" style="overflow-x:auto">
+    <table class="modern-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Utilisateur</th>
+          <th>Action</th>
+          <th>Modèle</th>
+          <th>Objet</th>
+          <th>Détails</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entrees %}
+        <tr>
+          <td style="white-space:nowrap">
+            <div style="font-weight:700;font-size:.82rem">{{ e.date|date:"d/m/Y" }}</div>
+            <div style="font-size:.7rem;color:var(--text-muted)">{{ e.date|date:"H:i:s" }}</div>
+          </td>
+          <td style="font-weight:600">{{ e.user.username|default:"—" }}</td>
+          <td><span class="audit-badge audit-{{ e.action }}">{{ e.get_action_display }}</span></td>
+          <td style="font-size:.83rem">{{ e.modele }} <span style="color:var(--text-muted)">#{{ e.objet_id }}</span></td>
+          <td style="font-size:.83rem">{{ e.objet_repr }}</td>
+          <td style="font-size:.78rem;color:var(--text-muted)">{{ e.details }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-clock-history" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucune entrée dans le journal.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if entrees.paginator.num_pages > 1 %}
+<div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+  {% if entrees.has_previous %}
+    <a href="?{% if f_action %}action={{ f_action }}&{% endif %}{% if f_modele %}modele={{ f_modele }}&{% endif %}{% if q %}q={{ q }}&{% endif %}page={{ entrees.previous_page_number }}" class="btn-c btn-outline-c"><i class="bi bi-chevron-left"></i></a>
+  {% endif %}
+  <span style="font-size:.85rem;color:var(--text-muted)">Page {{ entrees.number }} / {{ entrees.paginator.num_pages }}</span>
+  {% if entrees.has_next %}
+    <a href="?{% if f_action %}action={{ f_action }}&{% endif %}{% if f_modele %}modele={{ f_modele }}&{% endif %}{% if q %}q={{ q }}&{% endif %}page={{ entrees.next_page_number }}" class="btn-c btn-outline-c"><i class="bi bi-chevron-right"></i></a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-personnel-bg{% endblock %}
+{% block title %}{{ action }} un médecin{% endblock %}
+{% block nav_personnel %}active{% endblock %}
+{% block page_title %}Personnel{% endblock %}
+{% block page_heading %}{{ action }} un médecin{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'personnel:liste' %}">Personnel</a></li>
+  <li class="breadcrumb-item active">{{ action }} médecin</li>
+{% endblock %}
+{% block page_actions %}
+  <a href="{% url 'personnel:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+
+{% block extra_css %}<style>
+.form-section { background:var(--card-bg); border:1px solid var(--card-border); border-radius:1.1rem; padding:1.5rem 1.6rem; box-shadow:var(--shadow-sm); margin-bottom:1rem; animation:fadeUp .5s ease both; max-width:720px; margin-left:auto; margin-right:auto; }
+.form-section-hdr { display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem; padding-bottom:.9rem; border-bottom:1px solid var(--card-border); }
+.form-section-ico { width:42px; height:42px; border-radius:.75rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.1rem; }
+.form-section-title { font-size:1rem; font-weight:800; color:var(--text-primary); }
+.form-section-sub { font-size:.73rem; color:var(--text-muted); margin-top:1px; }
+.req { color:#ef4444; }
+.actions-row { max-width:720px; margin-left:auto; margin-right:auto; }
+</style>{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <!-- Identité -->
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-person-badge-fill"></i></span>
+      <div>
+        <div class="form-section-title">Identité du médecin</div>
+        <div class="form-section-sub">Nom, prénom et informations personnelles</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Nom <span class="req">*</span></label>
+        <input type="text" name="nom" class="f-input" required placeholder="Nom de famille"
+               value="{% if medecin %}{{ medecin.nom }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Prénom <span class="req">*</span></label>
+        <input type="text" name="prenom" class="f-input" required placeholder="Prénom"
+               value="{% if medecin %}{{ medecin.prenom }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Téléphone <span class="req">*</span></label>
+        <input type="text" name="telephone" class="f-input" required placeholder="+225 00 00 00 00"
+               value="{% if medecin %}{{ medecin.telephone }}{% endif %}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Adresse</label>
+        <input type="text" name="adresse" class="f-input" placeholder="Adresse"
+               value="{% if medecin %}{{ medecin.adresse }}{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Informations médicales -->
+  <div class="form-section" style="animation-delay:.06s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></span>
+      <div>
+        <div class="form-section-title">Informations médicales</div>
+        <div class="form-section-sub">Spécialité et service d'affectation</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Spécialité <span class="req">*</span></label>
+        <select name="specialite" class="f-input f-select" required>
+          <option value="">-- Choisir une spécialité --</option>
+          <option value="Cardiologie"   {% if medecin and medecin.specialite == 'Cardiologie' %}selected{% endif %}>Cardiologie</option>
+          <option value="Dermatologie"  {% if medecin and medecin.specialite == 'Dermatologie' %}selected{% endif %}>Dermatologie</option>
+          <option value="Pédiatrie"     {% if medecin and medecin.specialite == 'Pédiatrie' %}selected{% endif %}>Pédiatrie</option>
+          <option value="Chirurgie"     {% if medecin and medecin.specialite == 'Chirurgie' %}selected{% endif %}>Chirurgie</option>
+          <option value="Neurologie"    {% if medecin and medecin.specialite == 'Neurologie' %}selected{% endif %}>Neurologie</option>
+          <option value="Gynécologie"   {% if medecin and medecin.specialite == 'Gynécologie' %}selected{% endif %}>Gynécologie</option>
+          <option value="Orthopédie"    {% if medecin and medecin.specialite == 'Orthopédie' %}selected{% endif %}>Orthopédie</option>
+          <option value="Ophtalmologie" {% if medecin and medecin.specialite == 'Ophtalmologie' %}selected{% endif %}>Ophtalmologie</option>
+          <option value="ORL"           {% if medecin and medecin.specialite == 'ORL' %}selected{% endif %}>ORL</option>
+          <option value="Radiologie"    {% if medecin and medecin.specialite == 'Radiologie' %}selected{% endif %}>Radiologie</option>
+          <option value="Anesthésie"    {% if medecin and medecin.specialite == 'Anesthésie' %}selected{% endif %}>Anesthésie</option>
+          <option value="Psychiatrie"   {% if medecin and medecin.specialite == 'Psychiatrie' %}selected{% endif %}>Psychiatrie</option>
+          <option value="Généraliste"   {% if medecin and medecin.specialite == 'Généraliste' %}selected{% endif %}>Généraliste</option>
+          <option value="Urologie"      {% if medecin and medecin.specialite == 'Urologie' %}selected{% endif %}>Urologie</option>
+          <option value="Endocrinologie"{% if medecin and medecin.specialite == 'Endocrinologie' %}selected{% endif %}>Endocrinologie</option>
+          <option value="Rhumatologie"  {% if medecin and medecin.specialite == 'Rhumatologie' %}selected{% endif %}>Rhumatologie</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Service <span class="req">*</span></label>
+        <input type="text" name="service" class="f-input" required placeholder="Ex: Cardiologie, Urgences..."
+               value="{% if medecin %}{{ medecin.service }}{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  {% if not medecin %}
+  <!-- Mot de passe (création seulement) -->
+  <div class="form-section" style="animation-delay:.12s">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-shield-lock-fill"></i></span>
+      <div>
+        <div class="form-section-title">Accès au système</div>
+        <div class="form-section-sub">Mot de passe pour la connexion</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Mot de passe <span class="req">*</span></label>
+        <input type="password" name="mot_de_passe" class="f-input" required placeholder="••••••••">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="actions-row d-flex gap-2 justify-content-end">
+    <a href="{% url 'personnel:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}

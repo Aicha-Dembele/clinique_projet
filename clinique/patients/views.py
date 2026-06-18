@@ -118,7 +118,7 @@ def dashboard(request):
 def patient_liste(request):
     q = request.GET.get('q', '')
     sexe = request.GET.get('sexe', '')
-    qs = Patient.objects.all().order_by('-date_creation')
+    qs = Patient.objects.select_related('assurance').order_by('-date_creation')
 
     if q:
         qs = qs.filter(
@@ -156,6 +156,8 @@ def patient_detail(request, pk):
 
 @role_required('admin', 'receptionniste')
 def patient_ajouter(request):
+    from facturation.models import Assurance
+
     if request.method == 'POST':
         try:
             Patient.objects.create(
@@ -167,17 +169,25 @@ def patient_ajouter(request):
                 telephone=request.POST['telephone'],
                 email=request.POST.get('email', ''),
                 numero_urgence=request.POST.get('numero_urgence', ''),
+                photo=request.FILES.get('photo'),
+                assurance_id=request.POST.get('assurance') or None,
+                numero_assure=request.POST.get('numero_assure', ''),
             )
             messages.success(request, 'Patient ajouté avec succès.')
             return redirect('patients:liste')
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    return render(request, 'patients/form.html', {'action': 'Ajouter'})
+    return render(request, 'patients/form.html', {
+        'action': 'Ajouter',
+        'assurances': Assurance.objects.filter(actif=True),
+    })
 
 
 @role_required('admin', 'receptionniste')
 def patient_modifier(request, pk):
+    from facturation.models import Assurance
+
     patient = get_object_or_404(Patient, pk=pk)
     if request.method == 'POST':
         try:
@@ -189,13 +199,21 @@ def patient_modifier(request, pk):
             patient.telephone = request.POST['telephone']
             patient.email = request.POST.get('email', patient.email)
             patient.numero_urgence = request.POST.get('numero_urgence', patient.numero_urgence)
+            if request.FILES.get('photo'):
+                patient.photo = request.FILES['photo']
+            patient.assurance_id = request.POST.get('assurance') or None
+            patient.numero_assure = request.POST.get('numero_assure', '')
             patient.save()
             messages.success(request, 'Patient modifié avec succès.')
             return redirect('patients:detail', pk=patient.pk)
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    return render(request, 'patients/form.html', {'patient': patient, 'action': 'Modifier'})
+    return render(request, 'patients/form.html', {
+        'patient': patient,
+        'action': 'Modifier',
+        'assurances': Assurance.objects.filter(actif=True),
+    })
 
 
 @role_required('admin', 'receptionniste')

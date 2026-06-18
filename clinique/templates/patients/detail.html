@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-patients-bg{% endblock %}
 {% block title %}{{ patient.nom }} {{ patient.prenom }}{% endblock %}
 {% block nav_patients %}active{% endblock %}
 {% block page_title %}Fiche patient{% endblock %}
@@ -34,6 +35,32 @@
 .info-cell { padding: .85rem 1rem; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .75rem; }
 .info-cell-lbl { font-size: .68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
 .info-cell-val { font-size: .9rem; color: var(--text-primary); font-weight: 600; word-break: break-word; }
+
+/* ── Cohérence design consultation : cartes translucides sur la photo de fond ── */
+body.page-patients-bg .hero-card,
+body.page-patients-bg .info-cell,
+body.page-patients-bg .tabs-wrap {
+  background: rgba(255,255,255,.10) !important;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.20) !important;
+}
+body.page-patients-bg .tab-btn.active { background: rgba(255,255,255,.22) !important; }
+body.page-patients-bg .ctable th { background: rgba(255,255,255,.06) !important; }
+body.page-patients-bg .hero-name,
+body.page-patients-bg .info-cell-val { color: #011e2a !important; }
+body.page-patients-bg .info-cell-lbl,
+body.page-patients-bg .hero-meta-item { color: #033a50 !important; }
+
+[data-theme="dark"] body.page-patients-bg .hero-card,
+[data-theme="dark"] body.page-patients-bg .info-cell,
+[data-theme="dark"] body.page-patients-bg .tabs-wrap {
+  background: rgba(5,15,25,.42) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] body.page-patients-bg .hero-name,
+[data-theme="dark"] body.page-patients-bg .info-cell-val { color: #eaf6fb !important; }
+[data-theme="dark"] body.page-patients-bg .info-cell-lbl,
+[data-theme="dark"] body.page-patients-bg .hero-meta-item { color: #a9c7d4 !important; }
 </style>{% endblock %}
 
 {% block content %}
@@ -41,7 +68,11 @@
 <!-- Hero patient -->
 <div class="hero-card">
   <div class="hero-row">
+    {% if patient.photo %}
+    <div class="hero-av" style="padding:0;overflow:hidden"><img src="{{ patient.photo.url }}" alt="{{ patient.nom }}" style="width:100%;height:100%;object-fit:cover"></div>
+    {% else %}
     <div class="hero-av">{{ patient.nom|slice:":1"|upper }}{{ patient.prenom|slice:":1"|upper }}</div>
+    {% endif %}
     <div style="flex:1;min-width:200px">
       <div class="hero-name">{{ patient.nom }} {{ patient.prenom }}</div>
       <div class="hero-id"><i class="bi bi-fingerprint"></i> P-{{ patient.pk|stringformat:"04d" }}</div>
@@ -98,7 +129,7 @@
               {% elif rdv.statut == 'annule' %}<span class="pill pill-danger"><i class="bi bi-x-circle-fill"></i> Annulé</span>
               {% else %}<span class="pill pill-info"><i class="bi bi-calendar-event"></i> Programmé</span>{% endif %}
             </td>
-            <td><a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-pencil"></i> Modifier</a></td>
+            <td><a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a></td>
           </tr>
           {% empty %}
           <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-calendar-x" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun rendez-vous</td></tr>
@@ -120,7 +151,7 @@
             <td>{{ c.date|date:'d/m/Y' }}</td>
             <td>{{ c.motif|truncatechars:50 }}</td>
             <td>Dr. {{ c.rendez_vous.medecin }}</td>
-            <td><a href="{% url 'consultation:detail' c.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i> Voir</a></td>
+            <td><a href="{% url 'consultation:detail' c.pk %}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a></td>
           </tr>
           {% empty %}
           <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-clipboard-x" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucune consultation</td></tr>
@@ -170,7 +201,7 @@
               {% if f.statut == 'payé' %}<span class="pill pill-success"><i class="bi bi-check-lg"></i> Payé</span>
               {% else %}<span class="pill pill-danger"><i class="bi bi-x-lg"></i> Non payé</span>{% endif %}
             </td>
-            <td><a href="{% url 'facturation:detail' f.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i> Voir</a></td>
+            <td><a href="{% url 'facturation:detail' f.pk %}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a></td>
           </tr>
           {% empty %}
           <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-receipt" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucune facture</td></tr>

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block title %}Assurances{% endblock %}
+{% block nav_assurances %}active{% endblock %}
+{% block page_title %}Facturation{% endblock %}
+{% block page_heading %}Assurances maladie{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Facturation</a></li>
+  <li class="breadcrumb-item active">Assurances</li>
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'facturation:assurance_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Ajouter une assurance</a>
+{% endblock %}
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(168,85,247,.25); }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-info { flex: 1; min-width: 0; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; }
+</style>{% endblock %}
+{% block content %}
+
+<!-- ── HERO BANNER ── -->
+<div class="hero-banner">
+  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg')"></div>
+  <div class="hero-banner-overlay"></div>
+  <div class="hero-banner-content">
+    <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
+      <i class="bi bi-shield-fill-check" style="font-size:1.6rem;color:#fff"></i>
+    </div>
+    <div>
+      <div class="hero-title">Assurances maladie</div>
+      <div class="hero-sub">{{ assurances|length }} assurance(s) — ex : AMO (prise en charge d'une partie des factures)</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-shield-fill-check"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Assurances actives</div>
+        <div class="stat-h-val">{{ nb_actives }}</div>
+        <div class="stat-h-trend" style="color:#a855f7">Disponibles</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="stat-h" style="animation-delay:.06s">
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Patients couverts</div>
+        <div class="stat-h-val">{{ nb_patients }}</div>
+        <div class="stat-h-trend" style="color:#0088aa">Avec assurance</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-list-check"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Total enregistrées</div>
+        <div class="stat-h-val">{{ assurances|length }}</div>
+        <div class="stat-h-trend" style="color:#10b981">Régimes</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-shield-fill-check me-2" style="color:var(--accent)"></i>Liste des assurances</span>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nom</th>
+          <th>Prise en charge</th>
+          <th>Description</th>
+          <th>Statut</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assurances %}
+        <tr>
+          <td style="font-weight:800;color:var(--text-muted)">{{ a.pk }}</td>
+          <td style="font-weight:700">{{ a.nom }}</td>
+          <td>
+            <span class="pill" style="background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.2)"><i class="bi bi-percent"></i> {{ a.taux_prise_en_charge|floatformat:0 }} %</span>
+          </td>
+          <td>{% if a.description %}{{ a.description }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</td>
+          <td>
+            {% if a.actif %}
+              <span class="pill pill-success"><i class="bi bi-check-lg"></i> Active</span>
+            {% else %}
+              <span class="pill" style="background:rgba(107,114,128,.12);color:#6b7280;border:1px solid rgba(107,114,128,.2)"><i class="bi bi-pause"></i> Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'facturation:assurance_modifier' a.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'facturation:assurance_supprimer' a.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-shield-x text-muted" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucune assurance enregistrée.
+            <div class="mt-3"><a href="{% url 'facturation:assurance_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Créer la première assurance</a></div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

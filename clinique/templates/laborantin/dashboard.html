@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block body_class %}page-dashboard-bg{% endblock %}
+
 {% block title %}Dashboard Laborantin{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Laboratoire{% endblock %}
@@ -17,7 +19,9 @@
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
 .stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
+.stat-h:hover .spark-bar { opacity: .85; }
 .chart-wrap-mini { position: relative; height: 200px; }
 .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .donut-center-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
@@ -40,7 +44,18 @@
         <div class="stat-h-val">{{ examens_attente_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#ef4444"><i class="bi bi-clock-fill"></i> À traiter</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="red"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:50%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:40%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:65%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:55%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:75%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:60%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:85%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:70%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:100%;background:#ef4444"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -51,7 +66,18 @@
         <div class="stat-h-val">{{ examens_en_cours|default:0 }}</div>
         <div class="stat-h-trend" style="color:#14b8a6">En analyse</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:85%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -62,7 +88,18 @@
         <div class="stat-h-val">{{ examens_termines|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--primary)">Aujourd'hui</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#10b981"></div>
+        <div class="spark-bar" style="height:50%;background:#10b981"></div>
+        <div class="spark-bar" style="height:40%;background:#10b981"></div>
+        <div class="spark-bar" style="height:65%;background:#10b981"></div>
+        <div class="spark-bar" style="height:55%;background:#10b981"></div>
+        <div class="spark-bar" style="height:75%;background:#10b981"></div>
+        <div class="spark-bar" style="height:60%;background:#10b981"></div>
+        <div class="spark-bar" style="height:85%;background:#10b981"></div>
+        <div class="spark-bar" style="height:70%;background:#10b981"></div>
+        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -73,7 +110,18 @@
         <div class="stat-h-val">{{ total_examens_mois|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>+15%</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="purple"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:50%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:40%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:65%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:55%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:75%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:60%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:85%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:70%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:100%;background:#a855f7"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -81,7 +129,7 @@
 <div class="row mb-4 g-3">
   <div class="col-12 col-xl-8">
     <div class="panel">
-      <div class="panel-header">
+      <div class="panel-hdr">
         <div class="panel-title"><i class="bi bi-flask" style="color:#a855f7"></i> Analyses à traiter</div>
         <span class="pill pill-danger">{{ examens_attente_count|default:0 }} en attente</span>
       </div>
@@ -108,7 +156,7 @@
                 <td>{{ ex.consultation.date|date:"d/m/Y"|default:"—" }}</td>
                 <td>{% if ex.statut == 'en_attente' %}<span class="pill pill-danger">Urgent</span>{% else %}<span class="pill pill-gray">Normal</span>{% endif %}</td>
                 <td>{% if ex.statut == 'en_attente' %}<span class="pill pill-warn">En attente</span>{% elif ex.statut == 'en_cours' %}<span class="pill pill-info">En cours</span>{% else %}<span class="pill pill-success">Terminé</span>{% endif %}</td>
-                <td><a href="#" class="btn-c btn-sm-c btn-primary-c"><i class="bi bi-pencil-fill"></i> Résultat</a></td>
+                <td><a href="{% url 'consultation:resultat_ajouter' %}?examen={{ ex.pk }}" class="btn-c btn-sm-c btn-primary-c"><i class="bi bi-clipboard2-plus"></i> Résultat</a></td>
               </tr>
               {% empty %}
               <tr><td colspan="7" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-check-all" style="font-size:2rem;display:block;margin-bottom:.5rem;color:var(--primary)"></i>Toutes les analyses sont traitées !</td></tr>
@@ -121,7 +169,7 @@
   </div>
   <div class="col-12 col-xl-4">
     <div class="panel">
-      <div class="panel-header">
+      <div class="panel-hdr">
         <div class="panel-title"><i class="bi bi-pie-chart-fill" style="color:#a855f7"></i> Types d'analyses</div>
       </div>
       <div class="panel-body">
@@ -140,7 +188,7 @@
       </div>
     </div>
     <div class="panel mt-3">
-      <div class="panel-header">
+      <div class="panel-hdr">
         <div class="panel-title"><i class="bi bi-clock-history" style="color:#14b8a6"></i> Activité récente</div>
       </div>
       <div class="panel-body">
@@ -164,13 +212,6 @@
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
   Chart.defaults.font.size = 11;
   Chart.defaults.color = txtMuted();
-
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], purple:[4,6,5,8,7,10,9,12,11,14,13,16], red:[5,8,4,10,7,12,9,6,11,8,13,7] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', purple:'#a855f7', red:'#ef4444' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
-  });
 
   const tc = document.getElementById('typesChart');
   if (tc) {

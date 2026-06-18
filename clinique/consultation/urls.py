@@ -30,20 +30,26 @@ urlpatterns = [
     # Resultats
     path('resultats/', views.resultats, name='resultats'),
     path('resultats/ajouter/', views.resultat_ajouter, name='resultat_ajouter'),
+    path('resultats/corbeille/', views.resultat_corbeille, name='resultat_corbeille'),
     path('resultats/<int:pk>/', views.resultat_detail, name='resultat_detail'),
     path('resultats/<int:pk>/modifier/', views.resultat_modifier, name='resultat_modifier'),
     path('resultats/<int:pk>/transmettre/', views.resultat_transmettre, name='resultat_transmettre'),
+    path('resultats/<int:pk>/supprimer/', views.resultat_supprimer, name='resultat_supprimer'),
+    path('resultats/<int:pk>/restaurer/', views.resultat_restaurer, name='resultat_restaurer'),
+    path('resultats/<int:pk>/purger/', views.resultat_purger, name='resultat_purger'),
 
     # Ordonnances
     path('ordonnances/', views.ordonnances, name='ordonnances'),
     path('ordonnances/ajouter/', views.ordonnance_ajouter, name='ordonnance_ajouter'),
     path('ordonnances/<int:pk>/', views.ordonnance_detail, name='ordonnance_detail'),
+    path('ordonnances/<int:pk>/imprimer/', views.ordonnance_imprimer, name='ordonnance_imprimer'),
     path('ordonnances/<int:pk>/supprimer/', views.ordonnance_supprimer, name='ordonnance_supprimer'),
 
     # Hospitalisations
     path('hospitalisations/', views.hospitalisations, name='hospitalisations'),
     path('hospitalisations/ajouter/', views.hospit_ajouter, name='hospit_ajouter'),
     path('hospitalisations/<int:pk>/modifier/', views.hospit_modifier, name='hospit_modifier'),
+    path('hospitalisations/<int:pk>/sortie/', views.hospit_sortie, name='hospit_sortie'),
     path('hospitalisations/<int:pk>/supprimer/', views.hospit_supprimer, name='hospit_supprimer'),
 
     # Traitements
@@ -51,6 +57,7 @@ urlpatterns = [
     path('traitements/ajouter/', views.traitement_ajouter, name='traitement_ajouter'),
     path('traitements/<int:pk>/', views.traitement_detail, name='traitement_detail'),
     path('traitements/<int:pk>/administrer/', views.traitement_administrer, name='traitement_administrer'),
+    path('traitements/<int:pk>/statut/', views.traitement_statut, name='traitement_statut'),
     path('traitements/<int:pk>/supprimer/', views.traitement_supprimer, name='traitement_supprimer'),
 
     # Assistances infirmier

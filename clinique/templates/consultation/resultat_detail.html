@@ -9,6 +9,10 @@
   <li class="breadcrumb-item active">Détail</li>
 {% endblock %}
 {% block page_actions %}
+  {% if is_admin or is_laborantin %}
+  <a href="{% url 'consultation:resultat_modifier' resultat.pk %}" class="btn-c btn-primary-c no-print"><i class="bi bi-pencil"></i> Modifier</a>
+  <a href="{% url 'consultation:resultat_supprimer' resultat.pk %}" class="btn-c btn-danger-c no-print"><i class="bi bi-trash"></i> Supprimer</a>
+  {% endif %}
   <button onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer-fill"></i> Imprimer</button>
   <a href="{% url 'consultation:resultats' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}

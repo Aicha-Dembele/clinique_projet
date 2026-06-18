@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block title %}Mouvements de stock{% endblock %}
+{% block nav_mouvements %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Mouvements de stock{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Mouvements</li>
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'pharmacie:entree_stock' %}" class="btn-c btn-outline-c"><i class="bi bi-box-arrow-in-down"></i> Entrée</a>
+<a href="{% url 'pharmacie:sortie_stock' %}" class="btn-c btn-primary-c"><i class="bi bi-box-arrow-up"></i> Sortie</a>
+{% endblock %}
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); animation: fadeUp .5s ease both; }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-info { flex: 1; min-width: 0; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+</style>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-box-arrow-in-down"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Entrées</div>
+        <div class="stat-h-val">{{ nb_entrees }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-h" style="animation-delay:.06s">
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-box-arrow-up"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Sorties</div>
+        <div class="stat-h-val">{{ nb_sorties }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FILTRES ── -->
+<div class="panel mb-3">
+  <div class="panel-body" style="padding:.85rem 1.25rem">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+      <select name="type" class="f-input f-select" style="max-width:200px" onchange="this.form.submit()">
+        <option value="">Tous les types</option>
+        <option value="entree" {% if type_filtre == 'entree' %}selected{% endif %}>Entrées</option>
+        <option value="sortie" {% if type_filtre == 'sortie' %}selected{% endif %}>Sorties</option>
+      </select>
+      <select name="medicament" class="f-input f-select" style="max-width:260px" onchange="this.form.submit()">
+        <option value="">Tous les médicaments</option>
+        {% for m in medicaments %}
+        <option value="{{ m.pk }}" {% if medicament_filtre == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nom }}{% if m.dosage %} {{ m.dosage }}{% endif %}</option>
+        {% endfor %}
+      </select>
+      {% if type_filtre or medicament_filtre %}
+      <a href="{% url 'pharmacie:mouvements' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Réinitialiser</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- ── TABLE ── -->
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-arrow-left-right me-2" style="color:var(--accent)"></i>Historique des mouvements</span>
+  </div>
+  <div class="panel-body p-0">
+    <table class="ctable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Médicament</th>
+          <th>Quantité</th>
+          <th>Patient</th>
+          <th>Motif</th>
+          <th>Par</th>
+          {% if is_admin %}<th class="text-end">Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for mv in mouvements %}
+        <tr>
+          <td style="white-space:nowrap">{{ mv.date|date:'d/m/Y H:i' }}</td>
+          <td>
+            {% if mv.type_mouvement == 'entree' %}
+              <span class="pill" style="background:rgba(16,185,129,.12);color:#10b981;font-size:.68rem"><i class="bi bi-box-arrow-in-down"></i> Entrée</span>
+            {% else %}
+              <span class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;font-size:.68rem"><i class="bi bi-box-arrow-up"></i> Sortie</span>
+            {% endif %}
+          </td>
+          <td style="font-weight:700">{{ mv.medicament.nom }}{% if mv.medicament.dosage %} <span style="color:var(--text-muted);font-weight:500">{{ mv.medicament.dosage }}</span>{% endif %}</td>
+          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:{% if mv.type_mouvement == 'entree' %}#10b981{% else %}#ef4444{% endif %}">
+            {% if mv.type_mouvement == 'entree' %}+{% else %}−{% endif %}{{ mv.quantite }} {{ mv.medicament.unite }}
+          </td>
+          <td>{% if mv.patient %}{{ mv.patient }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</td>
+          <td style="color:var(--text-muted);font-size:.82rem">{{ mv.motif|default:'—' }}</td>
+          <td style="color:var(--text-muted);font-size:.82rem">{% if mv.utilisateur %}{{ mv.utilisateur.username }}{% else %}—{% endif %}</td>
+          {% if is_admin %}
+          <td>
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'pharmacie:mouvement_supprimer' mv.pk %}" class="act-btn danger" title="Annuler ce mouvement"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{% if is_admin %}8{% else %}7{% endif %}" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-arrow-left-right text-muted" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucun mouvement de stock enregistré.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

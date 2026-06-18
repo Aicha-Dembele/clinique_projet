@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-ordonnance-bg{% endblock %}
 {% block title %}Ordonnance #{{ ordonnance.pk }}{% endblock %}
 {% block nav_consultation %}active{% endblock %}
 {% block page_title %}Ordonnances{% endblock %}
@@ -8,6 +9,7 @@
   <li class="breadcrumb-item active">#{{ ordonnance.pk }}</li>
 {% endblock %}
 {% block page_actions %}
+  <a href="{% url 'consultation:ordonnance_imprimer' ordonnance.pk %}" class="btn-c btn-primary-c"><i class="bi bi-printer-fill"></i> Imprimer</a>
   <a href="{% url 'consultation:ordonnance_supprimer' ordonnance.pk %}" class="btn-c btn-danger-c"><i class="bi bi-trash"></i> Supprimer</a>
 {% endblock %}
 {% block extra_css %}

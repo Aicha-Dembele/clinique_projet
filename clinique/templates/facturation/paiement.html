@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}{{ action }} un paiement{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Paiement{% endblock %}
@@ -23,7 +24,7 @@
 @media (min-width: 768px) { .mode-grid { grid-template-columns: repeat(4, 1fr); } }
 .mode-card { border: 2px solid var(--card-border); background: var(--input-bg); border-radius: .85rem; padding: .9rem .8rem; display: flex; flex-direction: column; align-items: center; gap: .35rem; cursor: pointer; transition: all .2s; text-align: center; }
 .mode-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-.mode-card.selected { border-color: var(--primary); background: rgba(16,185,129,.08); box-shadow: 0 4px 14px -4px rgba(16,185,129,.35); }
+.mode-card.selected { border-color: var(--primary); background: rgba(0,136,170,.08); box-shadow: 0 4px 14px -4px rgba(0,136,170,.35); }
 .mode-card i { font-size: 1.5rem; }
 .mode-card-name { font-size: .78rem; font-weight: 700; color: var(--text-primary); }
 .mode-card input[type="radio"] { display: none; }
@@ -35,7 +36,7 @@
 
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-receipt-cutoff"></i></span>
+      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-receipt-cutoff"></i></span>
       <div>
         <div class="form-section-title">Facture concernée</div>
         <div class="form-section-sub">Sélection de la facture à encaisser et du montant payé</div>
@@ -48,12 +49,17 @@
           <option value="">Sélectionner une facture</option>
           {% for f in factures %}
           <option value="{{ f.pk }}"
-                  data-montant="{{ f.montant_total|floatformat:0 }}"
+                  data-montant="{{ f.montant_restant|floatformat:0 }}"
+                  data-total="{{ f.montant_total|floatformat:0 }}"
+                  data-assurance="{{ f.assurance.nom|default:'' }}"
+                  data-taux="{{ f.taux_prise_en_charge|floatformat:0 }}"
+                  data-part-assurance="{{ f.part_assurance|floatformat:0 }}"
                   {% if facture_id and f.pk|stringformat:"s" == facture_id|stringformat:"s" %}selected{% endif %}>
-            FAC-{{ f.pk|stringformat:"04d" }} — {{ f.patient }} — {{ f.montant_total|floatformat:0 }} FCFA
+            FAC-{{ f.pk|stringformat:"04d" }} — {{ f.patient }}{% if f.assurance %} — assuré {{ f.assurance.nom }} {{ f.taux_prise_en_charge|floatformat:0 }}%{% endif %} — reste {{ f.montant_restant|floatformat:0 }} FCFA
           </option>
           {% endfor %}
         </select>
+        <div id="facture-info" class="helper" style="display:none;margin-top:.55rem;padding:.65rem .85rem;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.25);border-radius:.65rem;color:var(--text-secondary)"></div>
       </div>
       <div class="col-12 col-lg-4">
         <label class="f-label" for="montant">Montant (FCFA) <span class="req-mark">*</span></label>
@@ -77,7 +83,7 @@
       {% for code, label in modes %}
       <label class="mode-card {% if paiement and paiement.mode_paiement == code %}selected{% endif %}" data-mode="{{ code }}">
         <input type="radio" name="mode_paiement" value="{{ code }}" {% if paiement and paiement.mode_paiement == code %}checked{% endif %} required>
-        {% if code == 'cash' %}<i class="bi bi-cash-stack" style="color:#10b981"></i>
+        {% if code == 'cash' %}<i class="bi bi-cash-stack" style="color:#0088aa"></i>
         {% elif code == 'orange_money' %}<i class="bi bi-phone-fill" style="color:#f97316"></i>
         {% elif code == 'moov_money' %}<i class="bi bi-phone-fill" style="color:#3b82f6"></i>
         {% elif code == 'carte' %}<i class="bi bi-credit-card-fill" style="color:#a855f7"></i>
@@ -99,12 +105,32 @@
 (function(){
   const sel = document.getElementById('facture');
   const mont = document.getElementById('montant');
-  if (sel && mont) {
-    sel.addEventListener('change', () => {
-      const opt = sel.options[sel.selectedIndex];
-      const m = opt && opt.dataset.montant;
-      if (m && !mont.value) mont.value = m;
-    });
+  const info = document.getElementById('facture-info');
+  const nf = n => Number(n || 0).toLocaleString('fr-FR');
+
+  function syncFacture(setAmount){
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) { if (info) info.style.display = 'none'; return; }
+    const restant = opt.dataset.montant || '0';
+    if (mont && setAmount) mont.value = restant;
+    if (info) {
+      const ass = opt.dataset.assurance;
+      if (ass) {
+        info.style.display = 'block';
+        info.innerHTML =
+          '<i class="bi bi-shield-fill-check me-1" style="color:#a855f7"></i>' +
+          'Total facture : <strong>' + nf(opt.dataset.total) + ' FCFA</strong> — ' +
+          ass + ' (' + opt.dataset.taux + ' %) prend en charge <strong>' + nf(opt.dataset.partAssurance) + ' FCFA</strong>. ' +
+          'Reste à charge patient : <strong style="color:#a855f7">' + nf(restant) + ' FCFA</strong>.';
+      } else {
+        info.style.display = 'none';
+      }
+    }
+  }
+
+  if (sel) {
+    sel.addEventListener('change', () => syncFacture(true));
+    if (sel.value) syncFacture(mont && !mont.value);   // init : ne pas écraser un montant déjà saisi
   }
   document.querySelectorAll('.mode-card').forEach(card => {
     card.addEventListener('click', () => {

@@ -11,6 +11,7 @@
 {% endblock %}
 {% block page_actions %}
 <button type="button" onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer"></i> Imprimer</button>
+<a href="{% url 'facturation:facture_pdf' facture.pk %}" target="_blank" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
 <a href="{% url 'facturation:modifier' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-pencil"></i> Modifier</a>
 <a href="{% url 'facturation:recalculer' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-clockwise"></i> Recalculer</a>
 <a href="{% url 'facturation:supprimer' facture.pk %}" class="btn-c btn-danger-c no-print"><i class="bi bi-trash"></i> Supprimer</a>
@@ -91,7 +92,9 @@
   <div class="col-12 col-lg-6">
     <div class="info-cell h-100">
       <div class="info-cell-lbl">Patient</div>
-      <div class="info-cell-val">{{ facture.patient }}<br>{{ facture.patient.telephone|default:'-' }}<br>{{ facture.patient.adresse|default:'-' }}</div>
+      <div class="info-cell-val">{{ facture.patient }}<br>{{ facture.patient.telephone|default:'-' }}<br>{{ facture.patient.adresse|default:'-' }}
+        {% if facture.assurance %}<br><span style="color:#a855f7;font-weight:700"><i class="bi bi-shield-fill-check me-1"></i>{{ facture.assurance.nom }} ({{ facture.taux_prise_en_charge|floatformat:0 }} %){% if facture.patient.numero_assure %} — N° {{ facture.patient.numero_assure }}{% endif %}</span>{% endif %}
+      </div>
     </div>
   </div>
 </div>
@@ -150,17 +153,29 @@
 
     <!-- Récapitulatif totaux -->
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;padding:1rem 1.25rem;border-top:2px solid var(--card-border)">
-      <div style="display:flex;justify-content:space-between;width:280px;font-size:.85rem;color:var(--text-muted)">
+      <div style="display:flex;justify-content:space-between;width:300px;font-size:.85rem;color:var(--text-muted)">
         <span>Sous-total</span>
         <span style="font-weight:700;color:var(--text-primary)">{{ facture.montant_total|floatformat:0 }} FCFA</span>
       </div>
+      {% if facture.assurance %}
+      <div style="display:flex;justify-content:space-between;width:300px;font-size:.85rem">
+        <span style="color:#a855f7;font-weight:600"><i class="bi bi-shield-fill-check me-1"></i>{{ facture.assurance.nom }} ({{ facture.taux_prise_en_charge|floatformat:0 }} %)</span>
+        <span style="font-weight:700;color:#a855f7">- {{ facture.part_assurance|floatformat:0 }} FCFA</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;width:300px;font-size:.85rem;border-top:1px solid var(--card-border);padding-top:.4rem">
+        <span style="color:var(--text-primary);font-weight:700"><i class="bi bi-person-fill me-1"></i>Reste à charge patient</span>
+        <span style="font-weight:800;color:var(--text-primary)">{{ facture.part_patient|floatformat:0 }} FCFA</span>
+      </div>
+      {% endif %}
       {% if facture.paiements.exists %}
-      <div style="display:flex;justify-content:space-between;width:280px;font-size:.85rem">
+      <div style="display:flex;justify-content:space-between;width:300px;font-size:.85rem">
         <span style="color:#0088aa;font-weight:600">Déjà payé</span>
         <span style="font-weight:700;color:#0088aa">- {{ montant_paye|floatformat:0 }} FCFA</span>
       </div>
-      <div style="display:flex;justify-content:space-between;width:280px;font-size:.85rem;border-top:1px solid var(--card-border);padding-top:.4rem">
-        <span style="color:#ef4444;font-weight:600">Reste à payer</span>
+      {% endif %}
+      {% if facture.assurance or facture.paiements.exists %}
+      <div style="display:flex;justify-content:space-between;width:300px;font-size:.9rem;border-top:1px solid var(--card-border);padding-top:.4rem">
+        <span style="color:#ef4444;font-weight:700">Reste à payer (patient)</span>
         <span style="font-weight:800;color:#ef4444">{{ montant_restant|floatformat:0 }} FCFA</span>
       </div>
       {% endif %}
@@ -206,9 +221,9 @@
           <td>{{ paiement.get_mode_paiement_display }}</td>
           <td class="text-end no-print">
             <div class="d-flex gap-1 justify-content-end">
-              <a href="{% url 'facturation:paiement_recu' paiement.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Reçu"><i class="bi bi-printer"></i></a>
-              <a href="{% url 'facturation:paiement_modifier' paiement.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
-              <a href="{% url 'facturation:paiement_supprimer' paiement.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
+              <a href="{% url 'facturation:paiement_recu' paiement.pk %}" class="act-btn" title="Reçu"><i class="bi bi-printer"></i></a>
+              <a href="{% url 'facturation:paiement_modifier' paiement.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'facturation:paiement_supprimer' paiement.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash"></i></a>
             </div>
           </td>
         </tr>

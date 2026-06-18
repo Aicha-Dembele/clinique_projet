@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block title %}{{ action }} un médicament{% endblock %}
+{% block nav_pharmacie %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}{{ action }} un médicament{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 760px; margin-left: auto; margin-right: auto; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+.req-mark { color: #ef4444; }
+.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
+.actions-row { max-width: 760px; margin-left: auto; margin-right: auto; }
+</style>{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-capsule-pill"></i></span>
+      <div>
+        <div class="form-section-title">Informations du médicament</div>
+        <div class="form-section-sub">Identité, conditionnement et tarif</div>
+      </div>
+    </div>
+    <div class="row g-3">
+
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="nom">Nom commercial <span class="req-mark">*</span></label>
+        <input id="nom" type="text" name="nom" class="f-input" required
+               value="{% if medicament %}{{ medicament.nom }}{% endif %}" placeholder="Ex : Doliprane">
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="dci">Principe actif (DCI)</label>
+        <input id="dci" type="text" name="dci" class="f-input"
+               value="{% if medicament %}{{ medicament.dci }}{% endif %}" placeholder="Ex : Paracétamol">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="f-label" for="categorie">Catégorie</label>
+        <select id="categorie" name="categorie" class="f-input f-select">
+          <option value="">—</option>
+          {% for code, label in categories %}
+          <option value="{{ code }}" {% if medicament and medicament.categorie == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="forme">Forme</label>
+        <input id="forme" type="text" name="forme" class="f-input"
+               value="{% if medicament %}{{ medicament.forme }}{% endif %}" placeholder="Comprimé, sirop…">
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="dosage">Dosage</label>
+        <input id="dosage" type="text" name="dosage" class="f-input"
+               value="{% if medicament %}{{ medicament.dosage }}{% endif %}" placeholder="500 mg, 1 g…">
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="unite">Unité de stock</label>
+        <input id="unite" type="text" name="unite" class="f-input"
+               value="{% if medicament %}{{ medicament.unite }}{% else %}boîte{% endif %}" placeholder="boîte, flacon…">
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="prix_unitaire">Prix unitaire (FCFA)</label>
+        <input id="prix_unitaire" type="number" name="prix_unitaire" min="0" step="1" class="f-input"
+               value="{% if medicament %}{{ medicament.prix_unitaire|floatformat:0 }}{% else %}0{% endif %}" placeholder="0">
+      </div>
+
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="seuil_alerte">Seuil d'alerte</label>
+        <input id="seuil_alerte" type="number" name="seuil_alerte" min="0" step="1" class="f-input"
+               value="{% if medicament %}{{ medicament.seuil_alerte }}{% else %}10{% endif %}" placeholder="10">
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>Alerte quand le stock descend à ce niveau.</div>
+      </div>
+
+      {% if medicament %}
+      <div class="col-6 col-md-4">
+        <label class="f-label">Stock actuel</label>
+        <div class="f-input" style="display:flex;align-items:center;background:var(--input-bg);font-weight:800">{{ medicament.quantite_stock }} {{ medicament.unite }}</div>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>Modifiable via <a href="{% url 'pharmacie:entree_stock' %}?medicament={{ medicament.pk }}">entrée</a> / <a href="{% url 'pharmacie:sortie_stock' %}?medicament={{ medicament.pk }}">sortie</a>.</div>
+      </div>
+      {% else %}
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="quantite_stock">Stock initial</label>
+        <input id="quantite_stock" type="number" name="quantite_stock" min="0" step="1" class="f-input" value="0" placeholder="0">
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>Quantité présente à l'enregistrement.</div>
+      </div>
+      {% endif %}
+
+      <div class="col-6 col-md-4">
+        <label class="f-label" for="date_peremption">Date de péremption</label>
+        <input id="date_peremption" type="date" name="date_peremption" class="f-input"
+               value="{% if medicament and medicament.date_peremption %}{{ medicament.date_peremption|date:'Y-m-d' }}{% endif %}">
+      </div>
+
+      <div class="col-12">
+        <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
+          <input type="checkbox" name="actif" {% if not medicament or medicament.actif %}checked{% endif %}>
+          <span style="font-weight:600">Médicament actif (disponible à la dispensation)</span>
+        </label>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="actions-row d-flex flex-wrap gap-2 justify-content-end">
+    <a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}

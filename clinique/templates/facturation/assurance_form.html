@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block title %}{{ action }} une assurance{% endblock %}
+{% block nav_assurances %}active{% endblock %}
+{% block page_title %}Assurances{% endblock %}
+{% block page_heading %}{{ action }} une assurance{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'facturation:liste' %}">Facturation</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'facturation:assurances' %}">Assurances</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'facturation:assurances' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 720px; margin-left: auto; margin-right: auto; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+.req-mark { color: #ef4444; }
+.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
+.actions-row { max-width: 720px; margin-left: auto; margin-right: auto; }
+.taux-preview { background: rgba(168,85,247,.06); border: 1px solid rgba(168,85,247,.25); border-radius: .75rem; padding: .9rem 1.1rem; margin-top: .75rem; display: none; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.taux-preview.show { display: flex; }
+.switch-row { display: flex; align-items: center; gap: .6rem; }
+.switch-row input { width: 18px; height: 18px; accent-color: #a855f7; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post" id="assurance-form">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#a855f7;background:rgba(168,85,247,.12)"><i class="bi bi-shield-fill-check"></i></span>
+      <div>
+        <div class="form-section-title">Informations de l'assurance</div>
+        <div class="form-section-sub">Nom du régime et pourcentage de prise en charge des factures</div>
+      </div>
+    </div>
+    <div class="row g-3">
+
+      <div class="col-12 col-md-7">
+        <label class="f-label" for="nom">Nom <span class="req-mark">*</span></label>
+        <input id="nom" type="text" name="nom" class="f-input"
+               value="{% if assurance %}{{ assurance.nom }}{% endif %}"
+               placeholder="Ex : AMO, CANAM, mutuelle…" required>
+      </div>
+
+      <div class="col-12 col-md-5">
+        <label class="f-label" for="taux">Taux de prise en charge (%) <span class="req-mark">*</span></label>
+        <input id="taux" type="number" name="taux_prise_en_charge" min="0" max="100" step="1" class="f-input"
+               value="{% if assurance %}{{ assurance.taux_prise_en_charge|floatformat:0 }}{% else %}70{% endif %}"
+               placeholder="70" required oninput="updateTauxPreview()">
+        <div class="helper"><i class="bi bi-info-circle me-1"></i> Part payée par l'assurance ; le reste est à la charge du patient.</div>
+      </div>
+
+      <div class="col-12">
+        <label class="f-label" for="description">Description</label>
+        <input id="description" type="text" name="description" class="f-input"
+               value="{% if assurance %}{{ assurance.description }}{% endif %}"
+               placeholder="Ex : Assurance Maladie Obligatoire (CANAM)">
+      </div>
+
+      <div class="col-12">
+        <div class="switch-row">
+          <input id="actif" type="checkbox" name="actif" {% if not assurance or assurance.actif %}checked{% endif %}>
+          <label for="actif" class="f-label" style="margin:0;cursor:pointer">Assurance active (proposée lors de la facturation)</label>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="taux-preview" id="taux-preview">
+          <div style="font-size:.82rem;color:var(--text-muted);font-weight:600">Exemple sur une facture de 10 000 FCFA :</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--text-primary)" id="taux-example">—</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="actions-row d-flex flex-wrap gap-2 justify-content-end">
+    <a href="{% url 'facturation:assurances' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateTauxPreview() {
+  const taux = parseFloat(document.getElementById('taux').value) || 0;
+  const preview = document.getElementById('taux-preview');
+  const example = document.getElementById('taux-example');
+  if (taux > 0) {
+    const ass = Math.round(10000 * taux / 100);
+    const pat = 10000 - ass;
+    example.textContent = 'Assurance : ' + ass.toLocaleString('fr-FR') + ' FCFA · Patient : ' + pat.toLocaleString('fr-FR') + ' FCFA';
+    preview.classList.add('show');
+  } else {
+    preview.classList.remove('show');
+  }
+}
+updateTauxPreview();
+</script>
+{% endblock %}

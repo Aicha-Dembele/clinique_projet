@@ -18,6 +18,7 @@ from .models import (
 from patients.models import Patient
 from personnel.models import Medecin, Laborantin, Infirmier
 from comptes.decorators import role_required
+from comptes.models import JournalAudit
 
 
 def _get_personnel(user, attr):
@@ -67,6 +68,11 @@ def rdv_liste(request):
     today_rdvs = all_rdvs.filter(date__date=today).order_by('date')
     month_rdvs_count = all_rdvs.filter(date__year=year, date__month=month).count()
 
+    # Rendez-vous déjà passés (jours précédents), du plus récent au plus ancien
+    past_qs = all_rdvs.filter(date__date__lt=today).order_by('-date')
+    past_rdvs_count = past_qs.count()
+    past_rdvs = past_qs[:50]
+
     MOIS_FR = ['','Janvier','Fevrier','Mars','Avril','Mai','Juin',
                'Juillet','Aout','Septembre','Octobre','Novembre','Decembre']
 
@@ -79,6 +85,8 @@ def rdv_liste(request):
         'weeks':              weeks,
         'rdvs_by_date':       rdvs_by_date,
         'today_rdvs':         today_rdvs,
+        'past_rdvs':          past_rdvs,
+        'past_rdvs_count':    past_rdvs_count,
         'today':              today,
         'year':               year,
         'month':              month,
@@ -417,6 +425,7 @@ def resultat_modifier(request, pk):
         res.resultat = request.POST['resultat']
         res.observations = request.POST.get('observations', '')
         res.save()
+        JournalAudit.enregistrer(request.user, 'modification', res)
         messages.success(request, 'Resultat modifie.')
         return redirect('consultation:resultats')
     return render(request, 'consultation/resultat_form.html', {
@@ -425,12 +434,39 @@ def resultat_modifier(request, pk):
     })
 
 
+def _notifier_medecin_resultat(res):
+    """Notifie le médecin qui a demandé l'examen que le résultat est disponible.
+    Une erreur ici ne doit jamais empêcher la transmission du résultat."""
+    try:
+        from django.urls import reverse
+        from comptes.models import Notification
+        medecin = res.examen.medecin if res.examen_id else None
+        if not medecin:
+            return
+        try:
+            user = medecin.profil.user
+        except Exception:
+            user = None
+        if not user:
+            return
+        Notification.creer(
+            user=user,
+            titre="Résultat d'examen disponible",
+            message=f"{res.examen.type_examen} — {res.patient}",
+            url=reverse('consultation:resultat_detail', args=[res.pk]),
+            icone='bi-flask-fill',
+        )
+    except Exception:
+        pass
+
+
 @role_required('admin', 'laborantin')
 def resultat_transmettre(request, pk):
     res = get_object_or_404(ResultatExamen, pk=pk)
     res.transmis = True
     res.date_transmission = timezone.now()
     res.save()
+    _notifier_medecin_resultat(res)
     messages.success(request, 'Resultat transmis au medecin.')
     return redirect('consultation:resultats')
 
@@ -439,6 +475,61 @@ def resultat_transmettre(request, pk):
 def resultat_detail(request, pk):
     res = get_object_or_404(ResultatExamen, pk=pk)
     return render(request, 'consultation/resultat_detail.html', {'resultat': res})
+
+
+@role_required('admin', 'laborantin')
+def resultat_supprimer(request, pk):
+    res = get_object_or_404(ResultatExamen, pk=pk)
+    if request.method == 'POST':
+        res.soft_delete(request.user)
+        JournalAudit.enregistrer(request.user, 'suppression', res,
+                                 details='Déplacé vers la corbeille')
+        messages.success(request, 'Resultat deplace vers la corbeille.')
+        return redirect('consultation:resultats')
+
+    return render(request, 'partials/confirmer_suppression.html', {
+        'objet': f'Resultat RES-{pk:04d} - {res.examen.type_examen} ({res.patient})',
+        'retour_url': '/consultation/resultats/',
+    })
+
+
+@role_required('admin', 'laborantin')
+def resultat_corbeille(request):
+    """Liste des résultats en corbeille (soft-delete)."""
+    qs = ResultatExamen.objets_tous.filter(supprime=True).order_by('-date_suppression')
+    return render(request, 'consultation/resultats_corbeille.html', {'resultats': qs})
+
+
+@role_required('admin', 'laborantin')
+def resultat_restaurer(request, pk):
+    res = get_object_or_404(ResultatExamen.objets_tous, pk=pk, supprime=True)
+    if request.method == 'POST':
+        res.restaurer()
+        JournalAudit.enregistrer(request.user, 'restauration', res)
+        messages.success(request, 'Resultat restaure.')
+        return redirect('consultation:resultat_corbeille')
+
+    return render(request, 'partials/confirmer_suppression.html', {
+        'objet': f'Restaurer RES-{pk:04d} - {res.examen.type_examen} ({res.patient})',
+        'retour_url': '/consultation/resultats/corbeille/',
+    })
+
+
+@role_required('admin')
+def resultat_purger(request, pk):
+    """Suppression DÉFINITIVE depuis la corbeille (admin uniquement)."""
+    res = get_object_or_404(ResultatExamen.objets_tous, pk=pk, supprime=True)
+    if request.method == 'POST':
+        JournalAudit.enregistrer(request.user, 'purge', res,
+                                 details='Suppression définitive depuis la corbeille')
+        res.delete()
+        messages.success(request, 'Resultat supprime definitivement.')
+        return redirect('consultation:resultat_corbeille')
+
+    return render(request, 'partials/confirmer_suppression.html', {
+        'objet': f'SUPPRIMER DÉFINITIVEMENT RES-{pk:04d} - {res.examen.type_examen} ({res.patient})',
+        'retour_url': '/consultation/resultats/corbeille/',
+    })
 
 
 # Ordonnances
@@ -637,6 +728,20 @@ def hospit_modifier(request, pk):
     })
 
 
+@role_required('admin', 'medecin', 'receptionniste')
+def hospit_sortie(request, pk):
+    """Marque la sortie du patient (date de sortie = aujourd'hui)."""
+    hospit = get_object_or_404(Hospitalisation, pk=pk)
+    if request.method == 'POST':
+        if hospit.date_sortie:
+            messages.info(request, f'{hospit.patient} est déjà sorti(e).')
+        else:
+            hospit.date_sortie = timezone.localdate()
+            hospit.save()
+            messages.success(request, f'Sortie enregistrée pour {hospit.patient}.')
+    return redirect('consultation:hospitalisations')
+
+
 @role_required('admin', 'receptionniste')
 def hospit_supprimer(request, pk):
     hospit = get_object_or_404(Hospitalisation, pk=pk)
@@ -727,6 +832,22 @@ def traitement_administrer(request, pk):
         messages.success(request, "Administration enregistree dans le dossier.")
         return redirect('consultation:traitement_detail', pk=t.pk)
     return render(request, 'consultation/traitement_administrer.html', {'traitement': t})
+
+
+@role_required('admin', 'medecin', 'infirmier')
+def traitement_statut(request, pk):
+    """Change le statut d'un traitement (prescrit / en_cours / termine)."""
+    t = get_object_or_404(Traitement, pk=pk)
+    if request.method == 'POST':
+        nouveau = request.POST.get('statut', '')
+        valides = dict(Traitement._meta.get_field('statut').choices)
+        if nouveau in valides:
+            t.statut = nouveau
+            t.save(update_fields=['statut'])
+            messages.success(request, f'Traitement marqué « {valides[nouveau]} ».')
+        else:
+            messages.error(request, 'Statut invalide.')
+    return redirect(request.META.get('HTTP_REFERER') or 'consultation:traitements')
 
 
 @role_required('admin', 'medecin')

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block title %}Entrée de stock{% endblock %}
+{% block nav_pharmacie %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Entrée de stock{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Entrée</li>
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+{% block extra_css %}<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 620px; margin-left: auto; margin-right: auto; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+.req-mark { color: #ef4444; }
+.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
+.stock-now { background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2); border-radius: .75rem; padding: .8rem 1.1rem; margin-top: .25rem; display: none; align-items: center; justify-content: space-between; }
+.stock-now.show { display: flex; }
+.actions-row { max-width: 620px; margin-left: auto; margin-right: auto; }
+</style>{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-box-arrow-in-down"></i></span>
+      <div>
+        <div class="form-section-title">Réapprovisionnement</div>
+        <div class="form-section-sub">Ajoute des unités au stock d'un médicament</div>
+      </div>
+    </div>
+    <div class="row g-3">
+
+      <div class="col-12">
+        <label class="f-label" for="medicament">Médicament <span class="req-mark">*</span></label>
+        <select id="medicament" name="medicament" class="f-input f-select" required onchange="onMedChange()">
+          <option value="">— Choisir un médicament —</option>
+          {% for m in medicaments %}
+          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}"
+            {% if pre_medicament == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nom }}{% if m.dosage %} {{ m.dosage }}{% endif %} — stock : {{ m.quantite_stock }} {{ m.unite }}</option>
+          {% endfor %}
+        </select>
+        <div class="stock-now" id="stock-now">
+          <span style="font-size:.8rem;color:var(--text-muted);font-weight:600">Stock actuel</span>
+          <span style="font-weight:800;color:#10b981" id="stock-now-val">—</span>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="quantite">Quantité à ajouter <span class="req-mark">*</span></label>
+        <input id="quantite" type="number" name="quantite" min="1" step="1" class="f-input" required placeholder="0">
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="motif">Motif</label>
+        <input id="motif" type="text" name="motif" class="f-input" placeholder="Achat fournisseur, don…">
+      </div>
+
+    </div>
+  </div>
+
+  <div class="actions-row d-flex flex-wrap gap-2 justify-content-end">
+    <a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Ajouter au stock</button>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+function onMedChange() {
+  const sel = document.getElementById('medicament');
+  const opt = sel.options[sel.selectedIndex];
+  const box = document.getElementById('stock-now');
+  if (opt && opt.value) {
+    document.getElementById('stock-now-val').textContent = (opt.dataset.stock || '0') + ' ' + (opt.dataset.unite || '');
+    box.classList.add('show');
+  } else {
+    box.classList.remove('show');
+  }
+}
+onMedChange();
+</script>
+{% endblock %}

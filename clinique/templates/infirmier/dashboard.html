@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block body_class %}page-dashboard-bg{% endblock %}
+
 {% block title %}Dashboard Infirmier{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Espace infirmier{% endblock %}
@@ -13,7 +15,9 @@
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
 .stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
+.stat-h:hover .spark-bar { opacity: .85; }
 .chart-wrap-mini { position: relative; height: 200px; }
 .chamber-badge { width:38px;height:38px;border-radius:.5rem;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0; background:rgba(245,158,11,.12); color:#f59e0b; }
 </style>{% endblock %}
@@ -28,7 +32,18 @@
         <div class="stat-h-val">{{ total_hospitalises|default:0 }}</div>
         <div class="stat-h-trend text-muted">Sous surveillance</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:40%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:75%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:85%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:70%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -39,7 +54,18 @@
         <div class="stat-h-val">{{ soins_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#ef4444"><i class="bi bi-clock-fill"></i> {{ soins_urgents|default:0 }} urgents</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#10b981"></div>
+        <div class="spark-bar" style="height:50%;background:#10b981"></div>
+        <div class="spark-bar" style="height:40%;background:#10b981"></div>
+        <div class="spark-bar" style="height:65%;background:#10b981"></div>
+        <div class="spark-bar" style="height:55%;background:#10b981"></div>
+        <div class="spark-bar" style="height:75%;background:#10b981"></div>
+        <div class="spark-bar" style="height:60%;background:#10b981"></div>
+        <div class="spark-bar" style="height:85%;background:#10b981"></div>
+        <div class="spark-bar" style="height:70%;background:#10b981"></div>
+        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -50,7 +76,18 @@
         <div class="stat-h-val">{{ medicaments_count|default:0 }}</div>
         <div class="stat-h-trend text-muted">Ce matin</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:85%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -61,7 +98,18 @@
         <div class="stat-h-val">{{ alertes_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#ef4444">À vérifier</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="red"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:50%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:40%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:65%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:55%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:75%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:60%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:85%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:70%;background:#ef4444"></div>
+        <div class="spark-bar" style="height:100%;background:#ef4444"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -69,8 +117,8 @@
 <div class="row mb-4 g-3">
   <div class="col-12 col-xl-8">
     <div class="panel">
-      <div class="panel-header">
-        <h3><i class="bi bi-hospital" style="color:#f59e0b"></i> Patients hospitalisés — Suivi infirmier</h3>
+      <div class="panel-hdr">
+        <div class="panel-title"><i class="bi bi-hospital" style="color:#f59e0b"></i> Patients hospitalisés — Suivi infirmier</div>
         <a href="{% url 'consultation:hospitalisations' %}" class="btn-c btn-sm-c btn-outline-c">Voir tout →</a>
       </div>
       <div class="panel-body p-0">
@@ -107,8 +155,8 @@
   </div>
   <div class="col-12 col-xl-4">
     <div class="panel">
-      <div class="panel-header">
-        <h3><i class="bi bi-bar-chart-fill" style="color:var(--primary)"></i> Activité hebdomadaire</h3>
+      <div class="panel-hdr">
+        <div class="panel-title"><i class="bi bi-bar-chart-fill" style="color:var(--primary)"></i> Activité hebdomadaire</div>
       </div>
       <div class="panel-body">
         <div class="chart-wrap-mini"><canvas id="weekChart"></canvas></div>
@@ -118,8 +166,8 @@
 </div>
 
 <div class="panel">
-  <div class="panel-header">
-    <h3><i class="bi bi-capsule" style="color:#14b8a6"></i> Traitements & médicaments du jour</h3>
+  <div class="panel-hdr">
+    <div class="panel-title"><i class="bi bi-capsule" style="color:#14b8a6"></i> Traitements & médicaments du jour</div>
   </div>
   <div class="panel-body p-0">
     <table class="ctable">
@@ -159,13 +207,6 @@
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
   Chart.defaults.font.size = 11;
   Chart.defaults.color = txtMuted();
-
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
-  });
 
   const ctx = document.getElementById('weekChart');
   if (ctx) {

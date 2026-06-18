@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-patients-bg{% endblock %}
 {% block title %}Patients{% endblock %}
 {% block nav_patients %}active{% endblock %}
 {% block page_title %}Patients{% endblock %}
@@ -10,26 +11,65 @@
 {% block extra_css %}
 <style>
 .stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
 .stat-h-info { flex: 1; min-width: 0; }
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
 .stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
+.stat-h:hover .spark-bar { opacity: .85; }
+/* ── Barre de recherche translucide cyan (identique aux autres listes) ── */
+.search-bar {
+  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
+  border: 1.5px solid rgba(0,136,170,.35);
+  border-radius: .9rem; padding: .9rem 1.2rem;
+  margin-bottom: .75rem;
+  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
+}
+.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
+.search-bar i.bi-search { color: #0088aa !important; }
+/* Tableau translucide comme les autres listes (modern-table) */
+body.page-patients-bg .ctable th { background: rgba(255,255,255,.06) !important; }
+body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.15) !important; }
+
+/* ── Boutons d'action (Voir=cyan / Modifier=orange / Supprimer=rouge), comme consultation ── */
+.act-btn {
+  width: 30px; height: 30px; border-radius: .45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .82rem; text-decoration: none; transition: all .15s;
+  border: 1px solid var(--card-border); color: var(--text-muted);
+  background: transparent;
+}
+.act-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.act-btn.danger:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:var(--primary)"><i class="bi bi-people-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Total patients</div>
         <div class="stat-h-val">{{ patients|length }}</div>
         <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>Base active</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:50%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:40%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:65%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:55%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:75%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:60%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:85%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:70%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:100%;background:#0088aa"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -40,7 +80,18 @@
         <div class="stat-h-val">{{ nb_hommes|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--text-muted)">Patients masc.</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="blue"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:30%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:55%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:45%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:70%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:50%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:80%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:65%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:90%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:75%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:100%;background:#3b82f6"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -51,7 +102,18 @@
         <div class="stat-h-val">{{ nb_femmes|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--text-muted)">Patientes</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="pink"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:25%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:45%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:35%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:60%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:50%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:70%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:55%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:80%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:65%;background:#ec4899"></div>
+        <div class="spark-bar" style="height:100%;background:#ec4899"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -62,27 +124,36 @@
         <div class="stat-h-val">{{ nb_nouveaux|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>Inscriptions</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:20%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:30%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:45%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
+      </div>
     </div>
   </div>
 </div>
 <!-- Recherche -->
-<div class="panel mb-3">
-  <div class="panel-body" style="padding:.85rem 1.25rem">
-    <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
-      <div style="position:relative;flex:1;min-width:220px">
-        <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
-        <input type="text" name="q" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher par nom, téléphone, email…" value="{{ q }}">
-      </div>
-      <select name="sexe" class="f-input f-select" style="max-width:150px">
-        <option value="">Tous les sexes</option>
-        <option value="Masculin" {% if request.GET.sexe == 'Masculin' %}selected{% endif %}>Masculin</option>
-        <option value="Féminin"  {% if request.GET.sexe == 'Féminin'  %}selected{% endif %}>Féminin</option>
-      </select>
-      <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i> Rechercher</button>
-      {% if q %}<a href="{% url 'patients:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Réinitialiser</a>{% endif %}
-    </form>
-  </div>
+<div class="search-bar">
+  <form method="get" class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
+    <div style="position:relative;flex:1;min-width:220px">
+      <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%)"></i>
+      <input type="text" name="q" class="f-input" style="padding-left:2.2rem;border-radius:.7rem" placeholder="Rechercher par nom, téléphone, email…" value="{{ q }}">
+    </div>
+    <select name="sexe" class="f-input f-select" style="max-width:150px">
+      <option value="">Tous les sexes</option>
+      <option value="Masculin" {% if request.GET.sexe == 'Masculin' %}selected{% endif %}>Masculin</option>
+      <option value="Féminin"  {% if request.GET.sexe == 'Féminin'  %}selected{% endif %}>Féminin</option>
+    </select>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i> Rechercher</button>
+    {% if q %}<a href="{% url 'patients:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Réinitialiser</a>{% endif %}
+  </form>
 </div>
 
 <div class="panel">
@@ -100,7 +171,7 @@
           <td style="font-family:'Sora',sans-serif;font-weight:800;color:var(--text-muted)">P-{{ p.pk|stringformat:"04d" }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <div class="av" style="background:rgba(12,166,120,.15);color:var(--primary)">{{ p.nom|slice:":1" }}{{ p.prenom|slice:":1" }}</div>
+              <div class="av" style="background:rgba(0,136,170,.12);color:var(--primary)">{{ p.nom|slice:":1" }}{{ p.prenom|slice:":1" }}</div>
               <div>
                 <div style="font-weight:700">{{ p.nom }} {{ p.prenom }}</div>
                 <div style="font-size:.68rem;color:var(--text-muted)">Enregistré le {{ p.date_creation|date:"d/m/Y" }}</div>
@@ -120,9 +191,9 @@
           <td>{{ p.numero_urgence|default:"—" }}</td>
           <td>
             <div class="d-flex gap-1">
-              <a href="{% url 'patients:detail' p.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Voir"><i class="bi bi-eye"></i></a>
-              <a href="{% url 'patients:modifier' p.pk %}" class="btn-c btn-sm-c btn-outline-c" title="Modifier"><i class="bi bi-pencil"></i></a>
-              <a href="{% url 'patients:supprimer' p.pk %}" class="btn-c btn-sm-c btn-danger-c" title="Supprimer"><i class="bi bi-trash"></i></a>
+              <a href="{% url 'patients:detail' p.pk %}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'patients:modifier' p.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
+              <a href="{% url 'patients:supprimer' p.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
             </div>
           </td>
         </tr>
@@ -139,17 +210,4 @@
   </div>
 </div>
 {% endblock %}
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], blue:[10,15,12,20,18,24,22,28,26,32,30,36], pink:[8,12,10,15,13,18,16,22,20,26,24,30] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', blue:'#3b82f6', pink:'#ec4899' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
-  });
-})();
-</script>
-{% endblock %}
+{% block extra_js %}{% endblock %}

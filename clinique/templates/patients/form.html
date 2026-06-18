@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-patients-bg{% endblock %}
 {% block title %}{{ action }} un patient{% endblock %}
 {% block nav_patients %}active{% endblock %}
 {% block page_title %}Patients{% endblock %}
@@ -18,7 +19,7 @@
 </style>{% endblock %}
 
 {% block content %}
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
 
   <!-- Identité -->
@@ -51,6 +52,16 @@
         <label class="f-label">Date de naissance <span class="req-mark">*</span></label>
         <input type="date" name="date_naissance" class="f-input" value="{{ patient.date_naissance|date:'Y-m-d'|default:'' }}" required>
       </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Photo du patient</label>
+        <input type="file" name="photo" accept="image/*" class="f-input">
+        {% if patient.photo %}
+        <div class="d-flex align-items-center gap-2 mt-2">
+          <img src="{{ patient.photo.url }}" alt="Photo" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--primary)">
+          <small style="color:var(--text-muted)">Photo actuelle — choisir un fichier pour la remplacer</small>
+        </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -79,6 +90,34 @@
       <div class="col-12">
         <label class="f-label">Adresse</label>
         <input type="text" name="adresse" class="f-input" value="{{ patient.adresse|default:'' }}" placeholder="Quartier, Commune, Ville…">
+      </div>
+    </div>
+  </div>
+
+  <!-- Assurance maladie -->
+  <div class="form-section" style="animation-delay:.2s">
+    <div class="form-section-hdr">
+      <div class="form-section-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-shield-fill-check"></i></div>
+      <div>
+        <div class="form-section-title">Assurance maladie</div>
+        <div class="form-section-sub">Optionnel — ex : AMO. Appliquée automatiquement aux factures du patient.</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">Assurance</label>
+        <select name="assurance" class="f-input f-select">
+          <option value="">-- Aucune (patient payant) --</option>
+          {% for a in assurances %}
+          <option value="{{ a.pk }}" {% if patient.assurance_id == a.pk %}selected{% endif %}>
+            {{ a.nom }} ({{ a.taux_prise_en_charge|floatformat:0 }} %)
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <label class="f-label">N° d'assuré / matricule</label>
+        <input type="text" name="numero_assure" class="f-input" value="{{ patient.numero_assure|default:'' }}" placeholder="Ex : numéro AMO">
       </div>
     </div>
   </div>

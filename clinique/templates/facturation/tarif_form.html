@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}{{ action }} un tarif{% endblock %}
 {% block nav_factures %}active{% endblock %}
 {% block page_title %}Tarifs{% endblock %}
@@ -16,47 +17,157 @@
 .form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 720px; margin-left: auto; margin-right: auto; }
 .form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
 .form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
-.form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
-.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
 .req-mark { color: #ef4444; }
-.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; font-weight: 500; }
+.helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
 .actions-row { max-width: 720px; margin-left: auto; margin-right: auto; }
+
+/* Carte type de chambre */
+.chambre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .6rem; margin-top: .5rem; }
+.chambre-card {
+  border: 2px solid var(--card-border); border-radius: .75rem;
+  padding: .75rem .9rem; cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: .65rem;
+}
+.chambre-card:hover { border-color: var(--primary); background: rgba(0,136,170,.04); }
+.chambre-card.selected { border-color: var(--primary); background: rgba(0,136,170,.08); }
+.chambre-card input[type="radio"] { display: none; }
+.chambre-ico { width: 34px; height: 34px; border-radius: .5rem; display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; }
+.chambre-name { font-size: .82rem; font-weight: 700; color: var(--text-primary); }
+.chambre-sub  { font-size: .68rem; color: var(--text-muted); }
+
+/* Preview prix */
+.prix-preview { background: rgba(0,136,170,.06); border: 1px solid rgba(0,136,170,.2); border-radius: .75rem; padding: .9rem 1.1rem; margin-top: .75rem; display: none; }
+.prix-preview.show { display: flex; align-items: center; justify-content: space-between; }
 </style>
 {% endblock %}
 {% block content %}
-<form method="post">
+<form method="post" id="tarif-form">
   {% csrf_token %}
 
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-tags-fill"></i></span>
+      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-tags-fill"></i></span>
       <div>
         <div class="form-section-title">Informations du tarif</div>
-        <div class="form-section-sub">Définissez le nom, le type de service et le prix</div>
+        <div class="form-section-sub">Définissez le type de service, la spécialité/chambre et le prix</div>
       </div>
     </div>
     <div class="row g-3">
-      <div class="col-12">
-        <label class="f-label" for="nom">Nom du tarif <span class="req-mark">*</span></label>
-        <input id="nom" type="text" name="nom" class="f-input" value="{% if tarif %}{{ tarif.nom }}{% endif %}" placeholder="Ex : Consultation cardiologie" required>
-      </div>
+
+      <!-- Type de service -->
       <div class="col-12 col-md-6">
         <label class="f-label" for="type_service">Type de service <span class="req-mark">*</span></label>
-        <select id="type_service" name="type_service" class="f-input f-select" required>
+        <select id="type_service" name="type_service" class="f-input f-select" required onchange="onTypeChange()">
           {% for code, label in types %}
           <option value="{{ code }}" {% if tarif and tarif.type_service == code %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
+
+      <!-- Nom du tarif -->
       <div class="col-12 col-md-6">
-        <label class="f-label" for="specialite">Spécialité</label>
-        <input id="specialite" type="text" name="specialite" class="f-input" value="{% if tarif and tarif.specialite %}{{ tarif.specialite }}{% endif %}" placeholder="Ex : Cardiologie, Dermatologie…">
-        <div class="helper"><i class="bi bi-info-circle me-1"></i> Optionnel — pour les consultations spécialisées</div>
+        <label class="f-label" for="nom">Nom du tarif <span class="req-mark">*</span></label>
+        <input id="nom" type="text" name="nom" class="f-input"
+               value="{% if tarif %}{{ tarif.nom }}{% endif %}"
+               placeholder="Ex : Consultation Cardiologie" required>
       </div>
+
+      <!-- ── BLOC CONSULTATION / EXAMEN : champ texte spécialité ── -->
+      <div class="col-12" id="bloc-specialite-texte">
+        <label class="f-label" for="specialite">
+          <span id="lbl-specialite">Spécialité</span>
+        </label>
+        <input id="specialite" type="text" name="specialite" class="f-input"
+               value="{% if tarif and tarif.specialite %}{{ tarif.specialite }}{% endif %}"
+               placeholder="Ex : Cardiologie, Dermatologie, Radiologie…">
+        <div class="helper" id="hint-specialite">
+          <i class="bi bi-info-circle me-1"></i>
+          <span id="hint-text">Pour consultation : spécialité du médecin. Pour examen : type d'examen.</span>
+        </div>
+      </div>
+
+      <!-- ── BLOC HOSPITALISATION : grille de types de chambres ── -->
+      <div class="col-12" id="bloc-chambre" style="display:none">
+        <label class="f-label">Type de chambre <span class="req-mark">*</span></label>
+        <div class="chambre-grid" id="chambre-grid">
+
+          <label class="chambre-card" id="card-Standard">
+            <input type="radio" name="specialite" value="Standard"
+              {% if tarif and tarif.specialite == 'Standard' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-door-closed-fill"></i></div>
+            <div><div class="chambre-name">Standard</div><div class="chambre-sub">Chambre commune</div></div>
+          </label>
+
+          <label class="chambre-card" id="card-Particulière">
+            <input type="radio" name="specialite" value="Particulière"
+              {% if tarif and tarif.specialite == 'Particulière' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-person-fill"></i></div>
+            <div><div class="chambre-name">Particulière</div><div class="chambre-sub">Chambre individuelle</div></div>
+          </label>
+
+          <label class="chambre-card" id="card-VIP">
+            <input type="radio" name="specialite" value="VIP"
+              {% if tarif and tarif.specialite == 'VIP' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-star-fill"></i></div>
+            <div><div class="chambre-name">VIP</div><div class="chambre-sub">Suite premium</div></div>
+          </label>
+
+          <label class="chambre-card" id="card-Double">
+            <input type="radio" name="specialite" value="Double"
+              {% if tarif and tarif.specialite == 'Double' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="bi bi-people-fill"></i></div>
+            <div><div class="chambre-name">Double</div><div class="chambre-sub">2 lits</div></div>
+          </label>
+
+          <label class="chambre-card" id="card-USI">
+            <input type="radio" name="specialite" value="USI"
+              {% if tarif and tarif.specialite == 'USI' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-heart-pulse-fill"></i></div>
+            <div><div class="chambre-name">USI</div><div class="chambre-sub">Soins intensifs</div></div>
+          </label>
+
+          <label class="chambre-card" id="card-Pédiatrie">
+            <input type="radio" name="specialite" value="Pédiatrie"
+              {% if tarif and tarif.specialite == 'Pédiatrie' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-emoji-smile-fill"></i></div>
+            <div><div class="chambre-name">Pédiatrie</div><div class="chambre-sub">Enfants</div></div>
+          </label>
+
+          <label class="chambre-card" id="card-Maternité">
+            <input type="radio" name="specialite" value="Maternité"
+              {% if tarif and tarif.specialite == 'Maternité' %}checked{% endif %}>
+            <div class="chambre-ico" style="background:rgba(236,72,153,.12);color:#ec4899"><i class="bi bi-gender-female"></i></div>
+            <div><div class="chambre-name">Maternité</div><div class="chambre-sub">Maternité</div></div>
+          </label>
+
+        </div>
+        <div class="helper" style="margin-top:.5rem">
+          <i class="bi bi-info-circle me-1"></i>
+          Le prix saisi correspond au tarif <strong>par nuit</strong>. Le total sera calculé × nombre de jours.
+        </div>
+      </div>
+
+      <!-- Prix -->
       <div class="col-12 col-md-6">
-        <label class="f-label" for="prix">Prix (FCFA) <span class="req-mark">*</span></label>
-        <input id="prix" type="number" name="prix" min="0" step="0.01" class="f-input" value="{% if tarif %}{{ tarif.prix|floatformat:0 }}{% endif %}" placeholder="0" required>
+        <label class="f-label" for="prix">
+          Prix (FCFA) <span class="req-mark">*</span>
+          <span id="prix-unite" style="font-size:.72rem;color:var(--text-muted);font-weight:500"></span>
+        </label>
+        <input id="prix" type="number" name="prix" min="0" step="1" class="f-input"
+               value="{% if tarif %}{{ tarif.prix|floatformat:0 }}{% endif %}"
+               placeholder="0" required oninput="updatePrixPreview()">
       </div>
+
+      <!-- Aperçu prix nuit -->
+      <div class="col-12">
+        <div class="prix-preview" id="prix-preview">
+          <div style="font-size:.82rem;color:var(--text-muted);font-weight:600">Exemple de calcul :</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--text-primary)" id="prix-example">—</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -65,4 +176,71 @@
     <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
   </div>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function onTypeChange() {
+  const type = document.getElementById('type_service').value;
+  const blocTexte  = document.getElementById('bloc-specialite-texte');
+  const blocChambre = document.getElementById('bloc-chambre');
+  const lblSpec    = document.getElementById('lbl-specialite');
+  const hintText   = document.getElementById('hint-text');
+  const prixUnite  = document.getElementById('prix-unite');
+
+  if (type === 'hospitalisation') {
+    blocTexte.style.display  = 'none';
+    blocChambre.style.display = 'block';
+    prixUnite.textContent    = '— par nuit';
+    // Désactive le champ texte pour ne pas envoyer une valeur vide
+    document.getElementById('specialite').disabled = true;
+  } else {
+    blocTexte.style.display  = 'block';
+    blocChambre.style.display = 'none';
+    prixUnite.textContent    = '';
+    document.getElementById('specialite').disabled = false;
+    if (type === 'consultation') {
+      lblSpec.textContent  = 'Spécialité du médecin';
+      hintText.textContent = 'Ex : Cardiologie, Dermatologie, Généraliste...';
+    } else {
+      lblSpec.textContent  = "Type d'examen";
+      hintText.textContent = "Ex : Radiologie, Biologie, Échographie, Scanner...";
+    }
+  }
+  updatePrixPreview();
+  updateChambreCards();
+}
+
+function updateChambreCards() {
+  document.querySelectorAll('.chambre-card').forEach(card => {
+    const radio = card.querySelector('input[type="radio"]');
+    card.classList.toggle('selected', radio && radio.checked);
+  });
+}
+
+function updatePrixPreview() {
+  const type  = document.getElementById('type_service').value;
+  const prix  = parseInt(document.getElementById('prix').value) || 0;
+  const preview = document.getElementById('prix-preview');
+  const example = document.getElementById('prix-example');
+
+  if (type === 'hospitalisation' && prix > 0) {
+    preview.classList.add('show');
+    const p3 = (prix * 3).toLocaleString('fr-FR');
+    const p7 = (prix * 7).toLocaleString('fr-FR');
+    example.textContent = `3 nuits = ${p3} FCFA · 7 nuits = ${p7} FCFA`;
+  } else {
+    preview.classList.remove('show');
+  }
+}
+
+// Highlight cartes chambres au clic
+document.querySelectorAll('.chambre-card input[type="radio"]').forEach(radio => {
+  radio.addEventListener('change', updateChambreCards);
+});
+
+// Init
+onTypeChange();
+updateChambreCards();
+</script>
 {% endblock %}

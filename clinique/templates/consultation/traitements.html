@@ -1,99 +1,358 @@
 {% extends 'base.html' %}
+{% load static %}
+{% block body_class %}page-consultation-bg page-traitement-bg{% endblock %}
+
 {% block title %}Traitements{% endblock %}
 {% block nav_consultations %}active{% endblock %}
 {% block page_title %}Traitements{% endblock %}
-{% block page_heading %}Liste des traitements{% endblock %}
-{% block breadcrumb %}
-  <li class="breadcrumb-item active">Traitements</li>
+{% block page_heading %}Traitements{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Traitements</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'consultation:traitement_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-circle"></i> Nouveau traitement</a>
 {% endblock %}
+
 {% block extra_css %}<style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
+
+/* ── Hero banner ── */
+.hero-banner {
+  position: relative;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  height: 160px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+}
+.hero-banner-bg {
+  position: absolute; inset: 0;
+  background-image: url('{% static "consultation/img/bloc_operatoire.jpg" %}'),
+                    linear-gradient(135deg, #0a3d4f 0%, #0088aa 100%);
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  filter: brightness(.55) saturate(.9);
+}
+.hero-banner-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(0,136,170,.75) 0%, rgba(0,80,120,.45) 60%, transparent 100%);
+}
+.hero-banner-content {
+  position: relative; z-index: 2;
+  height: 100%; display: flex; align-items: center;
+  padding: 0 2rem; gap: 1.5rem;
+}
+.hero-title { font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: -.02em; margin: 0; }
+.hero-sub { font-size: .85rem; color: rgba(255,255,255,.75); margin-top: .25rem; }
+
+/* ── Stat cards ── */
+.stat-h {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 1rem; padding: 1.1rem 1.2rem;
+  display: flex; align-items: center; gap: .9rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform .25s, box-shadow .25s;
+  animation: fadeUp .5s ease both;
+}
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
-.stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.stat-h-lbl { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.stat-h-val { font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .2rem; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
+.stat-h:hover .spark-bar { opacity: .85; }
+
+/* ── Tableau moderne ── */
+.modern-table { width: 100%; border-collapse: collapse; }
+.modern-table thead th {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-muted);
+  padding: .75rem 1.1rem; border-bottom: 2px solid var(--card-border);
+  background: var(--card-bg); white-space: nowrap;
+}
+.modern-table tbody tr {
+  border-bottom: 1px solid var(--card-border);
+  transition: background .12s;
+}
+.modern-table tbody tr:last-child { border-bottom: none; }
+.modern-table tbody tr:hover { background: rgba(0,136,170,.04); }
+.modern-table tbody td { padding: .85rem 1.1rem; font-size: .84rem; vertical-align: middle; }
+
+/* ── Badges statut ── */
+.badge-statut {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-size: .68rem; font-weight: 700; padding: .25em .75em;
+  border-radius: 999px; white-space: nowrap;
+}
+.badge-termine  { background: rgba(16,185,129,.12);  color: #10b981; }
+.badge-encours  { background: rgba(245,158,11,.12);  color: #f59e0b; }
+.badge-planifie { background: rgba(59,130,246,.12);  color: #3b82f6; }
+.badge-annule   { background: rgba(239,68,68,.12);   color: #ef4444; }
+.badge-ordo     { background: rgba(168,85,247,.12);  color: #a855f7; }
+.badge-nonordo  { background: rgba(107,114,128,.1);  color: #6b7280; }
+
+/* ── Avatar patient ── */
+.av-sm {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 800; flex-shrink: 0;
+}
+
+/* ── N° traitement ── */
+.con-num {
+  font-size: .72rem; font-weight: 800;
+  color: var(--text-muted); font-family: 'Outfit', monospace;
+  background: var(--input-bg); padding: .2em .55em;
+  border-radius: .35rem; border: 1px solid var(--card-border);
+}
+
+/* ── Actions ── */
+.act-btn {
+  width: 30px; height: 30px; border-radius: .45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .82rem; text-decoration: none; transition: all .15s;
+  border: 1px solid var(--card-border); color: var(--text-muted);
+  background: transparent;
+}
+.act-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.act-btn.danger:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+/* ── Barre de recherche ── */
+.search-bar {
+  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
+  border: 1.5px solid rgba(0,136,170,.35);
+  border-radius: .9rem; padding: .9rem 1.2rem;
+  margin-bottom: .75rem;
+  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
+}
+.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input:focus {
+  border-color: #0088aa !important;
+  box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important;
+  outline: none;
+}
+.search-bar i.bi-search { color: #0088aa !important; }
+
 </style>{% endblock %}
+
 {% block content %}
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-6 col-xl-4">
-    <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-bandaid-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Total traitements</div>
-        <div class="stat-h-val">{{ traitements|length }}</div>
-        <div class="stat-h-trend" style="color:#10b981">Protocoles enregistrés</div>
-      </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+
+<!-- ── HERO BANNER ── -->
+<div class="hero-banner">
+  <div class="hero-banner-bg"></div>
+  <div class="hero-banner-overlay"></div>
+  <div class="hero-banner-content">
+    <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
+      <i class="bi bi-capsule-pill" style="font-size:1.6rem;color:#fff"></i>
     </div>
-  </div>
-  <div class="col-12 col-md-6 col-xl-4">
-    <div class="stat-h" style="animation-delay:.08s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hourglass-split"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">En cours</div>
-        <div class="stat-h-val">{{ traitements_en_cours_count|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#f59e0b">Suivi actif</div>
-      </div>
-      <canvas class="stat-h-spark" data-spark="amber"></canvas>
-    </div>
-  </div>
-  <div class="col-12 col-md-6 col-xl-4">
-    <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-check-circle-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Terminés</div>
-        <div class="stat-h-val">{{ traitements_termines_count|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#14b8a6">Traitements clôturés</div>
-      </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+    <div>
+      <div class="hero-title">Liste des traitements</div>
+      <div class="hero-sub">{{ traitements|length }} traitement{% if traitements|length > 1 %}s{% endif %} enregistré{% if traitements|length > 1 %}s{% endif %}</div>
     </div>
   </div>
 </div>
 
+<!-- ── STAT CARDS ── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.04s">
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-capsule-pill"></i></div>
+      <div style="flex:1">
+        <div class="stat-h-lbl">Total</div>
+        <div class="stat-h-val">{{ traitements|length }}</div>
+        <div class="stat-h-trend" style="color:#0088aa">Protocoles</div>
+      </div>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:50%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:40%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:65%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:55%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:75%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:60%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:85%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:70%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:100%;background:#0088aa"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.08s">
+      <div class="stat-h-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-clipboard-plus"></i></div>
+      <div style="flex:1">
+        <div class="stat-h-lbl">Prescrits</div>
+        <div class="stat-h-val">{{ traitements_prescrits_count|default:0 }}</div>
+        <div class="stat-h-trend" style="color:#3b82f6">À démarrer</div>
+      </div>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:30%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:55%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:45%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:70%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:50%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:80%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:65%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:90%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:75%;background:#3b82f6"></div>
+        <div class="spark-bar" style="height:100%;background:#3b82f6"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hourglass-split"></i></div>
+      <div style="flex:1">
+        <div class="stat-h-lbl">En cours</div>
+        <div class="stat-h-val">{{ traitements_en_cours_count|default:0 }}</div>
+        <div class="stat-h-trend" style="color:#f59e0b">Suivi actif</div>
+      </div>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:25%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:45%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:35%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:70%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:80%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.16s">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-check-circle-fill"></i></div>
+      <div style="flex:1">
+        <div class="stat-h-lbl">Terminés</div>
+        <div class="stat-h-val">{{ traitements_termines_count|default:0 }}</div>
+        <div class="stat-h-trend" style="color:#10b981">Clôturés</div>
+      </div>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:40%;background:#10b981"></div>
+        <div class="spark-bar" style="height:60%;background:#10b981"></div>
+        <div class="spark-bar" style="height:50%;background:#10b981"></div>
+        <div class="spark-bar" style="height:75%;background:#10b981"></div>
+        <div class="spark-bar" style="height:55%;background:#10b981"></div>
+        <div class="spark-bar" style="height:85%;background:#10b981"></div>
+        <div class="spark-bar" style="height:70%;background:#10b981"></div>
+        <div class="spark-bar" style="height:90%;background:#10b981"></div>
+        <div class="spark-bar" style="height:80%;background:#10b981"></div>
+        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── BARRE RECHERCHE ── -->
+<div class="search-bar">
+  <form method="get" class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
+    <div style="position:relative;flex:1;min-width:220px">
+      <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
+      <input type="text" name="q" class="f-input" style="padding-left:2.2rem;border-radius:.7rem"
+             placeholder="Rechercher par patient, médecin, description…" value="{{ request.GET.q }}">
+    </div>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i> Rechercher</button>
+    {% if request.GET.q %}
+    <a href="{% url 'consultation:traitements' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i></a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- ── TABLEAU MODERNE ── -->
 <div class="panel">
   <div class="panel-hdr">
-    <span class="panel-title"><i class="bi bi-prescription-bottle-fill me-2" style="color:var(--accent)"></i>Tous les traitements</span>
+    <span class="panel-title">
+      <i class="bi bi-prescription2 me-2" style="color:var(--accent)"></i>
+      Tous les traitements
+    </span>
+    <span style="font-size:.75rem;color:var(--text-muted);font-weight:600">
+      {{ traitements|length }} résultat{% if traitements|length > 1 %}s{% endif %}
+    </span>
   </div>
-  <div class="panel-body p-0">
-    <table class="ctable">
+  <div class="panel-body p-0" style="overflow-x:auto">
+    <table class="modern-table">
       <thead>
         <tr>
-          <th>#</th>
+          <th>N°</th>
           <th>Patient</th>
           <th>Médecin</th>
           <th>Consultation</th>
           <th>Description</th>
-          <th>Durée (jours)</th>
+          <th>Durée</th>
+          <th>Statut</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for traitement in traitements %}
         <tr>
-          <td style="font-family:'Sora',sans-serif;font-weight:800;color:var(--text-muted)">{{ traitement.pk }}</td>
+          <td><span class="con-num">TRT-{{ traitement.pk|stringformat:"04d" }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <div class="av" style="background:rgba(12,166,120,.15);color:var(--primary)">{{ traitement.consultation.rendez_vous.patient.nom|slice:":1" }}{{ traitement.consultation.rendez_vous.patient.prenom|slice:":1" }}</div>
-              <div style="font-weight:700">{{ traitement.consultation.rendez_vous.patient }}</div>
+              <div class="av-sm" style="background:rgba(0,136,170,.12);color:#0088aa">
+                {{ traitement.patient.nom|slice:":1" }}{{ traitement.patient.prenom|slice:":1" }}
+              </div>
+              <div>
+                <a href="{% url 'patients:detail' traitement.patient.pk %}"
+                   style="font-weight:700;color:var(--text-primary);text-decoration:none;font-size:.85rem">
+                  {{ traitement.patient.nom }} {{ traitement.patient.prenom }}
+                </a>
+              </div>
             </div>
           </td>
-          <td>Dr. {{ traitement.consultation.rendez_vous.medecin }}</td>
           <td>
             {% if traitement.consultation %}
-              {{ traitement.consultation.rendez_vous.date|date:'d/m/Y H:i' }}
+              <div style="font-weight:600;font-size:.83rem">Dr. {{ traitement.consultation.rendez_vous.medecin.nom }}</div>
+              <div style="font-size:.7rem;color:var(--text-muted)">{{ traitement.consultation.rendez_vous.medecin.specialite|default:"Généraliste" }}</div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if traitement.consultation %}
+              <div style="font-weight:700;font-size:.83rem">{{ traitement.consultation.date|date:"d/m/Y" }}</div>
+              <div style="font-size:.7rem;color:var(--text-muted)"><i class="bi bi-clock me-1"></i>{{ traitement.consultation.date|date:"H:i" }}</div>
             {% else %}
               <span class="text-muted">N/A</span>
             {% endif %}
           </td>
-          <td>{{ traitement.description|truncatechars:80 }}</td>
-          <td>{{ traitement.duree }}</td>
+          <td style="max-width:220px">
+            <span style="font-size:.82rem;color:var(--text-secondary)">{{ traitement.description|truncatechars:60|default:"—" }}</span>
+          </td>
+          <td><span style="font-weight:700">{{ traitement.duree }}</span> <small style="color:var(--text-muted)">j</small></td>
+          <td>
+            {% if traitement.statut == 'termine' %}
+              <span class="badge-statut badge-termine"><i class="bi bi-check-circle-fill"></i> Terminé</span>
+            {% elif traitement.statut == 'en_cours' %}
+              <span class="badge-statut badge-encours"><i class="bi bi-hourglass-split"></i> En cours</span>
+            {% else %}
+              <span class="badge-statut badge-planifie"><i class="bi bi-clipboard-plus"></i> Prescrit</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'consultation:traitement_detail' traitement.pk %}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'consultation:traitement_administrer' traitement.pk %}" class="act-btn" title="Administrer"><i class="bi bi-clipboard2-check"></i></a>
+              {% if traitement.statut != 'termine' %}
+              <form method="post" action="{% url 'consultation:traitement_statut' traitement.pk %}" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="statut" value="termine">
+                <button type="submit" class="act-btn" title="Marquer terminé" style="cursor:pointer;border-color:rgba(16,185,129,.4);color:#10b981"><i class="bi bi-check2-circle"></i></button>
+              </form>
+              {% else %}
+              <form method="post" action="{% url 'consultation:traitement_statut' traitement.pk %}" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="statut" value="en_cours">
+                <button type="submit" class="act-btn" title="Reprendre (en cours)" style="cursor:pointer;border-color:rgba(245,158,11,.4);color:#f59e0b"><i class="bi bi-arrow-counterclockwise"></i></button>
+              </form>
+              {% endif %}
+              <a href="{% url 'consultation:traitement_supprimer' traitement.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
+            </div>
+          </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
-            <i class="bi bi-file-earmark-medical text-muted" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+          <td colspan="8" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-file-earmark-medical" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
             Aucun traitement enregistré.
           </td>
         </tr>
@@ -102,18 +361,7 @@
     </table>
   </div>
 </div>
+
 {% endblock %}
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const sparkData = { emerald:[12,18,15,22,28,24,32,38,34,42,46,52], teal:[8,14,11,18,15,22,19,26,24,30,28,34], amber:[20,28,25,32,30,38,35,42,40,48,46,54], red:[5,8,4,10,7,12,9,6,11,8,13,7], purple:[4,6,5,8,7,10,9,12,11,14,13,16], blue:[10,15,12,20,18,24,22,28,26,32,30,36], pink:[8,12,10,15,13,18,16,22,20,26,24,30] };
-  const sparkColors = { emerald:'#10b981', teal:'#14b8a6', amber:'#f59e0b', red:'#ef4444', purple:'#a855f7', blue:'#3b82f6', pink:'#ec4899' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, { type:'line', data:{ labels:sparkData[key].map((_,i)=>i), datasets:[{ data:sparkData[key], borderColor:sparkColors[key], borderWidth:2, tension:.4, fill:true, backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,40);g.addColorStop(0,sparkColors[key]+'55');g.addColorStop(1,sparkColors[key]+'00');return g;}, pointRadius:0 }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
-  });
-})();
-</script>
-{% endblock %}
+
+{% block extra_js %}{% endblock %}

@@ -1,0 +1,15 @@
+# Dépendances du projet Clinique Nevroglie
+# Installation : pip install -r requirements.txt
+
+# Framework
+Django==6.0.2
+
+# Données de fuseaux horaires (requis pour TIME_ZONE sur Windows
+# et les images Linux « slim » sans base tz système)
+tzdata==2025.2
+
+# Génération de PDF côté serveur (factures, reçus, ordonnances)
+reportlab==4.4.10
+
+# Traitement d'images, requis par les ImageField (photos patients, scans)
+Pillow==12.0.0

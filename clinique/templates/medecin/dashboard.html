@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block body_class %}page-dashboard-bg{% endblock %}
+
 {% block title %}Dashboard Médecin{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Mon espace médecin{% endblock %}
@@ -19,7 +21,9 @@
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
 .stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; }
+.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
+.stat-h:hover .spark-bar { opacity: .85; }
 .av-c { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; flex-shrink: 0; letter-spacing: .02em; }
 .av-c-1 { background: linear-gradient(135deg,#10b981,#14b8a6); }
 .av-c-2 { background: linear-gradient(135deg,#3b82f6,#06b6d4); }
@@ -34,7 +38,7 @@
 .rdv-row-sub { font-size: .7rem; color: var(--text-muted); margin-top: 1px; }
 .rdv-row-pill { font-size: .62rem; font-weight: 800; padding: .22em .55em; border-radius: 999px; background: rgba(16,185,129,.12); color: var(--primary-dark); border: 1px solid rgba(16,185,129,.18); }
 [data-theme="dark"] .rdv-row-pill { color: #6ee7b7; }
-.chart-wrap { position: relative; height: 280px; }
+.chart-wrap { position: relative; height: 200px; }
 .chart-wrap-mini { position: relative; height: 180px; }
 .tabs { display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .65rem; padding: 3px; }
 .tab-b { padding: .35rem .8rem; border: none; background: transparent; border-radius: .5rem; font-size: .73rem; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all .2s; }
@@ -52,7 +56,18 @@
         <div class="stat-h-val">{{ mes_rdv_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#14b8a6">{{ rdv_termines|default:0 }} terminés</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="teal"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:85%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
+        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -63,7 +78,18 @@
         <div class="stat-h-val">{{ mes_consultations|default:0 }}</div>
         <div class="stat-h-trend" style="color:#10b981"><i class="bi bi-arrow-up"></i> +12% ce mois</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="emerald"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#10b981"></div>
+        <div class="spark-bar" style="height:50%;background:#10b981"></div>
+        <div class="spark-bar" style="height:40%;background:#10b981"></div>
+        <div class="spark-bar" style="height:65%;background:#10b981"></div>
+        <div class="spark-bar" style="height:55%;background:#10b981"></div>
+        <div class="spark-bar" style="height:75%;background:#10b981"></div>
+        <div class="spark-bar" style="height:60%;background:#10b981"></div>
+        <div class="spark-bar" style="height:85%;background:#10b981"></div>
+        <div class="spark-bar" style="height:70%;background:#10b981"></div>
+        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -74,7 +100,18 @@
         <div class="stat-h-val">{{ mes_ordonnances|default:0 }}</div>
         <div class="stat-h-trend" style="color:#a855f7">Cette semaine</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="purple"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:50%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:40%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:65%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:55%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:75%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:60%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:85%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:70%;background:#a855f7"></div>
+        <div class="spark-bar" style="height:100%;background:#a855f7"></div>
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -85,17 +122,28 @@
         <div class="stat-h-val">{{ mes_hospitalises|default:0 }}</div>
         <div class="stat-h-trend" style="color:#f59e0b">Suivi en cours</div>
       </div>
-      <canvas class="stat-h-spark" data-spark="amber"></canvas>
+      <div class="stat-h-spark" aria-hidden="true">
+        <div class="spark-bar" style="height:35%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:40%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:75%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:85%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:70%;background:#f59e0b"></div>
+        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-xl-8">
-    <div class="panel-c h-100">
-      <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="panel h-100">
+      <div class="panel-hdr">
         <div>
-          <h3 class="panel-title mb-1">Activité de mes consultations</h3>
+          <div class="panel-title">Activité de mes consultations</div>
           <div class="text-muted small">Tendance des consultations récentes</div>
         </div>
         <div class="tabs" aria-label="Période">
@@ -104,15 +152,18 @@
           <button type="button" class="tab-b">12m</button>
         </div>
       </div>
-      <div class="chart-wrap"><canvas id="myActivityChart"></canvas></div>
+      <div class="panel-body">
+        <div class="chart-wrap"><canvas id="myActivityChart"></canvas></div>
+      </div>
     </div>
   </div>
   <div class="col-12 col-xl-4">
-    <div class="panel-c h-100">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h3 class="panel-title mb-0">Mon planning du jour</h3>
+    <div class="panel h-100">
+      <div class="panel-hdr">
+        <div class="panel-title">Mon planning du jour</div>
         <span class="rdv-row-pill">{{ mes_rdv_count|default:0 }} RDV</span>
       </div>
+      <div class="panel-body">
       {% for rdv in mes_rdv_aujourd_hui|slice:":5" %}
       <div class="rdv-row">
         <div class="av-c av-c-{% cycle '1' '2' '3' '4' '5' '6' %}">{{ rdv.patient.prenom|slice:":1"|upper }}{{ rdv.patient.nom|slice:":1"|upper }}</div>
@@ -131,14 +182,18 @@
       {% empty %}
       <div class="text-center py-4 text-muted small">Aucun rendez-vous prévu aujourd'hui.</div>
       {% endfor %}
+      </div>
     </div>
   </div>
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-xl-4">
-    <div class="panel-c h-100">
-      <h3 class="panel-title mb-3">Mes hospitalisés</h3>
+    <div class="panel h-100">
+      <div class="panel-hdr">
+        <div class="panel-title">Mes hospitalisés</div>
+      </div>
+      <div class="panel-body">
       {% for h in mes_hospitalises_list %}
       <div class="rdv-row">
         <div style="width:38px;height:38px;border-radius:.5rem;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:800;display:flex;align-items:center;justify-content:center">{{ h.numero_chambre }}</div>
@@ -151,14 +206,16 @@
       {% empty %}
       <div class="text-center py-4 text-muted small">Aucun patient hospitalisé.</div>
       {% endfor %}
+      </div>
     </div>
   </div>
   <div class="col-12 col-xl-8">
-    <div class="panel-c h-100">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h3 class="panel-title mb-0">Mes dernières consultations</h3>
+    <div class="panel h-100">
+      <div class="panel-hdr">
+        <div class="panel-title">Mes dernières consultations</div>
         <a href="{% url 'consultation:liste' %}" class="small fw-bold" style="color:var(--primary)">Voir tout →</a>
       </div>
+      <div class="panel-body p-0">
       <div class="table-responsive">
         <table class="ctable">
           <thead>
@@ -195,6 +252,7 @@
           </tbody>
         </table>
       </div>
+      </div>
     </div>
   </div>
 </div>
@@ -211,42 +269,18 @@
   Chart.defaults.font.size = 11;
   Chart.defaults.color = txtMuted();
 
-  const sparkData = {
-    emerald: [12,18,15,22,28,24,32,38,34,42,46,52],
-    teal: [8,14,11,18,15,22,19,26,24,30,28,34],
-    purple: [4,6,5,8,7,10,9,12,11,14,13,16],
-    amber: [20,28,25,32,30,38,35,42,40,48,46,54],
-  };
-  const sparkColors = { emerald: '#10b981', teal: '#14b8a6', purple: '#a855f7', amber: '#f59e0b' };
-  document.querySelectorAll('[data-spark]').forEach(c => {
-    const key = c.dataset.spark;
-    new Chart(c, {
-      type: 'line',
-      data: { labels: sparkData[key].map((_,i)=>i), datasets: [{
-        data: sparkData[key], borderColor: sparkColors[key], borderWidth: 2,
-        tension: .4, fill: true,
-        backgroundColor: ctx => { const g = ctx.chart.ctx.createLinearGradient(0,0,0,40); g.addColorStop(0, sparkColors[key]+'55'); g.addColorStop(1, sparkColors[key]+'00'); return g; },
-        pointRadius: 0,
-      }]},
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, tooltip: {enabled:false} }, scales: { x: {display:false}, y: {display:false} } }
-    });
-  });
-
   const ctx = document.getElementById('myActivityChart');
   if (ctx) {
-    const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, 280);
-    g.addColorStop(0, 'rgba(16,185,129,.35)'); g.addColorStop(1, 'rgba(16,185,129,0)');
     new Chart(ctx, {
-      type: 'line',
+      type: 'bar',
       data: { labels: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], datasets: [{
         label: 'Consultations', data: [4, 7, 5, 9, 12, 3, 1],
-        borderColor: '#10b981', borderWidth: 3, tension: .42, fill: true, backgroundColor: g,
-        pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: '#10b981', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 3,
+        backgroundColor: c2 => { const g = c2.chart.ctx.createLinearGradient(0,0,0,280); g.addColorStop(0,'#10b981'); g.addColorStop(1,'#14b8a6'); return g; },
+        borderRadius: 6, borderSkipped: false, barThickness: 18,
       }]},
       options: { responsive: true, maintainAspectRatio: false,
         plugins: { legend: {display:false}, tooltip: { backgroundColor: isDark() ? '#0f172a' : '#fff', titleColor: isDark() ? '#e2e8f0' : '#0f172a', bodyColor: '#10b981', borderColor: 'rgba(16,185,129,.3)', borderWidth: 1, padding: 10, displayColors: false, cornerRadius: 8 } },
-        scales: { x: { grid: {display:false}, ticks: {color: txtMuted(), font:{weight:600}} }, y: { grid: {color: grid(), drawBorder:false}, ticks: {color: txtMuted(), padding:8} } },
-        interaction: { intersect:false, mode:'index' }
+        scales: { x: { grid: {display:false}, ticks: {color: txtMuted(), font:{weight:600}} }, y: { display: false } },
       }
     });
   }

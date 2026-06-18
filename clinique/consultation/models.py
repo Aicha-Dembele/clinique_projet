@@ -1,8 +1,17 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 from personnel.models import Laborantin, Medecin
 from patients.models import Patient
-from facturation.models import Tarif 
+from facturation.models import Tarif
+
+
+class NonSupprimeManager(models.Manager):
+    """Manager par défaut qui exclut les enregistrements en corbeille
+    (supprime=True). La corbeille reste accessible via `objets_tous`."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(supprime=False)
 
 
 
@@ -123,6 +132,19 @@ class ResultatExamen(models.Model):
     date_transmission = models.DateTimeField(null=True, blank=True)
     date_examen = models.DateTimeField(auto_now_add=True)
 
+    # ── Corbeille (soft-delete) ──
+    supprime = models.BooleanField(default=False)
+    date_suppression = models.DateTimeField(null=True, blank=True)
+    supprime_par = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    objects = NonSupprimeManager()   # défaut : exclut la corbeille
+    objets_tous = models.Manager()   # accès complet, corbeille incluse
+
+    class Meta:
+        # _base_manager (cascades, relations) doit voir TOUS les enregistrements.
+        base_manager_name = 'objets_tous'
+
     def save(self, *args, **kwargs):
         if not self.dossier_id:
             dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
@@ -131,6 +153,20 @@ class ResultatExamen(models.Model):
             self.examen.statut = 'termine'
             self.examen.save()
         super().save(*args, **kwargs)
+
+    def soft_delete(self, user=None):
+        """Déplace le résultat vers la corbeille au lieu de l'effacer."""
+        self.supprime = True
+        self.date_suppression = timezone.now()
+        self.supprime_par = user if getattr(user, 'is_authenticated', False) else None
+        self.save(update_fields=['supprime', 'date_suppression', 'supprime_par'])
+
+    def restaurer(self):
+        """Restaure un résultat depuis la corbeille."""
+        self.supprime = False
+        self.date_suppression = None
+        self.supprime_par = None
+        self.save(update_fields=['supprime', 'date_suppression', 'supprime_par'])
 
     def __str__(self):
         return f"{self.patient} - {self.examen}"

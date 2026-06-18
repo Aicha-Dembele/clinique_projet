@@ -84,6 +84,16 @@
         <span class="recu-row-lbl">Montant facture</span>
         <span class="recu-row-val">{{ paiement.facture.montant_total|floatformat:0 }} FCFA</span>
       </div>
+      {% if paiement.facture.assurance %}
+      <div class="recu-row">
+        <span class="recu-row-lbl">Assurance ({{ paiement.facture.assurance.nom }} — {{ paiement.facture.taux_prise_en_charge|floatformat:0 }} %)</span>
+        <span class="recu-row-val" style="color:#a855f7">- {{ paiement.facture.part_assurance|floatformat:0 }} FCFA</span>
+      </div>
+      <div class="recu-row">
+        <span class="recu-row-lbl">Reste à charge patient</span>
+        <span class="recu-row-val">{{ paiement.facture.part_patient|floatformat:0 }} FCFA</span>
+      </div>
+      {% endif %}
       <div class="recu-row">
         <span class="recu-row-lbl">Mode de paiement</span>
         <span class="recu-row-val">

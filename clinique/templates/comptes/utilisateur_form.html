@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-personnel-bg{% endblock %}
 {% block title %}Utilisateur{% endblock %}
 {% block page_title %}{% if profil %}Modifier l'utilisateur{% else %}Nouvel utilisateur{% endif %}{% endblock %}
 {% block page_heading %}{% if profil %}Modifier {{ edit_user.username }}{% else %}Nouvel utilisateur{% endif %}{% endblock %}

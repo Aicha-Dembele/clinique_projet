@@ -5,6 +5,10 @@
 {% block page_heading %}Résultats d'examens{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Résultats d'examens</li>{% endblock %}
 {% block page_actions %}
+{% if is_admin or is_laborantin %}
+<a href="{% url 'consultation:resultat_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-circle"></i> Ajouter un résultat</a>
+<a href="{% url 'consultation:resultat_corbeille' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-trash"></i> Corbeille</a>
+{% endif %}
 <button onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer-fill"></i> Imprimer</button>
 {% endblock %}
 
@@ -217,8 +221,11 @@
           <td>
             <div class="d-flex gap-1">
               <a href="{% url 'consultation:resultat_detail' r.pk %}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a>
-              <a href="{% url 'consultation:resultat_detail' r.pk %}" class="act-btn" title="Voir détail"><i class="bi bi-eye-fill"></i></a>
+              {% if is_admin or is_laborantin %}
+              <a href="{% url 'consultation:resultat_modifier' r.pk %}" class="act-btn" title="Modifier" style="border-color:rgba(59,130,246,.4);color:#3b82f6"><i class="bi bi-pencil"></i></a>
               <a href="{% url 'consultation:resultat_transmettre' r.pk %}" class="act-btn" title="Transmettre" style="border-color:rgba(16,185,129,.4);color:#10b981"><i class="bi bi-send-fill"></i></a>
+              <a href="{% url 'consultation:resultat_supprimer' r.pk %}" class="act-btn" title="Supprimer" style="border-color:rgba(239,68,68,.4);color:#ef4444"><i class="bi bi-trash"></i></a>
+              {% endif %}
             </div>
           </td>
         </tr>

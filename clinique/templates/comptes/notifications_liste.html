@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block page_heading %}Mes notifications{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Notifications</li>{% endblock %}
+
+{% block page_actions %}
+{% if notifications_non_lues %}
+<a href="{% url 'comptes:notifications_tout_lire' %}" class="btn-c btn-outline-c"><i class="bi bi-check2-all"></i> Tout marquer comme lu</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-hdr">
+    <div class="panel-title"><i class="bi bi-bell-fill" style="color:var(--primary)"></i> Notifications</div>
+  </div>
+  <div class="panel-body p-0">
+    {% for n in notifications %}
+    <a href="{% url 'comptes:notification_ouvrir' n.pk %}" style="display:flex;gap:.85rem;align-items:center;padding:.9rem 1.2rem;border-bottom:1px solid var(--card-border-2);text-decoration:none;{% if not n.lu %}background:rgba(16,185,129,.06){% endif %}">
+      <div style="width:42px;height:42px;border-radius:.7rem;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="bi {{ n.icone }}" style="color:var(--primary);font-size:1.1rem"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;color:var(--text-primary)">{{ n.titre }}</div>
+        <div style="font-size:.8rem;color:var(--text-muted)">{{ n.message }}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.72rem;color:var(--text-muted)">{{ n.date_creation|date:"d/m/Y H:i" }}</div>
+        {% if not n.lu %}<span class="pill pill-success" style="margin-top:.25rem">Nouveau</span>{% endif %}
+      </div>
+    </a>
+    {% empty %}
+    <div class="text-center py-5" style="color:var(--text-muted)">
+      <i class="bi bi-bell-slash" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.5"></i>
+      Aucune notification
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
