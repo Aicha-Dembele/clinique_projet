@@ -84,6 +84,17 @@ def dashboard(request):
                 cons_par_mois[(r['mo'].year, r['mo'].month)] = r['c']
         stats_consultations = [cons_par_mois.get(k, 0) for k in mois_list]
 
+        # ── Tendance du CA : mois courant vs mois précédent ──────────
+        rev_courant = stats_revenus[-1]
+        rev_precedent = stats_revenus[-2]
+        if rev_precedent:
+            tendance_pct = round((rev_courant - rev_precedent) / rev_precedent * 100)
+            tendance_dir = 'up' if tendance_pct > 0 else ('down' if tendance_pct < 0 else 'flat')
+        else:
+            # Pas de référence le mois précédent : pas de % comparable.
+            tendance_pct = None
+            tendance_dir = None
+
         ctx = {
             **base_ctx,
             'total_patients':    Patient.objects.count(),
@@ -99,6 +110,8 @@ def dashboard(request):
             'stats_labels':         stats_labels,
             'stats_revenus':        stats_revenus,
             'stats_consultations':  stats_consultations,
+            'tendance_pct':         tendance_pct,
+            'tendance_dir':         tendance_dir,
         }
         return render(request, 'admin/dashboard.html', ctx)
 

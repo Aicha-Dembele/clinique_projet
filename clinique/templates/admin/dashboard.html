@@ -379,7 +379,15 @@
           <div class="panel-title"><i class="bi bi-bar-chart-fill" style="color:var(--primary)"></i> Revenus</div>
           <div style="font-size:1.05rem;font-weight:700;color:var(--text-primary);margin-top:.3rem;font-family:'Outfit',system-ui,sans-serif">{{ recettes_mois|default:"0" }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
         </div>
-        <span class="pill pill-success"><i class="bi bi-arrow-up-short"></i>+8%</span>
+        {% if tendance_pct is not None %}
+          {% if tendance_dir == 'up' %}
+          <span class="pill pill-success" title="vs mois précédent"><i class="bi bi-arrow-up-short"></i>+{{ tendance_pct }}%</span>
+          {% elif tendance_dir == 'down' %}
+          <span class="pill pill-danger" title="vs mois précédent"><i class="bi bi-arrow-down-short"></i>{{ tendance_pct }}%</span>
+          {% else %}
+          <span class="pill" title="vs mois précédent"><i class="bi bi-dash"></i>0%</span>
+          {% endif %}
+        {% endif %}
       </div>
       <div class="panel-body">
         <div class="chart-wrap-mini"><canvas id="revenueChart"></canvas></div>
