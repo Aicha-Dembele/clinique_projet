@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db import models
+from django.http import JsonResponse
 
 from .models import (
     Rendez_vous,
@@ -20,6 +21,7 @@ from patients.models import Patient
 from personnel.models import Medecin, Laborantin, Infirmier
 from comptes.decorators import role_required
 from comptes.models import JournalAudit
+from comptes.recherche import termes_q
 
 
 def _get_personnel(user, attr):
@@ -53,6 +55,16 @@ def rdv_liste(request):
         medecin = _get_personnel(request.user, 'medecin')
         if medecin:
             all_rdvs = all_rdvs.filter(medecin=medecin)
+
+    # Recherche : si un terme est saisi, on liste les RDV correspondants
+    # (tous mois confondus) au lieu d'afficher le calendrier.
+    q = request.GET.get('q', '').strip()
+    resultats_recherche = None
+    if q:
+        resultats_recherche = all_rdvs.filter(
+            termes_q(q, 'patient__nom', 'patient__prenom',
+                     'patient__telephone', 'medecin__nom')
+        ).order_by('-date')[:100]
 
     cal = cal_module.Calendar(firstweekday=0)
     weeks = cal.monthdatescalendar(year, month)
@@ -97,6 +109,8 @@ def rdv_liste(request):
         'prev_month':         prev_month,
         'next_year':          next_year,
         'next_month':         next_month,
+        'q':                  q,
+        'resultats_recherche': resultats_recherche,
     })
 
 
@@ -167,10 +181,7 @@ def dossiers(request):
 
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(
-            models.Q(patient__nom__icontains=q) |
-            models.Q(patient__prenom__icontains=q)
-        )
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
 
     today = timezone.localdate()
     base = DossierMedical.objects.all()
@@ -199,12 +210,23 @@ def dossier_detail(request, pk):
 
 @role_required('admin', 'medecin')
 def consultation_liste(request):
-    consultations = Consultation.objects.all().order_by('-date')
+    consultations = (Consultation.objects
+                     .select_related('rendez_vous__patient', 'rendez_vous__medecin')
+                     .order_by('-date'))
     medecin = _get_personnel(request.user, 'medecin')
     if medecin:
         consultations = consultations.filter(rendez_vous__medecin=medecin)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        consultations = consultations.filter(
+            termes_q(q, 'rendez_vous__patient__nom', 'rendez_vous__patient__prenom',
+                     'rendez_vous__medecin__nom', 'motif', 'diagnostic')
+        )
+
     return render(request, 'consultation/liste.html', {
         'consultations': consultations,
+        'q': q,
     })
 
 
@@ -292,9 +314,9 @@ def examens(request):
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(
-            models.Q(type_examen__icontains=q) |
-            models.Q(consultation__rendez_vous__patient__nom__icontains=q) |
-            models.Q(consultation__rendez_vous__patient__prenom__icontains=q)
+            termes_q(q, 'type_examen',
+                     'consultation__rendez_vous__patient__nom',
+                     'consultation__rendez_vous__patient__prenom')
         )
 
     qs = qs.prefetch_related('resultats')
@@ -304,6 +326,19 @@ def examens(request):
         'examens_termines': all_qs.filter(resultats__isnull=False).distinct().count(),
         'examens_encours':  all_qs.filter(resultats__isnull=True).count(),
     })
+
+
+# Types d'examen proposés dans le formulaire (alignés sur les tarifs d'examen).
+EXAMEN_TYPES = ['Radiographie', 'Échographie', 'Scanner', 'IRM', 'Prise de sang',
+                "Analyse d'urine", 'Électrocardiogramme (ECG)', 'Endoscopie']
+
+
+def _type_examen_from_post(request, defaut=''):
+    """Type d'examen choisi : valeur de la liste, ou texte libre si « Autre »."""
+    val = (request.POST.get('type_examen') or '').strip()
+    if val == '__autre__':
+        val = (request.POST.get('type_examen_autre') or '').strip()
+    return val or defaut
 
 
 @role_required('admin', 'medecin')
@@ -319,7 +354,7 @@ def examen_ajouter(request):
                 consultation_id=request.POST['consultation'],
                 laborantin_id=request.POST.get('laborantin') or None,
                 medecin_id=medecin_id,
-                type_examen=request.POST['type_examen'],
+                type_examen=_type_examen_from_post(request),
                 motif=request.POST.get('motif', ''),
                 date=request.POST.get('date') or None,
             )
@@ -333,6 +368,7 @@ def examen_ajouter(request):
         'consultations': Consultation.objects.all().order_by('-date'),
         'laborantins': Laborantin.objects.all(),
         'medecins': Medecin.objects.all(),
+        'examen_types': EXAMEN_TYPES,
         'action': 'Ajouter',
     })
 
@@ -341,7 +377,7 @@ def examen_ajouter(request):
 def examen_modifier(request, pk):
     examen = get_object_or_404(ExamenMedical, pk=pk)
     if request.method == 'POST':
-        examen.type_examen = request.POST.get('type_examen', examen.type_examen)
+        examen.type_examen = _type_examen_from_post(request, examen.type_examen)
         examen.motif = request.POST.get('motif', examen.motif)
         examen.date = request.POST.get('date') or examen.date
         if request.POST.get('laborantin'):
@@ -356,6 +392,7 @@ def examen_modifier(request, pk):
         'consultations': Consultation.objects.all().order_by('-date'),
         'laborantins': Laborantin.objects.all(),
         'medecins': Medecin.objects.all(),
+        'examen_types': EXAMEN_TYPES,
         'action': 'Modifier',
     })
 
@@ -391,11 +428,7 @@ def resultats(request):
 
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(
-            models.Q(patient__nom__icontains=q) |
-            models.Q(patient__prenom__icontains=q) |
-            models.Q(examen__type_examen__icontains=q)
-        )
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', 'examen__type_examen'))
 
     page = Paginator(qs, 25).get_page(request.GET.get('page'))
     return render(request, 'consultation/resultats_liste.html', {'resultats': page, 'q': q})
@@ -547,8 +580,25 @@ def resultat_purger(request, pk):
 
 @role_required('admin', 'medecin')
 def ordonnances(request):
+    qs = (Ordonnance.objects
+          .select_related('consultation__rendez_vous__patient',
+                          'consultation__rendez_vous__medecin')
+          .order_by('-date'))
+    medecin = _get_personnel(request.user, 'medecin')
+    if medecin:
+        qs = qs.filter(consultation__rendez_vous__medecin=medecin)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            termes_q(q, 'consultation__rendez_vous__patient__nom',
+                     'consultation__rendez_vous__patient__prenom',
+                     'consultation__rendez_vous__medecin__nom', 'medicaments')
+        )
+
     return render(request, 'consultation/ordonnances.html', {
-        'ordonnances': Ordonnance.objects.all().order_by('-date'),
+        'ordonnances': qs,
+        'q': q,
     })
 
 
@@ -622,61 +672,60 @@ def hospitalisations(request):
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(
-            models.Q(patient__nom__icontains=q) |
-            models.Q(patient__prenom__icontains=q) |
-            models.Q(medecin__nom__icontains=q) |
-            models.Q(numero_chambre__icontains=q) |
-            models.Q(type_chambre__icontains=q)
+            termes_q(q, 'patient__nom', 'patient__prenom', 'medecin__nom',
+                     'numero_chambre', 'type_chambre')
         )
 
     total_en_cours   = Hospitalisation.objects.filter(date_sortie__isnull=True).count()
-    chambres_libres  = max(0, 40 - total_en_cours)
-    soins_intensifs  = Hospitalisation.objects.filter(type_chambre__icontains='intensif', date_sortie__isnull=True).count()
+    patients_critiques = Hospitalisation.objects.filter(etat_clinique='critique', date_sortie__isnull=True).count()
     today = date.today()
     sorties_prevues  = Hospitalisation.objects.filter(date_sortie=today).count()
 
     # Services distincts pour le filtre
     services = Hospitalisation.objects.values_list('type_chambre', flat=True).distinct().order_by('type_chambre')
 
-    # Grille chambres : numéros 101-110, 201-210, 301-310, 401-410
-    chambres_occupees = set(
-        Hospitalisation.objects.filter(date_sortie__isnull=True)
-        .values_list('numero_chambre', flat=True)
-    )
-    chambres_nettoyage = set(
+    # Grille chambres : plan fixe 101-110 (VIP), 201-210/301-302 (double), 303-310/401-410 (simple)
+    occ_par_chambre = {}
+    for h in (Hospitalisation.objects.filter(date_sortie__isnull=True)
+              .select_related('patient', 'medecin')):
+        occ_par_chambre.setdefault(h.numero_chambre, []).append(h)
+    sorties_jour = set(
         Hospitalisation.objects.filter(date_sortie=today)
         .values_list('numero_chambre', flat=True)
     )
-    chambres_soins_int = set(
-        Hospitalisation.objects.filter(type_chambre__icontains='intensif', date_sortie__isnull=True)
-        .values_list('numero_chambre', flat=True)
-    )
-
-    # Occupant actuel de chaque chambre (pour le plan des chambres)
-    occupants = {}
-    for h in Hospitalisation.objects.filter(date_sortie__isnull=True).select_related('patient', 'medecin'):
-        occupants[h.numero_chambre] = h
+    type_par_num = dict(Hospitalisation.plan_chambres())
 
     etages = []
+    chambres_libres = 0
     for centaine in [100, 200, 300, 400]:
         rangee = []
         for i in range(1, 11):
             num = str(centaine + i)
-            if num in chambres_soins_int:
-                statut_c = 'soins'
-            elif num in chambres_nettoyage:
+            type_ = type_par_num.get(num, 'simple')
+            cap = Hospitalisation.capacite_pour(type_)
+            occs = occ_par_chambre.get(num, [])
+            n = len(occs)
+            if n >= cap:
+                statut_c = 'occupee'      # pleine
+            elif n > 0:
+                statut_c = 'partiel'      # des places restent libres
+            elif num in sorties_jour:
                 statut_c = 'nettoyage'
-            elif num in chambres_occupees:
-                statut_c = 'occupee'
             else:
                 statut_c = 'libre'
-            occ = occupants.get(num)
+            if n < cap:
+                chambres_libres += 1
+            premier = occs[0] if occs else None
             rangee.append({
                 'num': num,
                 'statut': statut_c,
-                'patient': f'{occ.patient.prenom} {occ.patient.nom}' if occ else '',
-                'service': occ.type_chambre if occ else '',
-                'medecin': f'Dr. {occ.medecin.nom}' if occ else '',
+                'type': type_,
+                'nom_type': _nom_chambre(type_),
+                'occupants': n,
+                'capacite': cap,
+                'patient': f'{premier.patient.prenom} {premier.patient.nom}' if premier else '',
+                'service': premier.type_chambre if premier else type_,
+                'medecin': f'Dr. {premier.medecin.nom}' if premier else '',
             })
         etages.append(rangee)
 
@@ -684,7 +733,7 @@ def hospitalisations(request):
         'hospitalisations': qs,
         'total_en_cours':   total_en_cours,
         'chambres_libres':  chambres_libres,
-        'soins_intensifs':  soins_intensifs,
+        'patients_critiques': patients_critiques,
         'sorties_prevues':  sorties_prevues,
         'services':         services,
         'service_filtre':   service_filtre,
@@ -694,15 +743,78 @@ def hospitalisations(request):
     })
 
 
+def _nom_chambre(type_chambre):
+    """Libellé lisible d'un type de chambre (VIP / Double / Simple)."""
+    return {'vip': 'VIP', 'double': 'Double', 'simple': 'Simple'}.get(
+        (type_chambre or '').strip().lower(), (type_chambre or '').capitalize())
+
+
+def _chambre_pleine(numero_chambre, type_chambre, exclure_pk=None):
+    """Renvoie un message d'erreur si la chambre est déjà à sa capacité maximale, sinon None."""
+    capacite = Hospitalisation.capacite_pour(type_chambre)
+    occupants = Hospitalisation.occupants_actifs(numero_chambre, exclure_pk=exclure_pk)
+    if occupants < capacite:
+        return None
+    numero = (numero_chambre or '').strip()
+    nom = _nom_chambre(type_chambre)
+    if capacite == 1:
+        return (f"La chambre {numero} ({nom}) est déjà occupée : une chambre {nom} "
+                f"ne peut accueillir qu'un seul patient à la fois.")
+    return (f"La chambre {numero} ({nom}) est déjà remplie ({occupants}/{capacite}) : "
+            f"une chambre {nom} ne peut accueillir que {capacite} patients.")
+
+
+def _chambres_context(exclure_pk=None):
+    """Liste des 40 chambres du plan avec leur occupation, pour le menu déroulant du formulaire."""
+    chambres = []
+    for numero, type_ in Hospitalisation.plan_chambres():
+        cap = Hospitalisation.capacite_pour(type_)
+        occ = Hospitalisation.occupants_actifs(numero, exclure_pk=exclure_pk)
+        chambres.append({
+            'numero': numero,
+            'type': type_,
+            'capacite': cap,
+            'occupants': occ,
+            'pleine': occ >= cap,
+            'groupe': f"{_nom_chambre(type_)} — {cap} patient{'s' if cap > 1 else ''} max",
+        })
+    return chambres
+
+
+def _form_context(action, hospit=None, form_data=None, exclure_pk=None):
+    ctx = {
+        'patients': Patient.objects.all(),
+        'medecins': Medecin.objects.all(),
+        'action': action,
+        'chambres': _chambres_context(exclure_pk=exclure_pk),
+    }
+    if hospit is not None:
+        ctx['hospit'] = hospit
+    if form_data is not None:
+        ctx['form_data'] = form_data
+    return ctx
+
+
 @role_required('admin', 'medecin', 'receptionniste')
 def hospit_ajouter(request):
     if request.method == 'POST':
+        numero = (request.POST.get('numero_chambre') or '').strip()
+        type_chambre = Hospitalisation.type_pour_numero(numero)
+        if not type_chambre:
+            erreur = f"La chambre {numero} n'existe pas dans le plan de l'établissement."
+        else:
+            erreur = _chambre_pleine(numero, type_chambre)
+        if erreur:
+            messages.error(request, erreur)
+            return render(request, 'consultation/hospit_form.html',
+                          _form_context('Ajouter', form_data=request.POST))
         try:
             Hospitalisation.objects.create(
                 patient_id=request.POST['patient'],
                 medecin_id=request.POST['medecin'],
-                type_chambre=request.POST['type_chambre'],
-                numero_chambre=request.POST['numero_chambre'],
+                type_chambre=type_chambre,
+                numero_chambre=numero,
+                etat_clinique=request.POST.get('etat_clinique') or 'stable',
                 nombre_jours=request.POST['nombre_jours'],
                 date_entree=request.POST['date_entree'],
                 date_sortie=request.POST.get('date_sortie') or None,
@@ -712,31 +824,34 @@ def hospit_ajouter(request):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    return render(request, 'consultation/hospit_form.html', {
-        'patients': Patient.objects.all(),
-        'medecins': Medecin.objects.all(),
-        'action': 'Ajouter',
-    })
+    return render(request, 'consultation/hospit_form.html', _form_context('Ajouter'))
 
 
 @role_required('admin', 'medecin', 'receptionniste')
 def hospit_modifier(request, pk):
     hospit = get_object_or_404(Hospitalisation, pk=pk)
     if request.method == 'POST':
-        hospit.type_chambre = request.POST['type_chambre']
-        hospit.numero_chambre = request.POST['numero_chambre']
+        numero = (request.POST.get('numero_chambre') or '').strip()
+        type_chambre = Hospitalisation.type_pour_numero(numero)
+        if not type_chambre:
+            erreur = f"La chambre {numero} n'existe pas dans le plan de l'établissement."
+        else:
+            erreur = _chambre_pleine(numero, type_chambre, exclure_pk=hospit.pk)
+        if erreur:
+            messages.error(request, erreur)
+            return render(request, 'consultation/hospit_form.html',
+                          _form_context('Modifier', hospit=hospit, exclure_pk=hospit.pk))
+        hospit.type_chambre = type_chambre
+        hospit.numero_chambre = numero
+        hospit.etat_clinique = request.POST.get('etat_clinique') or 'stable'
         hospit.nombre_jours = request.POST['nombre_jours']
         hospit.date_sortie = request.POST.get('date_sortie') or None
         hospit.save()
         messages.success(request, 'Hospitalisation modifiee.')
         return redirect('consultation:hospitalisations')
 
-    return render(request, 'consultation/hospit_form.html', {
-        'hospit': hospit,
-        'patients': Patient.objects.all(),
-        'medecins': Medecin.objects.all(),
-        'action': 'Modifier',
-    })
+    return render(request, 'consultation/hospit_form.html',
+                  _form_context('Modifier', hospit=hospit, exclure_pk=hospit.pk))
 
 
 @role_required('admin', 'medecin', 'receptionniste')
@@ -781,10 +896,8 @@ def traitements(request):
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(
-            models.Q(patient__nom__icontains=q) |
-            models.Q(patient__prenom__icontains=q) |
-            models.Q(consultation__rendez_vous__medecin__nom__icontains=q) |
-            models.Q(description__icontains=q)
+            termes_q(q, 'patient__nom', 'patient__prenom',
+                     'consultation__rendez_vous__medecin__nom', 'description')
         )
 
     base = Traitement.objects.all()
@@ -821,10 +934,66 @@ def traitement_ajouter(request):
     })
 
 
+def _progression_traitement(t):
+    """Avancement d'un traitement : jour courant / durée, % et nb d'administrations.
+
+    Sert au suivi de l'évolution : la progression par jour est dérivée de la date
+    de prescription et de la durée prescrite ; un traitement terminé est à 100 %."""
+    from datetime import date
+    debut = timezone.localtime(t.date_creation).date() if t.date_creation else date.today()
+    duree = t.duree or 0
+    jours_ecoules = max(1, (date.today() - debut).days + 1)
+    if t.statut == 'termine':
+        pourcentage = 100
+    elif duree > 0:
+        pourcentage = min(100, round(jours_ecoules * 100 / duree))
+    else:
+        pourcentage = 0
+    return {
+        'jour_courant': min(jours_ecoules, duree) if duree else jours_ecoules,
+        'duree': duree,
+        'jours_restants': max(0, duree - jours_ecoules) if duree else 0,
+        'pourcentage': pourcentage,
+        'nb_administrations': t.administrations.count(),
+    }
+
+
 @role_required('admin', 'medecin', 'infirmier')
 def traitement_detail(request, pk):
+    t = get_object_or_404(
+        Traitement.objects.select_related('patient', 'infirmier'), pk=pk)
+    administrations = t.administrations.select_related('infirmier').order_by('-date')
+    return render(request, 'consultation/traitement_detail.html', {
+        'traitement': t,
+        'administrations': administrations,
+        'progression': _progression_traitement(t),
+    })
+
+
+@role_required('admin', 'medecin', 'infirmier')
+def traitement_suivi(request, pk):
+    """Évolution d'un traitement au format JSON (interrogé périodiquement par la
+    page de détail pour un suivi en temps réel, sans rechargement)."""
     t = get_object_or_404(Traitement, pk=pk)
-    return render(request, 'consultation/traitement_detail.html', {'traitement': t})
+    prog = _progression_traitement(t)
+    labels = dict(Traitement._meta.get_field('statut').choices)
+    administrations = [{
+        'id': a.id,
+        'date': timezone.localtime(a.date).strftime('%d/%m/%Y'),
+        'heure': timezone.localtime(a.date).strftime('%H:%M'),
+        'infirmier': str(a.infirmier) if a.infirmier else '—',
+        'note': a.note or '',
+    } for a in t.administrations.select_related('infirmier').order_by('-date')]
+    return JsonResponse({
+        'statut': t.statut,
+        'statut_label': labels.get(t.statut, t.statut),
+        'pourcentage': prog['pourcentage'],
+        'jour_courant': prog['jour_courant'],
+        'duree': prog['duree'],
+        'count': len(administrations),
+        'administrations': administrations,
+        'maj': timezone.localtime(timezone.now()).strftime('%H:%M:%S'),
+    })
 
 
 @role_required('admin', 'infirmier')

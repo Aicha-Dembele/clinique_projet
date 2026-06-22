@@ -3,7 +3,7 @@
 {% block body_class %}page-consultation-bg page-hospitalisation-bg{% endblock %}
 
 {% block title %}Hospitalisation{% endblock %}
-{% block nav_consultations %}active{% endblock %}
+{% block nav_hospit %}active{% endblock %}
 {% block page_heading %}Hospitalisation<div class="hdr-sub">{{ total_en_cours }} patient{{ total_en_cours|pluralize }} hospitalisé{{ total_en_cours|pluralize }} · {{ total_en_cours }} chambre{{ total_en_cours|pluralize }} occupée{{ total_en_cours|pluralize }} sur {{ total_chambres }}</div>{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Hospitalisation</li>{% endblock %}
 {% block page_actions %}
@@ -95,6 +95,7 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
   font-size: .78rem; font-weight: 800; border: 1.5px solid transparent;
 }
 .room-occupee   { background: #2563eb; color: #fff; }
+.room-partiel   { background: #14b8a6; color: #fff; }
 .room-libre     { background: rgba(255,255,255,.45); color: #16a34a; border-color: #16a34a; }
 .room-nettoyage { background: #f59e0b; color: #fff; }
 .room-soins     { background: #ef4444; color: #fff; }
@@ -134,6 +135,7 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
 .plan-room-num { font-size: .95rem; font-weight: 800; line-height: 1.1; }
 .plan-room-occ { font-size: .64rem; font-weight: 600; margin-top: .2rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .95; }
 .plan-room-occupee   { background: #2563eb; color: #fff; }
+.plan-room-partiel   { background: rgba(20,184,166,.16); color: #0f766e; border-color: rgba(20,184,166,.5); }
 .plan-room-libre     { background: rgba(22,163,74,.12); color: #16a34a; border-color: rgba(22,163,74,.45); }
 .plan-room-nettoyage { background: #f59e0b; color: #fff; }
 .plan-room-soins     { background: #ef4444; color: #fff; }
@@ -171,11 +173,11 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.12s">
       <div class="stat-h-top">
-        <span class="stat-h-lbl">Soins intensifs</span>
+        <span class="stat-h-lbl">Patients critiques</span>
         <span class="stat-h-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><i class="bi bi-heart-pulse-fill"></i></span>
       </div>
-      <div class="stat-h-val">{{ soins_intensifs }}</div>
-      <div class="stat-h-trend">/ 5 lits</div>
+      <div class="stat-h-val">{{ patients_critiques }}</div>
+      <div class="stat-h-trend">Surveillance rapprochée</div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -289,15 +291,15 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
         <div class="room-grid">
           {% for etage in etages %}
             {% for chambre in etage %}
-            <div class="room room-{{ chambre.statut }}">{{ chambre.num }}</div>
+            <div class="room room-{{ chambre.statut }}" title="Ch. {{ chambre.num }} · {{ chambre.nom_type }} · {{ chambre.occupants }}/{{ chambre.capacite }}">{{ chambre.num }}</div>
             {% endfor %}
           {% endfor %}
         </div>
         <div class="legend">
-          <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> Occupée</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> Complète</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#14b8a6"></span> Partielle</span>
           <span class="legend-item"><span class="legend-dot" style="background:#fff;border:1.5px solid #16a34a"></span> Libre</span>
           <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Nettoyage</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Soins int.</span>
         </div>
       </div>
     </div>
@@ -323,19 +325,19 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
         <div class="plan-etage-rooms">
           {% for chambre in etage %}
           <div class="plan-room plan-room-{{ chambre.statut }}"
-               title="Ch. {{ chambre.num }}{% if chambre.patient %} — {{ chambre.patient }} ({{ chambre.service|capfirst }}){% else %} — Libre{% endif %}">
+               title="Ch. {{ chambre.num }} · {{ chambre.nom_type }} · {{ chambre.occupants }}/{{ chambre.capacite }}{% if chambre.patient %} — {{ chambre.patient }}{% endif %}">
             <div class="plan-room-num">{{ chambre.num }}</div>
-            <div class="plan-room-occ">{% if chambre.patient %}{{ chambre.patient }}{% else %}Libre{% endif %}</div>
+            <div class="plan-room-occ">{{ chambre.nom_type }} · {{ chambre.occupants }}/{{ chambre.capacite }}</div>
           </div>
           {% endfor %}
         </div>
       </div>
       {% endfor %}
       <div class="legend" style="justify-content:center;margin-top:.5rem">
-        <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> Occupée</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span> Complète</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#14b8a6"></span> Partielle</span>
         <span class="legend-item"><span class="legend-dot" style="background:rgba(22,163,74,.2);border:1.5px solid #16a34a"></span> Libre</span>
         <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Nettoyage</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Soins int.</span>
       </div>
     </div>
   </div>

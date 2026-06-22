@@ -21,7 +21,7 @@
 .actions-row { max-width:720px; margin-left:auto; margin-right:auto; }
 </style>{% endblock %}
 {% block content %}
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <div class="form-section">
     <div class="form-section-hdr">
@@ -56,6 +56,16 @@
         <label class="f-label">Adresse</label>
         <input type="text" name="adresse" class="f-input" placeholder="Adresse"
                value="{% if receptionniste %}{{ receptionniste.adresse }}{% endif %}">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Photo</label>
+        <div class="d-flex align-items-center gap-3">
+          {% if receptionniste and receptionniste.photo %}
+          <img src="{{ receptionniste.photo.url }}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--card-border)">
+          {% endif %}
+          <input type="file" name="photo" accept="image/*" class="f-input">
+        </div>
+        {% if receptionniste and receptionniste.photo %}<div class="form-section-sub" style="margin-top:.35rem">Laissez vide pour conserver la photo actuelle.</div>{% endif %}
       </div>
       {% if not receptionniste %}
       <div class="col-12 col-md-6">

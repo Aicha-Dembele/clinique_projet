@@ -2,8 +2,22 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from comptes.decorators import role_required, admin_required
+from comptes.recherche import termes_q
 
 from .models import Medecin, Infirmier, Laborantin, AgentAdministratif, Receptionniste
+
+
+# Services / spécialités de laboratoire proposés dans le formulaire laborantin.
+LABO_SERVICES = ['Hématologie', 'Biochimie', 'Microbiologie', 'Parasitologie',
+                 'Immunologie', 'Sérologie', 'Bactériologie', 'Virologie', 'Anatomopathologie']
+
+
+def _val_autre(request, champ):
+    """Valeur d'un champ liste déroulante avec option « Autre » (champ + champ_autre)."""
+    v = (request.POST.get(champ) or '').strip()
+    if v == '__autre__':
+        v = (request.POST.get(champ + '_autre') or '').strip()
+    return v
 
 
 @admin_required
@@ -18,10 +32,11 @@ def personnel_liste(request):
     receptionnistes = Receptionniste.objects.all()
 
     if q:
-        medecins        = medecins.filter(nom__icontains=q) | medecins.filter(prenom__icontains=q)
-        infirmiers      = infirmiers.filter(nom__icontains=q) | infirmiers.filter(prenom__icontains=q)
-        laborantins     = laborantins.filter(nom__icontains=q) | laborantins.filter(prenom__icontains=q)
-        receptionnistes = receptionnistes.filter(nom__icontains=q) | receptionnistes.filter(prenom__icontains=q)
+        f = termes_q(q, 'nom', 'prenom')
+        medecins        = medecins.filter(f)
+        infirmiers      = infirmiers.filter(f)
+        laborantins     = laborantins.filter(f)
+        receptionnistes = receptionnistes.filter(f)
 
     total_medecins   = Medecin.objects.count()
     total_infirmiers = Infirmier.objects.count()
@@ -54,6 +69,7 @@ def medecin_ajouter(request):
                 specialite=request.POST["specialite"],
                 role="medecin",
                 mot_de_passe=request.POST["mot_de_passe"],
+                photo=request.FILES.get("photo"),
             )
             messages.success(request, "Médecin ajouté.")
             return redirect("personnel:liste")
@@ -72,6 +88,8 @@ def medecin_modifier(request, pk):
         medecin.adresse = request.POST.get("adresse", "")
         medecin.service = request.POST["service"]
         medecin.specialite = request.POST["specialite"]
+        if request.FILES.get("photo"):
+            medecin.photo = request.FILES["photo"]
         medecin.save()
         messages.success(request, "Médecin modifié.")
         return redirect("personnel:liste")
@@ -103,6 +121,7 @@ def infirmier_ajouter(request):
                 role="infirmier",
                 mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
+                photo=request.FILES.get("photo"),
             )
             messages.success(request, "Infirmier ajouté.")
             return redirect("personnel:liste")
@@ -120,6 +139,8 @@ def infirmier_modifier(request, pk):
         infirmier.telephone = request.POST["telephone"]
         infirmier.adresse = request.POST.get("adresse", "")
         infirmier.service = request.POST["service"]
+        if request.FILES.get("photo"):
+            infirmier.photo = request.FILES["photo"]
         infirmier.save()
         messages.success(request, "Infirmier modifié.")
         return redirect("personnel:liste")
@@ -147,17 +168,19 @@ def laborantin_ajouter(request):
                 nom=request.POST["nom"],
                 prenom=request.POST["prenom"],
                 telephone=request.POST["telephone"],
-                specialite=request.POST["specialite"],
+                specialite=_val_autre(request, "specialite"),
                 role="laborantin",
                 mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
                 service=request.POST.get("service", "Laboratoire"),
+                photo=request.FILES.get("photo"),
             )
             messages.success(request, "Laborantin ajouté.")
             return redirect("personnel:liste")
         except Exception as e:
             messages.error(request, f"Erreur : {e}")
-    return render(request, "personnel/laborantin_form.html", {"action": "Ajouter"})
+    return render(request, "personnel/laborantin_form.html",
+                  {"action": "Ajouter", "labo_services": LABO_SERVICES})
 
 
 @admin_required
@@ -168,12 +191,15 @@ def laborantin_modifier(request, pk):
         laborantin.prenom = request.POST["prenom"]
         laborantin.telephone = request.POST["telephone"]
         laborantin.adresse = request.POST.get("adresse", "")
-        laborantin.specialite = request.POST.get("specialite", "")
+        laborantin.specialite = _val_autre(request, "specialite")
         laborantin.service = request.POST.get("service", "Laboratoire")
+        if request.FILES.get("photo"):
+            laborantin.photo = request.FILES["photo"]
         laborantin.save()
         messages.success(request, "Laborantin modifié.")
         return redirect("personnel:liste")
-    return render(request, "personnel/laborantin_form.html", {"laborantin": laborantin, "action": "Modifier"})
+    return render(request, "personnel/laborantin_form.html",
+                  {"laborantin": laborantin, "action": "Modifier", "labo_services": LABO_SERVICES})
 
 
 @admin_required
@@ -201,6 +227,7 @@ def receptionniste_ajouter(request):
                 mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
                 service="Accueil",
+                photo=request.FILES.get("photo"),
             )
             messages.success(request, "Réceptionniste ajouté.")
             return redirect("personnel:liste")
@@ -218,6 +245,8 @@ def receptionniste_modifier(request, pk):
         receptionniste.telephone = request.POST["telephone"]
         receptionniste.adresse = request.POST.get("adresse", "")
         receptionniste.service = request.POST.get("service", "Accueil")
+        if request.FILES.get("photo"):
+            receptionniste.photo = request.FILES["photo"]
         receptionniste.save()
         messages.success(request, "Réceptionniste modifié.")
         return redirect("personnel:liste")

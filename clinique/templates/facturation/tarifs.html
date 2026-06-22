@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}Tarifs{% endblock %}
-{% block nav_factures %}active{% endblock %}
+{% block nav_tarifs %}active{% endblock %}
 {% block page_title %}Facturation{% endblock %}
 {% block page_heading %}Grille tarifaire{% endblock %}
 {% block breadcrumb %}
@@ -23,12 +23,23 @@
 .tab-link { padding: .42rem .85rem; border-radius: .55rem; font-size: .76rem; font-weight: 700; color: var(--text-muted); text-decoration: none; transition: all .2s; display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
 .tab-link:hover { color: var(--text-primary); }
 .tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+/* Barre de recherche : même boîte (teal translucide) que la liste des consultations */
+.search-bar {
+  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
+  border: 1.5px solid rgba(0,136,170,.35);
+  border-radius: .9rem; padding: .9rem 1.2rem; margin-bottom: .75rem;
+  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
+}
+.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
+.search-bar i.bi-search { color: #0088aa !important; }
 </style>{% endblock %}
 {% block content %}
 
 <!-- ── HERO BANNER ── -->
 <div class="hero-banner">
-  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg')"></div>
+  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg?v=4')"></div>
   <div class="hero-banner-overlay"></div>
   <div class="hero-banner-content">
     <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
@@ -74,20 +85,22 @@
   </div>
 </div>
 
-<div class="panel mb-3">
-  <div class="panel-body" style="padding:.85rem 1.25rem">
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-      <div class="tabs-nav" id="tarifTabs">
-        <a class="tab-link active" data-filter="all"><i class="bi bi-grid"></i> Tous</a>
-        <a class="tab-link" data-filter="consultation"><i class="bi bi-stethoscope"></i> Consultation</a>
-        <a class="tab-link" data-filter="examen"><i class="bi bi-flask"></i> Examen</a>
-        <a class="tab-link" data-filter="hospitalisation"><i class="bi bi-hospital"></i> Hospitalisation</a>
-      </div>
-      <div style="position:relative;flex:1;min-width:220px">
-        <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
-        <input id="searchTarif" type="text" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher un tarif…">
-      </div>
+<!-- ── FILTRES PAR TYPE ── -->
+<div class="tabs-nav" id="tarifTabs" style="margin-bottom:.75rem">
+  <a class="tab-link active" data-filter="all"><i class="bi bi-grid"></i> Tous</a>
+  <a class="tab-link" data-filter="consultation"><i class="bi bi-stethoscope"></i> Consultation</a>
+  <a class="tab-link" data-filter="examen"><i class="bi bi-flask"></i> Examen</a>
+  <a class="tab-link" data-filter="hospitalisation"><i class="bi bi-hospital"></i> Hospitalisation</a>
+</div>
+
+<!-- ── BARRE RECHERCHE (identique à consultation) ── -->
+<div class="search-bar">
+  <div class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
+    <div style="position:relative;flex:1;min-width:220px">
+      <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%)"></i>
+      <input id="searchTarif" type="text" class="f-input" style="padding-left:2.2rem;border-radius:.7rem" placeholder="Rechercher un tarif…">
     </div>
+    <button type="button" class="btn-c btn-primary-c" onclick="document.getElementById('searchTarif').focus()"><i class="bi bi-search"></i> Rechercher</button>
   </div>
 </div>
 

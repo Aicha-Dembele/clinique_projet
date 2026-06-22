@@ -7,6 +7,7 @@ from decimal import Decimal
 from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
 from patients.models import Patient
 from comptes.decorators import role_required
+from comptes.recherche import termes_q
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ def facture_liste(request):
     # Recherche patient
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(patient__nom__icontains=q) | qs.filter(patient__prenom__icontains=q)
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
 
     all_f = Facture.objects.all()
     total_paye    = all_f.filter(statut='payé').aggregate(t=Sum('montant_total'))['t'] or 0
@@ -75,6 +76,20 @@ def facture_pdf(request, pk):
         pk=pk,
     )
     return facture_pdf_response(facture)
+
+
+@role_required('admin', 'receptionniste')
+def paiement_pdf(request, pk):
+    """Affiche le reçu de paiement au format PDF (avec logo, généré côté serveur)."""
+    from .pdf import paiement_pdf_response
+    paiement = get_object_or_404(
+        Paiement.objects.select_related(
+            'facture__patient', 'facture__assurance',
+            'facture__consultation__rendez_vous__medecin',
+            'facture__hospitalisation'),
+        pk=pk,
+    )
+    return paiement_pdf_response(paiement)
 
 
 @role_required('admin', 'receptionniste')
@@ -198,10 +213,17 @@ def facture_recalculer(request, pk):
 @role_required('admin', 'receptionniste')
 def paiement_liste(request):
     paiements = Paiement.objects.select_related('facture__patient').order_by('-date')
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        paiements = paiements.filter(
+            termes_q(q, 'facture__patient__nom', 'facture__patient__prenom', 'note'))
+
     total = paiements.aggregate(t=Sum('montant'))['t'] or 0
     return render(request, 'facturation/paiements.html', {
         'paiements':       paiements,
         'total_encaisse':  _fmt(total),
+        'q':               q,
     })
 
 
@@ -319,7 +341,7 @@ def factures_export(request):
     if statut:
         qs = qs.filter(statut=statut)
     if q:
-        qs = qs.filter(patient__nom__icontains=q) | qs.filter(patient__prenom__icontains=q)
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
 
     headers = ['Facture', 'Patient', 'Date', 'Montant total', 'Part assurance',
                'Part patient', 'Payé', 'Statut']
@@ -361,6 +383,14 @@ def tarif_liste(request):
     })
 
 
+def _specialite_from_post(request):
+    """Spécialité/type choisi : valeur de la liste, ou texte libre si « Autre »."""
+    spec = (request.POST.get('specialite') or '').strip()
+    if spec == '__autre__':
+        spec = (request.POST.get('specialite_autre') or '').strip()
+    return spec or None
+
+
 @role_required('admin')
 def tarif_ajouter(request):
     if request.method == 'POST':
@@ -368,7 +398,7 @@ def tarif_ajouter(request):
             Tarif.objects.create(
                 nom=request.POST['nom'],
                 type_service=request.POST['type_service'],
-                specialite=request.POST.get('specialite') or None,
+                specialite=_specialite_from_post(request),
                 prix=request.POST['prix'],
             )
             messages.success(request, 'Tarif créé.')
@@ -389,7 +419,7 @@ def tarif_modifier(request, pk):
         try:
             tarif.nom          = request.POST['nom']
             tarif.type_service = request.POST['type_service']
-            tarif.specialite   = request.POST.get('specialite') or None
+            tarif.specialite   = _specialite_from_post(request)
             tarif.prix         = request.POST['prix']
             tarif.save()
             messages.success(request, 'Tarif modifié.')

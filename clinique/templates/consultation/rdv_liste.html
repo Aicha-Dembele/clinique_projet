@@ -101,15 +101,15 @@
 .rdv-act-btn.cancel:hover { background: #f59e0b; color: #fff; }
 .rdv-act-btn.del    { color: #ef4444; border-color: rgba(239,68,68,.35); }
 .rdv-act-btn.del:hover    { background: #ef4444; color: #fff; }
-.rdv-act-btn.view   { color: #6b7280; border-color: rgba(107,114,128,.3); }
-.rdv-act-btn.view:hover   { background: #6b7280; color: #fff; }
+.rdv-act-btn.view   { background: #0891b2; color: #fff; border-color: #0891b2; box-shadow: 0 2px 6px rgba(8,145,178,.4); }
+.rdv-act-btn.view:hover   { background: #0e7490; color: #fff; border-color: #0e7490; }
 
 .rdv-badge { font-size: .64rem; font-weight: 700; padding: .2em .55em; border-radius: 999px; flex-shrink: 0; align-self: flex-start; margin-top: 3px; white-space: nowrap; }
-.badge-prog { background: rgba(16,185,129,.12);  color: #10b981; }
+.badge-prog { background: #10b981; color: #fff; box-shadow: 0 2px 7px rgba(16,185,129,.45); }
 .badge-att  { background: rgba(245,158,11,.12);  color: #f59e0b; }
 .badge-ann  { background: rgba(239,68,68,.12);   color: #ef4444; }
 .badge-new  { background: rgba(139,92,246,.12);  color: #8b5cf6; }
-.badge-term { background: rgba(107,114,128,.12); color: #6b7280; }
+.badge-term { background: #64748b; color: #fff; box-shadow: 0 2px 7px rgba(100,116,139,.45); }
 
 /* ══ POPOVER (tooltip RDV à venir sur le calendrier) ══ */
 .rdv-popover {
@@ -262,12 +262,23 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
       {{ month_name }} {{ year }} — {{ month_rdvs_count }} rendez-vous ce mois
     </p>
   </div>
-  <div class="d-flex align-items-center gap-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <form method="get" class="d-flex align-items-center" style="position:relative">
+      <i class="bi bi-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.85rem"></i>
+      <input type="text" name="q" value="{{ q }}" class="f-input"
+             placeholder="Rechercher un patient, un médecin…"
+             style="padding-left:2.1rem;border-radius:.7rem;min-width:240px;font-size:.85rem">
+      {% if q %}
+      <a href="{% url 'consultation:rdv_liste' %}" class="cal-today-btn" style="margin-left:.4rem">Effacer</a>
+      {% endif %}
+    </form>
+    {% if not q %}
     <div style="display:inline-flex">
       <button class="vue-btn">Jour</button>
       <button class="vue-btn">Semaine</button>
       <button class="vue-btn active">Mois</button>
     </div>
+    {% endif %}
     {% if is_admin or is_receptionniste %}
     <a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-primary-c">
       <i class="bi bi-plus-lg"></i> Nouveau RDV
@@ -276,6 +287,45 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
   </div>
 </div>
 
+{% if q %}
+<!-- ══ RÉSULTATS DE RECHERCHE ══ -->
+<div class="side-panel" style="position:static">
+  <div class="side-panel-hdr">
+    <span class="side-panel-title"><i class="bi bi-search me-2" style="color:var(--text-muted)"></i>Résultats pour « {{ q }} »</span>
+    <span class="side-count">{{ resultats_recherche|length }} RDV</span>
+  </div>
+  <div style="overflow-y:auto;max-height:640px">
+    {% for rdv in resultats_recherche %}
+    <div class="rdv-row" style="cursor:pointer" title="Voir les détails du rendez-vous"
+         onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom|escapejs }} {{ rdv.patient.prenom|escapejs }}', 'Dr. {{ rdv.medecin.nom|escapejs }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste"|escapejs }}', '{{ rdv.statut }}')">
+      <div class="rdv-time" style="min-width:54px;text-align:center;line-height:1.15">
+        {{ rdv.date|date:"d/m" }}
+        <div style="font-size:.66rem;font-weight:600;opacity:.85">{{ rdv.date|date:"H:i" }}</div>
+      </div>
+      <div class="rdv-info">
+        <div class="rdv-name">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</div>
+        <div class="rdv-sub">{{ rdv.medecin.specialite|default:"Généraliste" }} — Dr. {{ rdv.medecin.nom }}</div>
+        {% if is_admin or is_receptionniste %}
+        <div class="rdv-actions">
+          <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="rdv-act-btn edit" onclick="event.stopPropagation()"><i class="bi bi-pencil-fill"></i> Modifier</a>
+          <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="rdv-act-btn del" onclick="event.stopPropagation()"><i class="bi bi-trash-fill"></i> Supprimer</a>
+        </div>
+        {% endif %}
+      </div>
+      {% if rdv.statut == 'programme' %}<span class="rdv-badge badge-prog">Confirmé</span>
+      {% elif rdv.statut == 'annule' %}<span class="rdv-badge badge-ann">Annulé</span>
+      {% elif rdv.statut == 'termine' %}<span class="rdv-badge badge-term">Terminé</span>
+      {% else %}<span class="rdv-badge badge-new">Nouveau</span>{% endif %}
+    </div>
+    {% empty %}
+    <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted)">
+      <i class="bi bi-calendar-x" style="font-size:2rem;opacity:.4;display:block;margin-bottom:.5rem"></i>
+      <span style="font-size:.82rem">Aucun rendez-vous ne correspond à « {{ q }} »</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
 <!-- LAYOUT -->
 <div class="row g-3 align-items-start">
 
@@ -391,20 +441,21 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
 
       <div style="overflow-y:auto;max-height:560px">
         {% for rdv in today_rdvs %}
-        <div class="rdv-row">
+        <div class="rdv-row" style="cursor:pointer" title="Voir les détails du rendez-vous"
+             onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom|escapejs }} {{ rdv.patient.prenom|escapejs }}', 'Dr. {{ rdv.medecin.nom|escapejs }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste"|escapejs }}', '{{ rdv.statut }}')">
           <div class="rdv-time">{{ rdv.date|date:"H:i" }}</div>
           <div class="rdv-info">
             <div class="rdv-name">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</div>
             <div class="rdv-sub">{{ rdv.medecin.specialite|default:"Généraliste" }} — Dr. {{ rdv.medecin.nom }}</div>
             {% if is_admin or is_receptionniste %}
             <div class="rdv-actions">
-              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="rdv-act-btn edit">
+              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="rdv-act-btn edit" onclick="event.stopPropagation()">
                 <i class="bi bi-pencil-fill"></i> Modifier
               </a>
-              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}?annuler=1" class="rdv-act-btn cancel">
+              <a href="{% url 'consultation:rdv_modifier' rdv.pk %}?annuler=1" class="rdv-act-btn cancel" onclick="event.stopPropagation()">
                 <i class="bi bi-x-circle"></i> Annuler
               </a>
-              <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="rdv-act-btn del">
+              <a href="{% url 'consultation:rdv_supprimer' rdv.pk %}" class="rdv-act-btn del" onclick="event.stopPropagation()">
                 <i class="bi bi-trash-fill"></i> Supprimer
               </a>
             </div>
@@ -440,7 +491,8 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
   </div>
   <div style="overflow-y:auto;max-height:460px">
     {% for rdv in past_rdvs %}
-    <div class="rdv-row">
+    <div class="rdv-row" style="cursor:pointer" title="Voir les détails du rendez-vous"
+         onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom|escapejs }} {{ rdv.patient.prenom|escapejs }}', 'Dr. {{ rdv.medecin.nom|escapejs }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste"|escapejs }}', '{{ rdv.statut }}')">
       <div class="rdv-time" style="min-width:50px;text-align:center;line-height:1.15">
         {{ rdv.date|date:"d/m" }}
         <div style="font-size:.66rem;font-weight:600;opacity:.85">{{ rdv.date|date:"H:i" }}</div>
@@ -450,7 +502,7 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
         <div class="rdv-sub">{{ rdv.medecin.specialite|default:"Généraliste" }} — Dr. {{ rdv.medecin.nom }}</div>
         <div class="rdv-actions">
           <span class="rdv-act-btn view" style="cursor:pointer"
-                onclick="openModal({{ rdv.pk }}, '{{ rdv.patient.nom|escapejs }} {{ rdv.patient.prenom|escapejs }}', 'Dr. {{ rdv.medecin.nom|escapejs }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste"|escapejs }}', '{{ rdv.statut }}')">
+                onclick="event.stopPropagation(); openModal({{ rdv.pk }}, '{{ rdv.patient.nom|escapejs }} {{ rdv.patient.prenom|escapejs }}', 'Dr. {{ rdv.medecin.nom|escapejs }}', '{{ rdv.date|date:"d/m/Y" }}', '{{ rdv.date|date:"H:i" }}', '{{ rdv.medecin.specialite|default:"Généraliste"|escapejs }}', '{{ rdv.statut }}')">
             <i class="bi bi-eye"></i> Voir
           </span>
         </div>
@@ -478,6 +530,7 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
   </div>
   {% endif %}
 </div>
+{% endif %}
 
 <!-- ══ MODAL RDV PASSÉ ══ -->
 <div class="modal-overlay" id="rdv-modal" onclick="closeModal(event)">
@@ -513,11 +566,13 @@ body.page-rdv-bg .rdv-page-head p  { color: #eafbff !important; text-shadow: 0 1
     </div>
     {% if is_admin or is_receptionniste %}
     <div class="modal-ftr">
-      <a id="m-btn-modifier" href="#" class="btn-c btn-outline-c" style="font-size:.82rem">
-        <i class="bi bi-pencil-fill"></i> Modifier
+      <a id="m-btn-modifier" href="#" class="btn-c"
+         style="font-size:.82rem;background:#3b82f6;color:#fff;border-color:#3b82f6;box-shadow:0 4px 12px -3px rgba(59,130,246,.5)">
+        <i class="bi bi-pencil-fill"></i> Modifier le RDV
       </a>
-      <a id="m-btn-supprimer" href="#" class="btn-c btn-danger-c" style="font-size:.82rem">
-        <i class="bi bi-trash-fill"></i> Supprimer
+      <a id="m-btn-supprimer" href="#" class="btn-c"
+         style="font-size:.82rem;background:#ef4444;color:#fff;border-color:#ef4444;box-shadow:0 4px 12px -3px rgba(239,68,68,.5)">
+        <i class="bi bi-trash-fill"></i> Supprimer le RDV
       </a>
     </div>
     {% endif %}
@@ -547,9 +602,9 @@ const MODIFIER_URL = "{% url 'consultation:rdv_modifier' 0 %}";
 const SUPPRIMER_URL = "{% url 'consultation:rdv_supprimer' 0 %}";
 
 const STATUT_LABELS = {
-  'programme': '<span style="background:rgba(16,185,129,.12);color:#10b981;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Confirmé</span>',
+  'programme': '<span style="background:#10b981;color:#fff;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Confirmé</span>',
   'annule':    '<span style="background:rgba(239,68,68,.12);color:#ef4444;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Annulé</span>',
-  'termine':   '<span style="background:rgba(107,114,128,.12);color:#6b7280;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Terminé</span>',
+  'termine':   '<span style="background:#64748b;color:#fff;padding:.2em .6em;border-radius:999px;font-size:.82rem;font-weight:700">Terminé</span>',
 };
 
 function openModal(pk, patient, medecin, date, heure, specialite, statut) {

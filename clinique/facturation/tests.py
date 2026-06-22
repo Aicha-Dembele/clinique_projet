@@ -2,7 +2,8 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.contrib.auth.models import User
 
 from patients.models import Patient
 from facturation.models import Facture, Assurance, Paiement
@@ -83,3 +84,77 @@ class StatutPaiementTests(TestCase):
         f.refresh_from_db()
         self.assertEqual(f.part_patient(), Decimal('0'))
         self.assertEqual(f.statut, 'payé')
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class RecherchePaiementsTests(TestCase):
+    """La barre de recherche des paiements filtre par patient (multi-mots)."""
+
+    def setUp(self):
+        self.dupont = creer_patient(nom='Dupont', prenom='Jean')
+        self.martin = creer_patient(nom='Martin', prenom='Lucie')
+        f1 = Facture.objects.create(patient=self.dupont)
+        f2 = Facture.objects.create(patient=self.martin)
+        self.p_dupont = Paiement.objects.create(facture=f1, montant=Decimal('1000'), mode_paiement='cash')
+        self.p_martin = Paiement.objects.create(facture=f2, montant=Decimal('2000'), mode_paiement='cash')
+
+        boss = User.objects.create_superuser('boss', 'b@b.c', 'x')
+        self.client.force_login(boss)
+
+    def test_recherche_par_nom_complet(self):
+        r = self.client.get('/facturation/paiements/', {'q': 'Dupont Jean'})
+        self.assertEqual(r.status_code, 200)
+        pks = [p.pk for p in r.context['paiements']]
+        self.assertEqual(pks, [self.p_dupont.pk])
+
+    def test_sans_recherche_tout_visible(self):
+        r = self.client.get('/facturation/paiements/')
+        pks = [p.pk for p in r.context['paiements']]
+        self.assertIn(self.p_dupont.pk, pks)
+        self.assertIn(self.p_martin.pk, pks)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class FacturePdfTests(TestCase):
+    """Le PDF de facture se génère et embarque le logo de la clinique."""
+
+    def test_logo_est_resolu(self):
+        from django.contrib.staticfiles import finders
+        from facturation.pdf import LOGO_STATIC
+        self.assertIsNotNone(finders.find(LOGO_STATIC), "logo introuvable dans les statiques")
+
+    def test_pdf_genere_valide(self):
+        from facturation.pdf import facture_pdf_response
+        patient = creer_patient(nom='Diallo', prenom='Mami')
+        facture = Facture.objects.create(patient=patient, montant_total=Decimal('15000'))
+        resp = facture_pdf_response(facture)
+        self.assertEqual(resp['Content-Type'], 'application/pdf')
+        self.assertTrue(resp.content.startswith(b'%PDF'))
+        self.assertGreater(len(resp.content), 2000)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class PaiementPdfTests(TestCase):
+    """Le reçu de paiement se génère en PDF avec le logo de la clinique."""
+
+    def test_pdf_recu_genere_valide(self):
+        from facturation.pdf import paiement_pdf_response
+        patient = creer_patient(nom='Diallo', prenom='Mami')
+        facture = Facture.objects.create(patient=patient, montant_total=Decimal('20000'))
+        paiement = Paiement.objects.create(
+            facture=facture, montant=Decimal('20000'), mode_paiement='cash')
+        resp = paiement_pdf_response(paiement)
+        self.assertEqual(resp['Content-Type'], 'application/pdf')
+        self.assertTrue(resp.content.startswith(b'%PDF'))
+        self.assertGreater(len(resp.content), 2000)
+
+    def test_route_pdf_paiement(self):
+        patient = creer_patient(nom='Sow', prenom='B')
+        facture = Facture.objects.create(patient=patient, montant_total=Decimal('5000'))
+        paiement = Paiement.objects.create(
+            facture=facture, montant=Decimal('5000'), mode_paiement='carte')
+        boss = User.objects.create_superuser('boss', 'b@b.c', 'x')
+        self.client.force_login(boss)
+        r = self.client.get(f'/facturation/paiements/{paiement.pk}/pdf/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r['Content-Type'], 'application/pdf')

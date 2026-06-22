@@ -2,7 +2,7 @@
 {% load static %}
 {% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}Reçu paiement #{{ paiement.pk }}{% endblock %}
-{% block nav_factures %}active{% endblock %}
+{% block nav_paiements %}active{% endblock %}
 {% block page_title %}Reçu de paiement{% endblock %}
 {% block page_heading %}Reçu #{{ paiement.pk|stringformat:"05d" }}{% endblock %}
 {% block breadcrumb %}
@@ -12,6 +12,7 @@
 {% endblock %}
 {% block page_actions %}
 <button type="button" onclick="window.print()" class="btn-c btn-primary-c no-print"><i class="bi bi-printer-fill"></i> Imprimer le reçu</button>
+<a href="{% url 'facturation:paiement_pdf' paiement.pk %}" target="_blank" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
 <a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}

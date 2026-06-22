@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 {% block body_class %}page-consultation-bg page-traitement-bg{% endblock %}
 
-{% block title %}Detail traitement{% endblock %}
+{% block title %}Suivi traitement{% endblock %}
+{% block nav_traitements %}active{% endblock %}
 {% block page_title %}Traitement - {{ traitement.patient }}{% endblock %}
-{% block page_heading %}Traitement #{{ traitement.id }}{% endblock %}
+{% block page_heading %}Suivi du traitement #{{ traitement.id }}{% endblock %}
 {% block breadcrumb %}
   <li class="breadcrumb-item"><a href="{% url 'consultation:traitements' %}">Traitements</a></li>
-  <li class="breadcrumb-item active">Detail</li>
+  <li class="breadcrumb-item active">Suivi</li>
 {% endblock %}
 {% block page_actions %}
   {% if is_admin or is_infirmier %}
@@ -14,49 +15,163 @@
   {% endif %}
 {% endblock %}
 
+{% block extra_css %}<style>
+/* Bandeau de progression */
+.suivi-hdr { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:.4rem; }
+.live-badge { display:inline-flex; align-items:center; gap:.4rem; font-size:.72rem; font-weight:700; color:#10b981; }
+.live-dot { width:9px; height:9px; border-radius:50%; background:#10b981; box-shadow:0 0 0 0 rgba(16,185,129,.5); }
+.live-dot.pulse { animation: livepulse .8s ease-out; }
+@keyframes livepulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)} 100%{box-shadow:0 0 0 9px rgba(16,185,129,0)} }
+.prog-track { height:12px; border-radius:999px; background:rgba(0,136,170,.12); overflow:hidden; }
+.prog-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#0088aa,#22d3ee); width:0; transition:width .6s ease; }
+.prog-meta { display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:.6rem; }
+.prog-meta-item { font-size:.8rem; color:var(--text-muted); }
+.prog-meta-item strong { color:var(--text-primary); font-size:1.05rem; font-weight:800; display:block; }
+
+/* Timeline d'évolution */
+.timeline { position:relative; padding:.5rem 0 .25rem .25rem; }
+.timeline::before { content:''; position:absolute; left:14px; top:6px; bottom:6px; width:2px; background:var(--card-border); }
+.tl-item { position:relative; padding:0 0 1rem 2.4rem; }
+.tl-item:last-child { padding-bottom:.25rem; }
+.tl-dot { position:absolute; left:7px; top:3px; width:16px; height:16px; border-radius:50%; background:#0088aa; border:3px solid var(--card-bg); box-shadow:0 0 0 1px rgba(0,136,170,.4); }
+.tl-item-new .tl-dot { background:#10b981; box-shadow:0 0 0 1px rgba(16,185,129,.5); }
+.tl-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:.7rem; padding:.6rem .85rem; box-shadow:var(--shadow-sm); }
+.tl-item-new .tl-card { animation: tlnew 1.2s ease; border-color:rgba(16,185,129,.45); }
+@keyframes tlnew { 0%{background:rgba(16,185,129,.14)} 100%{background:var(--card-bg)} }
+.tl-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
+.tl-date { font-size:.8rem; font-weight:700; color:var(--text-primary); }
+.tl-inf { font-size:.72rem; font-weight:600; color:#0088aa; }
+.tl-note { font-size:.8rem; color:var(--text-secondary); margin-top:.3rem; white-space:pre-wrap; }
+.tl-empty { text-align:center; color:var(--text-muted); padding:2rem 1rem; font-size:.85rem; }
+</style>{% endblock %}
+
 {% block content %}
+
+<!-- ── BANDEAU PROGRESSION ── -->
+<div class="panel mb-3">
+  <div class="panel-body">
+    <div class="suivi-hdr">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <strong style="font-size:1rem">{{ traitement.patient }}</strong>
+        <span id="statut-badge" class="pill {% if traitement.statut == 'termine' %}pill-success{% elif traitement.statut == 'en_cours' %}pill-info{% else %}pill-warn{% endif %}">
+          {{ traitement.get_statut_display }}
+        </span>
+      </div>
+      <div class="live-badge" title="Mise à jour automatique">
+        <span id="live-dot" class="live-dot"></span> En direct · MAJ <span id="maj-time">—</span>
+      </div>
+    </div>
+    <div class="prog-track"><div id="prog-fill" class="prog-fill" style="width:{{ progression.pourcentage }}%"></div></div>
+    <div class="prog-meta">
+      <div class="prog-meta-item"><strong id="prog-jour">{% if progression.duree %}Jour {{ progression.jour_courant }} / {{ progression.duree }}{% else %}—{% endif %}</strong>Avancement</div>
+      <div class="prog-meta-item"><strong id="prog-pct">{{ progression.pourcentage }}%</strong>Progression</div>
+      <div class="prog-meta-item"><strong id="adm-count">{{ progression.nb_administrations }}</strong>Administrations</div>
+      <div class="prog-meta-item"><strong>{{ progression.jours_restants }}</strong>Jour(s) restant(s)</div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-3">
-  <div class="col-md-7">
+  <!-- Infos -->
+  <div class="col-md-5">
     <div class="panel">
-      <div class="panel-hdr"><div class="panel-title">Informations</div></div>
+      <div class="panel-hdr"><div class="panel-title"><i class="bi bi-info-circle me-2"></i>Informations</div></div>
       <div class="panel-body">
         <div class="row g-3 mb-3">
-          <div class="col-md-6"><strong>Patient :</strong> {{ traitement.patient }}</div>
-          <div class="col-md-6"><strong>Statut :</strong>
-            {% if traitement.statut == 'prescrit' %}<span class="pill pill-warn">Prescrit</span>
-            {% elif traitement.statut == 'en_cours' %}<span class="pill pill-info">En cours</span>
-            {% else %}<span class="pill pill-success">Termine</span>{% endif %}
-          </div>
-          <div class="col-md-6"><strong>Duree :</strong> {{ traitement.duree }} jour(s)</div>
-          <div class="col-md-6"><strong>Infirmier :</strong> {{ traitement.infirmier|default:'-' }}</div>
-          <div class="col-md-6"><strong>Cree le :</strong> {{ traitement.date_creation|date:"d/m/Y H:i" }}</div>
+          <div class="col-6"><strong>Durée :</strong> {{ traitement.duree }} jour(s)</div>
+          <div class="col-6"><strong>Infirmier :</strong> {{ traitement.infirmier|default:'-' }}</div>
+          <div class="col-12"><strong>Prescrit le :</strong> {{ traitement.date_creation|date:"d/m/Y H:i" }}</div>
         </div>
         <hr>
         <h6 class="fw-bold">Description</h6>
-        <p style="white-space:pre-wrap">{{ traitement.description }}</p>
+        <p style="white-space:pre-wrap;margin:0">{{ traitement.description }}</p>
       </div>
     </div>
   </div>
-  <div class="col-md-5">
+
+  <!-- Timeline d'évolution (temps réel) -->
+  <div class="col-md-7">
     <div class="panel">
-      <div class="panel-hdr"><div class="panel-title"><i class="bi bi-clock-history"></i> Administrations</div></div>
-      <div class="panel-body p-0">
-        <table class="ctable">
-          <thead><tr><th>Date</th><th>Infirmier</th><th>Note</th></tr></thead>
-          <tbody>
-            {% for a in traitement.administrations.all %}
-            <tr>
-              <td>{{ a.date|date:"d/m/Y H:i" }}</td>
-              <td>{{ a.infirmier|default:'-' }}</td>
-              <td>{{ a.note|default:'-' }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="3" class="text-muted text-center py-3">Aucune administration enregistree.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="panel-hdr"><div class="panel-title"><i class="bi bi-activity me-2"></i>Évolution du traitement</div></div>
+      <div class="panel-body">
+        <div class="timeline" id="timeline">
+          {% for a in administrations %}
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-card">
+              <div class="tl-head">
+                <span class="tl-date"><i class="bi bi-clock-history me-1"></i>{{ a.date|date:"d/m/Y" }} · {{ a.date|date:"H:i" }}</span>
+                <span class="tl-inf">{{ a.infirmier|default:'—' }}</span>
+              </div>
+              {% if a.note %}<div class="tl-note">{{ a.note }}</div>{% endif %}
+            </div>
+          </div>
+          {% empty %}
+          <div class="tl-empty"><i class="bi bi-hourglass-split d-block mb-2" style="font-size:1.8rem;opacity:.4"></i>Aucune administration enregistrée pour le moment.</div>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const URL_SUIVI = "{% url 'consultation:traitement_suivi' traitement.pk %}";
+  const tl     = document.getElementById('timeline');
+  const elCount = document.getElementById('adm-count');
+  const elFill  = document.getElementById('prog-fill');
+  const elPct   = document.getElementById('prog-pct');
+  const elJour  = document.getElementById('prog-jour');
+  const elStat  = document.getElementById('statut-badge');
+  const elMaj   = document.getElementById('maj-time');
+  const dot     = document.getElementById('live-dot');
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  function render(items, nbBefore) {
+    if (!items.length) {
+      tl.innerHTML = '<div class="tl-empty"><i class="bi bi-hourglass-split d-block mb-2" style="font-size:1.8rem;opacity:.4"></i>Aucune administration enregistrée pour le moment.</div>';
+      return;
+    }
+    const nNew = Math.max(0, items.length - nbBefore);
+    tl.innerHTML = items.map((a, i) => `
+      <div class="tl-item${(nbBefore >= 0 && i < nNew) ? ' tl-item-new' : ''}">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-head">
+            <span class="tl-date"><i class="bi bi-clock-history me-1"></i>${a.date} · ${a.heure}</span>
+            <span class="tl-inf">${esc(a.infirmier)}</span>
+          </div>
+          ${a.note ? `<div class="tl-note">${esc(a.note)}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  let lastCount = parseInt(elCount.textContent, 10) || 0;
+
+  async function refresh() {
+    try {
+      const r = await fetch(URL_SUIVI, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      if (!r.ok) return;
+      const d = await r.json();
+      render(d.administrations, lastCount);
+      elCount.textContent = d.count;
+      elFill.style.width  = d.pourcentage + '%';
+      elPct.textContent   = d.pourcentage + '%';
+      elJour.textContent  = d.duree ? `Jour ${d.jour_courant} / ${d.duree}` : '—';
+      elStat.textContent  = d.statut_label;
+      elStat.className = 'pill ' + (d.statut === 'termine' ? 'pill-success' : d.statut === 'en_cours' ? 'pill-info' : 'pill-warn');
+      elMaj.textContent = d.maj;
+      dot.classList.add('pulse'); setTimeout(() => dot.classList.remove('pulse'), 800);
+      lastCount = d.count;
+    } catch (e) { /* hors ligne : on réessaiera au prochain tick */ }
+  }
+
+  refresh();
+  setInterval(refresh, 10000);  // suivi en temps réel : toutes les 10 s
+})();
+</script>
 {% endblock %}

@@ -3,7 +3,7 @@
 {% block body_class %}page-consultation-bg page-dossier-bg{% endblock %}
 
 {% block title %}Dossiers médicaux{% endblock %}
-{% block nav_consultation %}active{% endblock %}
+{% block nav_dossiers %}active{% endblock %}
 {% block page_title %}Dossiers médicaux{% endblock %}
 {% block page_heading %}Dossiers médicaux{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Dossiers médicaux</li>{% endblock %}
@@ -21,7 +21,7 @@
 }
 .hero-banner-bg {
   position: absolute; inset: 0;
-  background-image: url('{% static "consultation/img/TU.jpg" %}'),
+  background-image: url('{% static "consultation/img/TU.jpg" %}?v=3'),
                     linear-gradient(135deg, #0a3d4f 0%, #0088aa 100%);
   background-size: cover; background-position: center; background-repeat: no-repeat;
   filter: brightness(.55) saturate(.9);

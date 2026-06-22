@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}Paiements{% endblock %}
-{% block nav_factures %}active{% endblock %}
+{% block nav_paiements %}active{% endblock %}
 {% block page_title %}Facturation{% endblock %}
 {% block page_heading %}Historique des paiements{% endblock %}
 {% block breadcrumb %}
@@ -20,12 +20,23 @@
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.45rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
 .stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
+/* Barre de recherche : même couleur (teal) que la liste des consultations */
+.search-bar {
+  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
+  border: 1.5px solid rgba(0,136,170,.35);
+  border-radius: .9rem; padding: .9rem 1.2rem; margin-bottom: .75rem;
+  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
+}
+.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
+.search-bar i.bi-search { color: #0088aa !important; }
 </style>{% endblock %}
 {% block content %}
 
 <!-- ── HERO BANNER ── -->
 <div class="hero-banner">
-  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg')"></div>
+  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg?v=4')"></div>
   <div class="hero-banner-overlay"></div>
   <div class="hero-banner-content">
     <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
@@ -59,6 +70,21 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── BARRE RECHERCHE ── -->
+<div class="search-bar">
+  <form method="get" class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
+    <div style="position:relative;flex:1;min-width:220px">
+      <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%)"></i>
+      <input type="text" name="q" class="f-input" style="padding-left:2.2rem;border-radius:.7rem"
+             placeholder="Rechercher par patient, note…" value="{{ q }}">
+    </div>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i> Rechercher</button>
+    {% if q %}
+    <a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i></a>
+    {% endif %}
+  </form>
 </div>
 
 <div class="panel">
@@ -110,6 +136,7 @@
           <td>
             <div class="d-flex gap-1 justify-content-end">
               <a href="{% url 'facturation:paiement_recu' p.pk %}" class="act-btn" title="Imprimer le reçu"><i class="bi bi-printer"></i></a>
+              <a href="{% url 'facturation:paiement_pdf' p.pk %}" target="_blank" class="act-btn" title="Reçu PDF"><i class="bi bi-file-earmark-pdf"></i></a>
               <a href="{% url 'facturation:paiement_modifier' p.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
               <a href="{% url 'facturation:paiement_supprimer' p.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash"></i></a>
             </div>

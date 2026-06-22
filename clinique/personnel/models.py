@@ -9,6 +9,7 @@ class Personnel(models.Model):
     service = models.CharField(max_length=100)
     role = models.CharField(max_length=50)
     mot_de_passe = models.CharField(max_length=255)
+    photo = models.ImageField(upload_to='personnel/photos/', null=True, blank=True)
 
     class Meta:
         abstract = True

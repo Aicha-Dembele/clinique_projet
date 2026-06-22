@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 
 from .models import Profil, Role, Permission, Notification, JournalAudit
 from .decorators import admin_required, role_required
+from .recherche import termes_q
 from personnel.models import Medecin, Infirmier, Laborantin, Receptionniste
 
 
@@ -43,9 +44,8 @@ def utilisateurs_liste(request):
     q = request.GET.get('q', '').strip()
     role_filter = request.GET.get('role', '')
     if q:
-        profils = profils.filter(user__username__icontains=q) | \
-                  profils.filter(user__first_name__icontains=q) | \
-                  profils.filter(user__last_name__icontains=q)
+        profils = profils.filter(
+            termes_q(q, 'user__username', 'user__first_name', 'user__last_name'))
     if role_filter:
         profils = profils.filter(role__code=role_filter)
     return render(request, 'comptes/utilisateurs_liste.html', {

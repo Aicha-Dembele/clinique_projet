@@ -1325,9 +1325,9 @@
       background-repeat: no-repeat !important;
     }
 
-    /* ── Fond photo réception/caisse clinique — pages facturation ── */
+    /* ── Fond photo pharmacie/caisse — pages facturation, paiements, tarifs, assurances, pharmacie ── */
     body.page-facturation-bg::before {
-      background-image: url('{% static "consultation/img/facturation.jpg" %}'),
+      background-image: url('{% static "consultation/img/facturation.jpg" %}?v=4'),
                         linear-gradient(135deg, #0a3d4f 0%, #0088aa 100%) !important;
       background-size: cover !important;
       background-position: center !important;
@@ -1338,7 +1338,7 @@
        Traitement identique à consultation : luminosité (.55) et flou des cartes (6px)
        hérités de page-consultation-bg. page-dossier-bg ne fournit que la photo de fond. */
     body.page-dossier-bg::before {
-      background-image: url('{% static "consultation/img/TU.jpg" %}'),
+      background-image: url('{% static "consultation/img/TU.jpg" %}?v=3'),
                         linear-gradient(135deg, #0a3d4f 0%, #0088aa 100%) !important;
       background-size: cover !important;
       background-position: center !important;
@@ -1487,7 +1487,7 @@
     <!-- Laboratoire -->
     {% if 'resultat.view' in user_permissions %}
     <div class="sb-section">Laboratoire</div>
-    <a href="{% url 'consultation:resultats' %}" class="sb-link">
+    <a href="{% url 'consultation:resultats' %}" class="sb-link {% block nav_resultats %}{% endblock %}">
       <i class="bi bi-clipboard2-data-fill"></i> Résultats d'examens
     </a>
     {% endif %}

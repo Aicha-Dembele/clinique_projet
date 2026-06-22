@@ -25,13 +25,24 @@
 .tab-link { padding: .42rem .85rem; border-radius: .55rem; font-size: .76rem; font-weight: 700; color: var(--text-muted); text-decoration: none; transition: all .2s; display: inline-flex; align-items: center; gap: .35rem; }
 .tab-link:hover { color: var(--text-primary); }
 .tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+/* Barre de recherche : même boîte (teal translucide) que la liste des consultations */
+.search-bar {
+  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
+  border: 1.5px solid rgba(0,136,170,.35);
+  border-radius: .9rem; padding: .9rem 1.2rem; margin-bottom: .75rem;
+  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
+}
+.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
+.search-bar i.bi-search { color: #0088aa !important; }
 </style>{% endblock %}
 
 {% block content %}
 
 <!-- ── HERO BANNER ── -->
 <div class="hero-banner">
-  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg')"></div>
+  <div class="hero-banner-bg" style="background-image:url('/static/consultation/img/facturation.jpg?v=4')"></div>
   <div class="hero-banner-overlay"></div>
   <div class="hero-banner-content">
     <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
@@ -119,22 +130,20 @@
   </div>
 </div>
 
-<div class="panel mb-3">
-  <div class="panel-body" style="padding:.95rem 1.25rem">
-    <div class="d-flex gap-3 align-items-center flex-wrap">
-      <form method="get" class="d-flex gap-2 align-items-center" style="flex:1;min-width:240px">
-        <input type="hidden" name="statut" value="{{ request.GET.statut }}">
-        <div style="position:relative;flex:1">
-          <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
-          <input type="text" name="q" class="f-input" style="padding-left:2.2rem" placeholder="Rechercher patient ou n° facture…" value="{{ request.GET.q }}">
-        </div>
-        <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i></button>
-      </form>
-      <div class="tabs-nav">
+<div class="search-bar">
+  <div class="d-flex gap-3 align-items-center flex-wrap" style="flex:1">
+    <form method="get" class="d-flex gap-2 align-items-center" style="flex:1;min-width:240px">
+      <input type="hidden" name="statut" value="{{ request.GET.statut }}">
+      <div style="position:relative;flex:1">
+        <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%)"></i>
+        <input type="text" name="q" class="f-input" style="padding-left:2.2rem;border-radius:.7rem" placeholder="Rechercher patient ou n° facture…" value="{{ request.GET.q }}">
+      </div>
+      <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-search"></i></button>
+    </form>
+    <div class="tabs-nav">
         <a href="?{% if request.GET.q %}q={{ request.GET.q }}{% endif %}" class="tab-link {% if not request.GET.statut %}active{% endif %}">Toutes</a>
         <a href="?statut=payé{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'payé' %}active{% endif %}"><i class="bi bi-check-lg"></i> Payées</a>
         <a href="?statut=non payé{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="tab-link {% if request.GET.statut == 'non payé' %}active{% endif %}"><i class="bi bi-x-lg"></i> Impayées</a>
-      </div>
     </div>
   </div>
 </div>

@@ -21,7 +21,7 @@
 .actions-row { max-width:720px; margin-left:auto; margin-right:auto; }
 </style>{% endblock %}
 {% block content %}
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <div class="form-section">
     <div class="form-section-hdr">
@@ -49,8 +49,17 @@
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Spécialité <span class="req">*</span></label>
-        <input type="text" name="specialite" class="f-input" required placeholder="Ex: Hématologie, Biochimie, Microbiologie…"
-               value="{% if laborantin %}{{ laborantin.specialite }}{% endif %}">
+        <select name="specialite" id="lab-spec" class="f-input f-select" required onchange="onLabSpec()">
+          <option value="">-- Choisir une spécialité --</option>
+          {% for s in labo_services %}
+          <option value="{{ s }}" {% if laborantin and laborantin.specialite == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+          <option value="__autre__" {% if laborantin and laborantin.specialite and laborantin.specialite not in labo_services %}selected{% endif %}>Autre…</option>
+        </select>
+        <input type="text" name="specialite_autre" id="lab-spec-autre" class="f-input"
+               placeholder="Préciser la spécialité…"
+               style="margin-top:.6rem;{% if not laborantin or not laborantin.specialite or laborantin.specialite in labo_services %}display:none{% endif %}"
+               value="{% if laborantin and laborantin.specialite and laborantin.specialite not in labo_services %}{{ laborantin.specialite }}{% endif %}">
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Service</label>
@@ -61,6 +70,16 @@
         <label class="f-label">Adresse</label>
         <input type="text" name="adresse" class="f-input" placeholder="Adresse"
                value="{% if laborantin %}{{ laborantin.adresse }}{% endif %}">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Photo</label>
+        <div class="d-flex align-items-center gap-3">
+          {% if laborantin and laborantin.photo %}
+          <img src="{{ laborantin.photo.url }}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--card-border)">
+          {% endif %}
+          <input type="file" name="photo" accept="image/*" class="f-input">
+        </div>
+        {% if laborantin and laborantin.photo %}<div class="form-section-sub" style="margin-top:.35rem">Laissez vide pour conserver la photo actuelle.</div>{% endif %}
       </div>
       {% if not laborantin %}
       <div class="col-12 col-md-6">
@@ -75,4 +94,16 @@
     <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
   </div>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function onLabSpec() {
+  var sel = document.getElementById('lab-spec');
+  var inp = document.getElementById('lab-spec-autre');
+  var show = sel.value === '__autre__';
+  inp.style.display = show ? 'block' : 'none';
+  if (!show) inp.value = '';
+}
+</script>
 {% endblock %}

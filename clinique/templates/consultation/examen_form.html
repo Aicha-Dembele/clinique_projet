@@ -64,7 +64,18 @@
     <div class="row g-3">
       <div class="col-12 col-md-6">
         <label class="f-label">Type d'examen <span class="req-mark">*</span></label>
-        <input type="text" name="type_examen" class="f-input" value="{% if examen %}{{ examen.type_examen }}{% endif %}" placeholder="Ex : Prise de sang, Radio..." required>
+        <select id="type_examen" name="type_examen" class="f-input f-select" required
+                onchange="document.getElementById('type_examen_autre').style.display = this.value === '__autre__' ? 'block' : 'none'">
+          <option value="">-- Choisir un type --</option>
+          {% for t in examen_types %}
+          <option value="{{ t }}" {% if examen and examen.type_examen == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+          <option value="__autre__" {% if examen and examen.type_examen and examen.type_examen not in examen_types %}selected{% endif %}>Autre (préciser)…</option>
+        </select>
+        <input id="type_examen_autre" type="text" name="type_examen_autre" class="f-input"
+               placeholder="Préciser le type d'examen…"
+               value="{% if examen and examen.type_examen and examen.type_examen not in examen_types %}{{ examen.type_examen }}{% endif %}"
+               style="margin-top:.5rem;{% if not examen or not examen.type_examen or examen.type_examen in examen_types %}display:none{% endif %}">
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Date</label>

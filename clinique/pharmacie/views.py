@@ -8,6 +8,7 @@ from .models import Medicament, MouvementStock
 from patients.models import Patient
 from consultation.models import Ordonnance
 from comptes.decorators import role_required
+from comptes.recherche import termes_q
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ def medicament_liste(request):
 
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(nom__icontains=q) | qs.filter(dci__icontains=q)
+        qs = qs.filter(termes_q(q, 'nom', 'dci'))
 
     categorie = request.GET.get('categorie', '')
     if categorie:

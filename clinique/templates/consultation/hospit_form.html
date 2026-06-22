@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block body_class %}page-consultation-bg page-hospitalisation-bg{% endblock %}
 {% block title %}{{ action }} une hospitalisation{% endblock %}
-{% block nav_consultation %}active{% endblock %}
+{% block nav_hospit %}active{% endblock %}
 {% block page_title %}Hospitalisations{% endblock %}
 {% block page_heading %}{{ action }} une hospitalisation{% endblock %}
 {% block breadcrumb %}
@@ -36,7 +36,7 @@
         <select name="patient" class="f-input f-select" required {% if hospit %}disabled{% endif %}>
           <option value="">-- Choisir un patient --</option>
           {% for p in patients %}
-          <option value="{{ p.pk }}" {% if hospit and hospit.patient_id == p.pk %}selected{% endif %}>{{ p.nom }} {{ p.prenom }}</option>
+          <option value="{{ p.pk }}" {% if hospit and hospit.patient_id == p.pk or form_data.patient == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.nom }} {{ p.prenom }}</option>
           {% endfor %}
         </select>
         {% if hospit %}<input type="hidden" name="patient" value="{{ hospit.patient_id }}">{% endif %}
@@ -46,7 +46,7 @@
         <select name="medecin" class="f-input f-select" required>
           <option value="">-- Choisir un médecin --</option>
           {% for m in medecins %}
-          <option value="{{ m.pk }}" {% if hospit and hospit.medecin_id == m.pk %}selected{% endif %}>Dr. {{ m.nom }} {{ m.prenom }}{% if m.specialite %} — {{ m.specialite }}{% endif %}</option>
+          <option value="{{ m.pk }}" {% if hospit and hospit.medecin_id == m.pk or form_data.medecin == m.pk|stringformat:"s" %}selected{% endif %}>Dr. {{ m.nom }} {{ m.prenom }}{% if m.specialite %} — {{ m.specialite }}{% endif %}</option>
           {% endfor %}
         </select>
       </div>
@@ -63,28 +63,47 @@
     </div>
     <div class="row g-3">
       <div class="col-12 col-md-6">
-        <label class="f-label">Type de chambre <span class="req-mark">*</span></label>
-        <select name="type_chambre" class="f-input f-select" required>
-          <option value="simple" {% if hospit and hospit.type_chambre == 'simple' %}selected{% endif %}>Simple</option>
-          <option value="double" {% if hospit and hospit.type_chambre == 'double' %}selected{% endif %}>Double</option>
-          <option value="vip" {% if hospit and hospit.type_chambre == 'vip' %}selected{% endif %}>VIP</option>
+        <label class="f-label">Chambre <span class="req-mark">*</span></label>
+        <select name="numero_chambre" class="f-input f-select" required>
+          <option value="">-- Choisir une chambre --</option>
+          {% regroup chambres by groupe as groupes_chambres %}
+          {% for groupe in groupes_chambres %}
+          <optgroup label="{{ groupe.grouper }}">
+            {% for c in groupe.list %}
+            <option value="{{ c.numero }}"
+              {% if hospit and hospit.numero_chambre == c.numero or form_data.numero_chambre == c.numero %}selected{% endif %}
+              {% if c.pleine and not hospit or c.pleine and hospit.numero_chambre != c.numero %}disabled{% endif %}>
+              Chambre {{ c.numero }} — {{ c.occupants }}/{{ c.capacite }}{% if c.pleine %} (complète){% endif %}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
         </select>
+        <div class="form-section-sub" style="margin-top:.4rem">
+          VIP : 1 patient · Double : 2 patients · Simple : 6 patients. Les chambres complètes sont désactivées.
+        </div>
       </div>
       <div class="col-12 col-md-6">
-        <label class="f-label">Numéro de chambre <span class="req-mark">*</span></label>
-        <input type="text" name="numero_chambre" class="f-input" value="{% if hospit %}{{ hospit.numero_chambre }}{% endif %}" placeholder="Ex : 204" required>
+        <label class="f-label">État du patient <span class="req-mark">*</span></label>
+        <select name="etat_clinique" class="f-input f-select" required>
+          <option value="stable" {% if hospit and hospit.etat_clinique == 'stable' or form_data.etat_clinique == 'stable' or not hospit and not form_data %}selected{% endif %}>Stable</option>
+          <option value="critique" {% if hospit and hospit.etat_clinique == 'critique' or form_data.etat_clinique == 'critique' %}selected{% endif %}>Critique</option>
+        </select>
+        <div class="form-section-sub" style="margin-top:.4rem">
+          « Critique » met le patient en alerte rouge dans la liste et le plan.
+        </div>
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-6">
         <label class="f-label">Nombre de jours <span class="req-mark">*</span></label>
-        <input type="number" name="nombre_jours" class="f-input" value="{% if hospit %}{{ hospit.nombre_jours }}{% endif %}" min="1" required>
+        <input type="number" name="nombre_jours" class="f-input" value="{% if hospit %}{{ hospit.nombre_jours }}{% else %}{{ form_data.nombre_jours|default:'' }}{% endif %}" min="1" required>
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-6">
         <label class="f-label">Date d'entrée <span class="req-mark">*</span></label>
-        <input type="date" name="date_entree" class="f-input" value="{% if hospit %}{{ hospit.date_entree|date:'Y-m-d' }}{% endif %}" required>
+        <input type="date" name="date_entree" class="f-input" value="{% if hospit %}{{ hospit.date_entree|date:'Y-m-d' }}{% else %}{{ form_data.date_entree|default:'' }}{% endif %}" required>
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-6">
         <label class="f-label">Date de sortie</label>
-        <input type="date" name="date_sortie" class="f-input" value="{% if hospit and hospit.date_sortie %}{{ hospit.date_sortie|date:'Y-m-d' }}{% endif %}">
+        <input type="date" name="date_sortie" class="f-input" value="{% if hospit and hospit.date_sortie %}{{ hospit.date_sortie|date:'Y-m-d' }}{% else %}{{ form_data.date_sortie|default:'' }}{% endif %}">
       </div>
     </div>
   </div>

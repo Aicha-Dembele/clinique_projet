@@ -250,7 +250,50 @@ class Hospitalisation(models.Model):
     numero_chambre = models.CharField(max_length=10)
     date_entree = models.DateField()
     date_sortie = models.DateField(null=True, blank=True)
-    
+
+    ETAT_CHOICES = [('stable', 'Stable'), ('critique', 'Critique')]
+    etat_clinique = models.CharField(max_length=20, choices=ETAT_CHOICES, default='stable')
+
+    # Nombre maximum de patients qu'une chambre peut accueillir selon son type.
+    CAPACITE_CHAMBRE = {'simple': 6, 'double': 2, 'vip': 1}
+
+    @classmethod
+    def plan_chambres(cls):
+        """Inventaire fixe de l'établissement : 40 chambres typées (numéro, type).
+
+        - 10 VIP    : 101-110            (1 patient)
+        - 12 doubles : 201-210, 301-302  (2 patients)
+        - 18 simples : 303-310, 401-410  (6 patients)
+        """
+        vip = [str(100 + i) for i in range(1, 11)]
+        double = [str(200 + i) for i in range(1, 11)] + ['301', '302']
+        simple = [str(300 + i) for i in range(3, 11)] + [str(400 + i) for i in range(1, 11)]
+        return ([(n, 'vip') for n in vip]
+                + [(n, 'double') for n in double]
+                + [(n, 'simple') for n in simple])
+
+    @classmethod
+    def type_pour_numero(cls, numero):
+        """Type de chambre associé à un numéro selon le plan, ou None si inconnu."""
+        numero = (numero or '').strip()
+        return dict(cls.plan_chambres()).get(numero)
+
+    @classmethod
+    def capacite_pour(cls, type_chambre):
+        """Capacité (nb de patients) d'une chambre de ce type. 1 par défaut."""
+        return cls.CAPACITE_CHAMBRE.get((type_chambre or '').strip().lower(), 1)
+
+    @classmethod
+    def occupants_actifs(cls, numero_chambre, exclure_pk=None):
+        """Nombre de patients actuellement hospitalisés (non sortis) dans cette chambre."""
+        qs = cls.objects.filter(
+            numero_chambre__iexact=(numero_chambre or '').strip(),
+            date_sortie__isnull=True,
+        )
+        if exclure_pk:
+            qs = qs.exclude(pk=exclure_pk)
+        return qs.count()
+
     def get_prix_nuit(self):
         """Retourne le prix par nuit selon le type de chambre."""
         tarif = (
@@ -287,17 +330,18 @@ class Hospitalisation(models.Model):
         return None
 
     def etat(self):
-        """Etat clinique affiche dans la liste (Stable / Post-op / Critique / Sortie auj.)."""
+        """Etat clinique affiche dans la liste (Stable / Critique / Sorti / Sortie auj.).
+
+        Pour un patient hospitalise, l'etat est choisi a l'admission (champ
+        etat_clinique) ; la sortie a la priorite sur tout le reste.
+        """
         from datetime import date
         if self.date_sortie:
             if self.date_sortie == date.today():
                 return {'code': 'sortie', 'label': 'Sortie auj.'}
             return {'code': 'sorti', 'label': 'Sorti'}
-        t = (self.type_chambre or '').lower()
-        if 'intensif' in t or 'usi' in t or 'rea' in t or 'soins int' in t:
+        if (self.etat_clinique or '').lower() == 'critique':
             return {'code': 'critique', 'label': 'Critique'}
-        if 'chirurgie' in t or 'chir' in t or 'post' in t or 'bloc' in t:
-            return {'code': 'postop', 'label': 'Post-op'}
         return {'code': 'stable', 'label': 'Stable'}
 
     def __str__(self):

@@ -6,7 +6,39 @@ from django.db.models import Q
 from django.utils import timezone
 
 from patients.models import Patient
-from comptes.decorators import role_required
+from comptes.decorators import role_required, get_role
+from comptes.recherche import termes_q
+
+
+def _medecin_courant(request):
+    """Médecin lié au compte connecté, ou None."""
+    return getattr(getattr(request.user, 'profil', None), 'medecin', None)
+
+
+def _patients_du_medecin(medecin):
+    """Patients suivis par ce médecin : ceux avec qui il a un lien de soin
+    (rendez-vous, hospitalisation ou examen). Sert à ce qu'un médecin ne voie
+    que ses propres patients, pas ceux d'un confrère."""
+    return Patient.objects.filter(
+        Q(rendez_vous__medecin=medecin) |
+        Q(hospitalisation__medecin=medecin) |
+        Q(examenmedical__medecin=medecin)
+    )
+
+
+def _restreindre_au_medecin(request, qs):
+    """Si l'utilisateur connecté est un médecin, ne garde que ses patients.
+    Les autres rôles (admin, accueil, infirmier, labo) voient tous les patients."""
+    if get_role(request.user) != 'medecin':
+        return qs
+    medecin = _medecin_courant(request)
+    if not medecin:
+        return qs.none()
+    return qs.filter(
+        Q(rendez_vous__medecin=medecin) |
+        Q(hospitalisation__medecin=medecin) |
+        Q(examenmedical__medecin=medecin)
+    ).distinct()
 
 
 @login_required
@@ -120,14 +152,10 @@ def patient_liste(request):
     q = request.GET.get('q', '')
     sexe = request.GET.get('sexe', '')
     qs = Patient.objects.select_related('assurance').order_by('-date_creation')
+    qs = _restreindre_au_medecin(request, qs)
 
     if q:
-        qs = qs.filter(
-            Q(nom__icontains=q) |
-            Q(prenom__icontains=q) |
-            Q(telephone__icontains=q) |
-            Q(email__icontains=q)
-        )
+        qs = qs.filter(termes_q(q, 'nom', 'prenom', 'telephone', 'email'))
     if sexe:
         qs = qs.filter(sexe=sexe)
 
@@ -142,11 +170,9 @@ def patient_export(request):
     q = request.GET.get('q', '')
     sexe = request.GET.get('sexe', '')
     qs = Patient.objects.select_related('assurance').order_by('nom', 'prenom')
+    qs = _restreindre_au_medecin(request, qs)
     if q:
-        qs = qs.filter(
-            Q(nom__icontains=q) | Q(prenom__icontains=q) |
-            Q(telephone__icontains=q) | Q(email__icontains=q)
-        )
+        qs = qs.filter(termes_q(q, 'nom', 'prenom', 'telephone', 'email'))
     if sexe:
         qs = qs.filter(sexe=sexe)
 
@@ -164,6 +190,14 @@ def patient_export(request):
 @role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
 def patient_detail(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
+
+    # Un médecin ne peut consulter que le dossier de ses propres patients.
+    if get_role(request.user) == 'medecin':
+        medecin = _medecin_courant(request)
+        if not medecin or not _patients_du_medecin(medecin).filter(pk=patient.pk).exists():
+            messages.error(request, "Ce patient ne fait pas partie de vos patients.")
+            return redirect('patients:liste')
+
     from consultation.models import DossierMedical, Rendez_vous, Consultation, ExamenMedical
     from facturation.models import Facture
 

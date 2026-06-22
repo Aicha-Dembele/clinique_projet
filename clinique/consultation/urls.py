@@ -56,6 +56,7 @@ urlpatterns = [
     path('traitements/', views.traitements, name='traitements'),
     path('traitements/ajouter/', views.traitement_ajouter, name='traitement_ajouter'),
     path('traitements/<int:pk>/', views.traitement_detail, name='traitement_detail'),
+    path('traitements/<int:pk>/suivi.json', views.traitement_suivi, name='traitement_suivi'),
     path('traitements/<int:pk>/administrer/', views.traitement_administrer, name='traitement_administrer'),
     path('traitements/<int:pk>/statut/', views.traitement_statut, name='traitement_statut'),
     path('traitements/<int:pk>/supprimer/', views.traitement_supprimer, name='traitement_supprimer'),

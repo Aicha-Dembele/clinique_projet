@@ -18,6 +18,7 @@ urlpatterns = [
     path('paiements/<int:pk>/modifier/',  views.paiement_modifier,  name='paiement_modifier'),
     path('paiements/<int:pk>/supprimer/', views.paiement_supprimer, name='paiement_supprimer'),
     path('paiements/<int:pk>/recu/',      views.paiement_recu,      name='paiement_recu'),
+    path('paiements/<int:pk>/pdf/',       views.paiement_pdf,       name='paiement_pdf'),
     path('rapports/',                     views.rapports,           name='rapports'),
     path('tarifs/',                       views.tarif_liste,        name='tarifs'),
     path('tarifs/ajouter/',               views.tarif_ajouter,      name='tarif_ajouter'),

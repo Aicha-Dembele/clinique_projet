@@ -35,6 +35,13 @@
 
 {% block extra_js %}
 <script>
+/* .page-hdr garde un transform résiduel (animation fadeDown fill:both) qui piège
+   les éléments position:fixed sous la barre. On sort le menu vers <body>. */
+(function () {
+  const m = document.getElementById('add-menu');
+  if (m && m.parentElement !== document.body) document.body.appendChild(m);
+})();
+
 function toggleAddMenu() {
   const btn  = document.getElementById('add-menu-wrap');
   const menu = document.getElementById('add-menu');
@@ -65,8 +72,10 @@ function toggleAddMenu() {
   }
 }
 document.addEventListener('click', function(e) {
-  if (!document.getElementById('add-menu-wrap').contains(e.target)) {
-    document.getElementById('add-menu').style.display = 'none';
+  const wrap = document.getElementById('add-menu-wrap');
+  const menu = document.getElementById('add-menu');
+  if (!wrap.contains(e.target) && !menu.contains(e.target)) {
+    menu.style.display = 'none';
   }
 });
 </script>
@@ -103,7 +112,9 @@ document.addEventListener('click', function(e) {
   width:48px; height:48px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
   font-size:.95rem; font-weight:800; flex-shrink:0; color:#fff;
+  overflow:hidden;
 }
+img.pcard-av { object-fit:cover; }
 .pcard-name { font-size:.95rem; font-weight:800; color:var(--text-primary); line-height:1.2; }
 .pcard-role { font-size:.75rem; color:var(--text-muted); margin-top:.15rem; font-weight:500; }
 
@@ -236,9 +247,13 @@ document.addEventListener('click', function(e) {
     <div class="pcard" style="animation-delay:{{ forloop.counter0 }}0ms">
       <div class="pcard-hdr">
         <div class="d-flex align-items-center gap-2">
+          {% if m.photo %}
+          <img src="{{ m.photo.url }}" alt="" class="pcard-av">
+          {% else %}
           <div class="pcard-av av-{% cycle 'blue' 'teal' 'orange' 'purple' 'red' 'green' 'cyan' 'pink' %}">
             {{ m.nom|slice:":1" }}{{ m.prenom|slice:":1" }}
           </div>
+          {% endif %}
           <div>
             <div class="pcard-name">Dr. {{ m.nom }} {{ m.prenom }}</div>
             <div class="pcard-role">{{ m.specialite }}</div>
@@ -279,9 +294,13 @@ document.addEventListener('click', function(e) {
     <div class="pcard" style="animation-delay:{{ forloop.counter0 }}0ms">
       <div class="pcard-hdr">
         <div class="d-flex align-items-center gap-2">
+          {% if inf.photo %}
+          <img src="{{ inf.photo.url }}" alt="" class="pcard-av">
+          {% else %}
           <div class="pcard-av {% cycle 'av-green' 'av-teal' 'av-blue' 'av-pink' %}">
             {{ inf.nom|slice:":1" }}{{ inf.prenom|slice:":1" }}
           </div>
+          {% endif %}
           <div>
             <div class="pcard-name">Inf. {{ inf.nom }} {{ inf.prenom }}</div>
             <div class="pcard-role">Infirmier{{ inf.nom|slice:"0" }}</div>
@@ -321,7 +340,11 @@ document.addEventListener('click', function(e) {
     <div class="pcard">
       <div class="pcard-hdr">
         <div class="d-flex align-items-center gap-2">
+          {% if lab.photo %}
+          <img src="{{ lab.photo.url }}" alt="" class="pcard-av">
+          {% else %}
           <div class="pcard-av av-purple">{{ lab.nom|slice:":1" }}{{ lab.prenom|slice:":1" }}</div>
+          {% endif %}
           <div>
             <div class="pcard-name">{{ lab.nom }} {{ lab.prenom }}</div>
             <div class="pcard-role">{{ lab.specialite }}</div>
@@ -361,7 +384,11 @@ document.addEventListener('click', function(e) {
     <div class="pcard">
       <div class="pcard-hdr">
         <div class="d-flex align-items-center gap-2">
+          {% if rec.photo %}
+          <img src="{{ rec.photo.url }}" alt="" class="pcard-av">
+          {% else %}
           <div class="pcard-av av-orange">{{ rec.nom|slice:":1" }}{{ rec.prenom|slice:":1" }}</div>
+          {% endif %}
           <div>
             <div class="pcard-name">{{ rec.nom }} {{ rec.prenom }}</div>
             <div class="pcard-role">Réceptionniste</div>
