@@ -20,6 +20,9 @@
 .req-mark { color: #ef4444; }
 .helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
 .actions-row { max-width: 760px; margin-left: auto; margin-right: auto; }
+.spec-chip { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .8rem; border: 1px solid var(--card-border); border-radius: 999px; cursor: pointer; font-size: .82rem; font-weight: 600; background: var(--input-bg); transition: all .15s; }
+.spec-chip:has(input:checked) { border-color: var(--accent); background: rgba(0,136,170,.12); color: var(--accent); }
+.spec-chip input { accent-color: var(--accent); }
 </style>{% endblock %}
 {% block content %}
 <form method="post">
@@ -109,6 +112,30 @@
       </div>
 
       <div class="col-12">
+        <label class="f-label" for="indication">Indication — aide à la prescription</label>
+        <textarea id="indication" name="indication" class="f-input" rows="2"
+                  placeholder="À quoi sert ce médicament et dans quels cas le prescrire…">{% if medicament %}{{ medicament.indication }}{% endif %}</textarea>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>S'affiche pour aider le médecin lors de la prescription.</div>
+      </div>
+
+      <div class="col-12">
+        <label class="f-label">Spécialités concernées</label>
+        <div class="d-flex flex-wrap gap-2">
+          {% for s in specialites %}
+          <label class="spec-chip">
+            <input type="checkbox" name="specialites" value="{{ s.code }}" {% if s.code in medic_spec_codes %}checked{% endif %}>
+            <span>{{ s.nom }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>Le médicament sera proposé en priorité pour ces spécialités.</div>
+      </div>
+
+      <div class="col-12 d-flex flex-column gap-2">
+        <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
+          <input type="checkbox" name="commun" {% if medicament and medicament.commun %}checked{% endif %}>
+          <span style="font-weight:600">Médicament commun (proposé à <u>toutes</u> les spécialités)</span>
+        </label>
         <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
           <input type="checkbox" name="actif" {% if not medicament or medicament.actif %}checked{% endif %}>
           <span style="font-weight:600">Médicament actif (disponible à la dispensation)</span>

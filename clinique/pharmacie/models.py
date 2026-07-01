@@ -6,6 +6,21 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+class Specialite(models.Model):
+    """Spécialité médicale servant à cibler les médicaments à la prescription."""
+
+    code = models.CharField(max_length=40, unique=True)
+    nom  = models.CharField(max_length=80)
+
+    class Meta:
+        ordering = ['nom']
+        verbose_name = "Spécialité"
+        verbose_name_plural = "Spécialités"
+
+    def __str__(self):
+        return self.nom
+
+
 class Medicament(models.Model):
     """Médicament géré en stock par la pharmacie de la clinique."""
 
@@ -20,6 +35,9 @@ class Medicament(models.Model):
         ('respiratoire',     'Respiratoire'),
         ('dermatologique',   'Dermatologique'),
         ('vitamine',         'Vitamines / Compléments'),
+        ('solute',           'Soluté / Perfusion'),
+        ('antiseptique',     'Antiseptique / Désinfectant'),
+        ('consommable',      'Consommable / Matériel médical'),
         ('autre',            'Autre'),
     ]
 
@@ -35,6 +53,15 @@ class Medicament(models.Model):
         help_text="Ex : 500 mg, 1 g, 100 mg/5 ml.")
     categorie      = models.CharField(
         max_length=30, choices=CATEGORIE_CHOICES, blank=True, default='')
+    indication     = models.TextField(
+        blank=True, default='',
+        help_text="À quoi sert ce médicament et dans quels cas le prescrire (aide à la prescription).")
+    commun         = models.BooleanField(
+        default=False,
+        help_text="Médicament de base, proposé à toutes les spécialités.")
+    specialites    = models.ManyToManyField(
+        Specialite, blank=True, related_name='medicaments',
+        help_text="Spécialités pour lesquelles ce médicament est proposé en priorité.")
     unite          = models.CharField(
         max_length=30, default='boîte',
         help_text="Unité de gestion du stock : boîte, comprimé, flacon…")
@@ -115,6 +142,9 @@ class MouvementStock(models.Model):
         Medicament, on_delete=models.CASCADE, related_name='mouvements')
     type_mouvement = models.CharField(max_length=10, choices=TYPE_CHOICES)
     quantite       = models.PositiveIntegerField()
+    prix_unitaire  = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Prix unitaire figé au moment du mouvement. Par défaut, celui du médicament.")
     motif          = models.CharField(max_length=200, blank=True, default='')
 
     # Liens optionnels : une sortie peut correspondre à une ordonnance / un patient
@@ -123,6 +153,10 @@ class MouvementStock(models.Model):
         null=True, blank=True, related_name='dispensations')
     patient        = models.ForeignKey(
         'patients.Patient', on_delete=models.SET_NULL, null=True, blank=True)
+    facture        = models.ForeignKey(
+        'facturation.Facture', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mouvements',
+        help_text="Facture sur laquelle ce médicament dispensé est porté (le cas échéant).")
     utilisateur    = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True)
     date           = models.DateTimeField(auto_now_add=True)
@@ -136,6 +170,11 @@ class MouvementStock(models.Model):
         signe = '+' if self.type_mouvement == 'entree' else '-'
         return f"{self.get_type_mouvement_display()} {signe}{self.quantite} — {self.medicament.nom}"
 
+    # ── Montant du mouvement (prix figé × quantité) ───────────────
+    def montant(self):
+        """Valeur monétaire du mouvement : prix unitaire (snapshot) × quantité."""
+        return (self.prix_unitaire or Decimal('0')) * self.quantite
+
     # ── Ajustement automatique du stock ───────────────────────────
     def _appliquer(self, delta):
         """Applique un delta au stock du médicament de façon atomique (F-expression)."""
@@ -145,6 +184,9 @@ class MouvementStock(models.Model):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        # Fige le prix courant du médicament si aucun prix n'a été fourni
+        if is_new and not self.prix_unitaire:
+            self.prix_unitaire = self.medicament.prix_unitaire or Decimal('0')
         super().save(*args, **kwargs)
         if is_new:
             delta = self.quantite if self.type_mouvement == 'entree' else -self.quantite
@@ -154,4 +196,8 @@ class MouvementStock(models.Model):
         # Annule l'effet du mouvement avant suppression
         delta = -self.quantite if self.type_mouvement == 'entree' else self.quantite
         self._appliquer(delta)
+        facture = self.facture
         super().delete(*args, **kwargs)
+        # Recalcule la facture pour retirer la ligne du médicament dispensé
+        if facture is not None:
+            facture.save()

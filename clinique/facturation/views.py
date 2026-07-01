@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
 from patients.models import Patient
-from comptes.decorators import role_required
+from comptes.decorators import role_required, permission_required
 from comptes.recherche import termes_q
 
 
@@ -22,7 +22,7 @@ def _fmt(val):
 
 # ── Factures ─────────────────────────────────────────────────────
 
-@role_required('admin', 'receptionniste')
+@permission_required('facture.view')
 def facture_liste(request):
     qs = Facture.objects.select_related('patient', 'assurance').prefetch_related('lignes', 'paiements').order_by('-id')
 
@@ -52,7 +52,7 @@ def facture_liste(request):
     })
 
 
-@role_required('admin', 'receptionniste')
+@permission_required('facture.view')
 def facture_detail(request, pk):
     facture = get_object_or_404(
         Facture.objects.select_related('patient', 'consultation', 'hospitalisation')
@@ -66,7 +66,7 @@ def facture_detail(request, pk):
     })
 
 
-@role_required('admin', 'receptionniste')
+@permission_required('facture.view')
 def facture_pdf(request, pk):
     """Télécharge / affiche la facture au format PDF (généré côté serveur)."""
     from .pdf import facture_pdf_response
@@ -78,7 +78,7 @@ def facture_pdf(request, pk):
     return facture_pdf_response(facture)
 
 
-@role_required('admin', 'receptionniste')
+@permission_required('paiement.view')
 def paiement_pdf(request, pk):
     """Affiche le reçu de paiement au format PDF (avec logo, généré côté serveur)."""
     from .pdf import paiement_pdf_response
@@ -101,6 +101,25 @@ def facture_ajouter(request):
             patient_id      = request.POST['patient']
             consultation_id = request.POST.get('consultation') or None
             hospit_id       = request.POST.get('hospitalisation') or None
+
+            # Une consultation / hospitalisation ne peut être facturée qu'UNE fois.
+            if consultation_id:
+                existante = Facture.objects.filter(consultation_id=consultation_id).first()
+                if existante:
+                    messages.error(
+                        request,
+                        f"Une facture existe déjà pour cette consultation "
+                        f"(FAC-{str(existante.pk).zfill(4)}). Supprimez-la d'abord "
+                        f"pour en créer une nouvelle.")
+                    return redirect('facturation:detail', pk=existante.pk)
+            if hospit_id:
+                existante = Facture.objects.filter(hospitalisation_id=hospit_id).first()
+                if existante:
+                    messages.error(
+                        request,
+                        f"Une facture existe déjà pour cette hospitalisation "
+                        f"(FAC-{str(existante.pk).zfill(4)}). Supprimez-la d'abord.")
+                    return redirect('facturation:detail', pk=existante.pk)
 
             facture = Facture(
                 patient_id=patient_id,
@@ -135,6 +154,8 @@ def facture_ajouter(request):
         'patients':         Patient.objects.select_related('assurance').order_by('nom'),
         'consultations':    consultations,
         'hospitalisations': hospitalisations,
+        'consult_facturees': set(Facture.objects.filter(consultation__isnull=False).values_list('consultation_id', flat=True)),
+        'hospit_facturees':  set(Facture.objects.filter(hospitalisation__isnull=False).values_list('hospitalisation_id', flat=True)),
         'assurances':       Assurance.objects.filter(actif=True),
         'action':           'Créer',
         'pre_patient':      pre_patient,
@@ -159,6 +180,19 @@ def facture_modifier(request, pk):
             # taux saisi → on l'applique ; champ vidé → save() reprendra celui de l'assurance (ou 0)
             facture.taux_prise_en_charge = Decimal(taux) if taux else Decimal('0')
             facture.notes              = request.POST.get('notes', '')
+
+            # Pas deux factures pour la même consultation / hospitalisation
+            if facture.consultation_id:
+                autre = Facture.objects.filter(consultation_id=facture.consultation_id).exclude(pk=facture.pk).first()
+                if autre:
+                    messages.error(request, f"Une autre facture (FAC-{str(autre.pk).zfill(4)}) couvre déjà cette consultation.")
+                    return redirect('facturation:detail', pk=facture.pk)
+            if facture.hospitalisation_id:
+                autre = Facture.objects.filter(hospitalisation_id=facture.hospitalisation_id).exclude(pk=facture.pk).first()
+                if autre:
+                    messages.error(request, f"Une autre facture (FAC-{str(autre.pk).zfill(4)}) couvre déjà cette hospitalisation.")
+                    return redirect('facturation:detail', pk=facture.pk)
+
             facture.save()   # recalcule tout
 
             messages.success(request, 'Facture mise à jour.')
@@ -175,6 +209,8 @@ def facture_modifier(request, pk):
         'patients':         Patient.objects.select_related('assurance').order_by('nom'),
         'consultations':    consultations_qs,
         'hospitalisations': Hospitalisation.objects.select_related('patient').order_by('-date_entree'),
+        'consult_facturees': set(Facture.objects.filter(consultation__isnull=False).exclude(pk=facture.pk).values_list('consultation_id', flat=True)),
+        'hospit_facturees':  set(Facture.objects.filter(hospitalisation__isnull=False).exclude(pk=facture.pk).values_list('hospitalisation_id', flat=True)),
         'assurances':       Assurance.objects.filter(actif=True),
         'action':           'Modifier',
         'pre_patient':      '',
@@ -210,7 +246,7 @@ def facture_recalculer(request, pk):
 
 # ── Paiements ────────────────────────────────────────────────────
 
-@role_required('admin', 'receptionniste')
+@permission_required('paiement.view')
 def paiement_liste(request):
     paiements = Paiement.objects.select_related('facture__patient').order_by('-date')
 
@@ -301,7 +337,7 @@ def paiement_supprimer(request, pk):
     })
 
 
-@role_required('admin', 'receptionniste')
+@permission_required('paiement.view')
 def paiement_recu(request, pk):
     paiement = get_object_or_404(Paiement.objects.select_related('facture__patient'), pk=pk)
     return render(request, 'facturation/recu.html', {'paiement': paiement})
@@ -309,7 +345,7 @@ def paiement_recu(request, pk):
 
 # ── Rapports ─────────────────────────────────────────────────────
 
-@role_required('admin')
+@permission_required('rapport.view')
 def rapports(request):
     paiements = Paiement.objects.all()
     factures  = Facture.objects.all()
@@ -331,7 +367,7 @@ def rapports(request):
 
 # ── Exports CSV (Excel) ──────────────────────────────────────────
 
-@role_required('admin', 'receptionniste')
+@permission_required('facture.view')
 def factures_export(request):
     """Exporte la liste des factures (filtres de recherche appliqués) en CSV."""
     from .exports import csv_response
@@ -372,7 +408,7 @@ def paiements_export(request):
 
 # ── Tarifs ───────────────────────────────────────────────────────
 
-@role_required('admin', 'receptionniste')
+@permission_required('tarif.view')
 def tarif_liste(request):
     tarifs = Tarif.objects.all().order_by('type_service', 'nom')
     return render(request, 'facturation/tarifs.html', {

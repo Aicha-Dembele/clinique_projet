@@ -17,4 +17,7 @@ urlpatterns = [
     path('receptionniste/ajouter/', views.receptionniste_ajouter, name='receptionniste_ajouter'),
     path('receptionniste/<int:pk>/modifier/', views.receptionniste_modifier, name='receptionniste_modifier'),
     path('receptionniste/<int:pk>/supprimer/', views.receptionniste_supprimer, name='receptionniste_supprimer'),
+    path('pharmacien/ajouter/', views.pharmacien_ajouter, name='pharmacien_ajouter'),
+    path('pharmacien/<int:pk>/modifier/', views.pharmacien_modifier, name='pharmacien_modifier'),
+    path('pharmacien/<int:pk>/supprimer/', views.pharmacien_supprimer, name='pharmacien_supprimer'),
 ]

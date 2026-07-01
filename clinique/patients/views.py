@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from patients.models import Patient
-from comptes.decorators import role_required, get_role
+from comptes.decorators import role_required, get_role, permission_required
 from comptes.recherche import termes_q
 
 
@@ -147,7 +147,7 @@ def dashboard(request):
 # ──────────────────────────────────────────────
 
 
-@role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
+@permission_required('patient.view')
 def patient_liste(request):
     q = request.GET.get('q', '')
     sexe = request.GET.get('sexe', '')
@@ -163,7 +163,7 @@ def patient_liste(request):
     return render(request, 'patients/liste.html', {'patients': page, 'q': q})
 
 
-@role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
+@permission_required('patient.view')
 def patient_export(request):
     """Exporte la liste des patients (filtres de recherche appliqués) en CSV."""
     from facturation.exports import csv_response
@@ -187,7 +187,7 @@ def patient_export(request):
     return csv_response('patients.csv', headers, rows)
 
 
-@role_required('admin', 'medecin', 'infirmier', 'receptionniste', 'laborantin')
+@permission_required('patient.view')
 def patient_detail(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
 

@@ -34,7 +34,7 @@ class _PermLookup:
 def _stock_alertes(role):
     """Nombre de médicaments actifs en rupture ou sous le seuil d'alerte.
     Calculé seulement pour les rôles ayant accès à la pharmacie (badge du menu)."""
-    if role not in ('admin', 'receptionniste'):
+    if role not in ('admin', 'receptionniste', 'pharmacien'):
         return 0
     try:
         from django.db.models import F
@@ -69,6 +69,7 @@ def role_context(request):
         'is_laborantin': role == 'laborantin',
         'is_infirmier': role == 'infirmier',
         'is_receptionniste': role == 'receptionniste',
+        'is_pharmacien': role == 'pharmacien',
         'user_permissions': codes,
         'perms': _PermLookup(codes),
         'stock_alertes': _stock_alertes(role),

@@ -77,6 +77,9 @@
           <optgroup label="Receptionnistes" data-role="receptionniste">
             {% for rc in receptionnistes %}<option value="{{ rc.id }}" data-role="receptionniste" {% if profil and profil.receptionniste_id == rc.id %}selected{% endif %}>{{ rc }}</option>{% endfor %}
           </optgroup>
+          <optgroup label="Pharmaciens" data-role="pharmacien">
+            {% for ph in pharmaciens %}<option value="{{ ph.id }}" data-role="pharmacien" {% if profil and profil.pharmacien_id == ph.id %}selected{% endif %}>{{ ph }}</option>{% endfor %}
+          </optgroup>
         </select>
         <small class="text-muted">Filtre selon le role choisi.</small>
       </div>

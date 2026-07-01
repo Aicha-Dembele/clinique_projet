@@ -185,6 +185,32 @@ class Facture(models.Model):
                 quantite=jours,
             ))
 
+        # ── 3. MÉDICAMENTS dispensés (sorties de stock portées sur cette facture) ──
+        # Régénérées depuis les MouvementStock liés : le total reste juste à chaque
+        # recalcul, comme pour les consultations/examens (une requête, sans N+1).
+        if self.pk:
+            # Filet de sécurité : rattache à cette facture les médicaments déjà
+            # dispensés contre une ordonnance de SA consultation mais pas encore
+            # portés sur une facture (sorties « orphelines »). Ainsi les médicaments
+            # de l'ordonnance apparaissent toujours sur la facture de la consultation.
+            if self.consultation_id:
+                from pharmacie.models import MouvementStock
+                MouvementStock.objects.filter(
+                    type_mouvement='sortie',
+                    facture__isnull=True,
+                    ordonnance__consultation_id=self.consultation_id,
+                ).update(facture=self)
+            for mv in (self.mouvements
+                       .filter(type_mouvement='sortie')
+                       .select_related('medicament')):
+                lignes.append(LigneFacture(
+                    facture=self,
+                    description=f"Médicament — {mv.medicament.libelle()}",
+                    type_service='medicament',
+                    prix_unitaire=mv.prix_unitaire,
+                    quantite=mv.quantite,
+                ))
+
         LigneFacture.objects.bulk_create(lignes)
 
     def save(self, *args, **kwargs):

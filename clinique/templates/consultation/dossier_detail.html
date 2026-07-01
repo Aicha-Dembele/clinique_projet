@@ -9,7 +9,7 @@
   <li class="breadcrumb-item active">{{ dossier.patient }}</li>
 {% endblock %}
 {% block page_actions %}
-<button type="button" onclick="window.print()" class="btn-c btn-primary-c no-print"><i class="bi bi-printer-fill"></i> Imprimer le dossier</button>
+<a href="{% url 'consultation:dossier_pdf' dossier.pk %}" target="_blank" class="btn-c btn-primary-c no-print"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer le dossier (PDF)</a>
 <a href="{% url 'consultation:dossiers' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}

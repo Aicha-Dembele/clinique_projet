@@ -1415,6 +1415,8 @@
     <div class="sb-role-badge" style="background:linear-gradient(135deg,rgba(245,158,11,.22),rgba(245,158,11,.05))"><i class="bi bi-bandaid-fill" style="color:#fbbf24"></i> Infirmier</div>
   {% elif is_receptionniste %}
     <div class="sb-role-badge" style="background:linear-gradient(135deg,rgba(239,68,68,.22),rgba(239,68,68,.05))"><i class="bi bi-telephone-fill" style="color:#fca5a5"></i> Réceptionniste</div>
+  {% elif is_pharmacien %}
+    <div class="sb-role-badge" style="background:linear-gradient(135deg,rgba(20,184,166,.22),rgba(20,184,166,.05))"><i class="bi bi-capsule-pill" style="color:#5eead4"></i> Pharmacien</div>
   {% else %}
     <div class="sb-role-badge" style="background:linear-gradient(135deg,rgba(16,185,129,.22),rgba(16,185,129,.05))"><i class="bi bi-shield-check-fill" style="color:#6ee7b7"></i> Administrateur</div>
   {% endif %}
@@ -1517,7 +1519,7 @@
     {% endif %}
 
     <!-- Pharmacie -->
-    {% if is_admin or is_receptionniste %}
+    {% if 'pharmacie.view' in user_permissions %}
     <div class="sb-section">Pharmacie</div>
     <a href="{% url 'pharmacie:medicaments' %}" class="sb-link {% block nav_pharmacie %}{% endblock %}">
       <i class="bi bi-capsule-pill"></i> Médicaments

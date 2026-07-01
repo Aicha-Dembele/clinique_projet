@@ -19,7 +19,7 @@ from .models import (
 )
 from patients.models import Patient
 from personnel.models import Medecin, Laborantin, Infirmier
-from comptes.decorators import role_required
+from comptes.decorators import role_required, permission_required
 from comptes.models import JournalAudit
 from comptes.recherche import termes_q
 
@@ -33,7 +33,7 @@ def _get_personnel(user, attr):
 
 # Rendez-vous
 
-@role_required('admin', 'medecin', 'receptionniste')
+@permission_required('rdv.view')
 def rdv_liste(request):
     import calendar as cal_module
     from datetime import date
@@ -175,7 +175,7 @@ def rdv_supprimer(request, pk):
 
 # Dossiers medicaux
 
-@role_required('admin', 'medecin', 'infirmier')
+@permission_required('dossier.view')
 def dossiers(request):
     qs = DossierMedical.objects.select_related('patient').all().order_by('-date_creation')
 
@@ -200,15 +200,21 @@ def dossiers(request):
     })
 
 
-@role_required('admin', 'medecin', 'infirmier')
+@permission_required('dossier.view')
 def dossier_detail(request, pk):
     dossier = get_object_or_404(DossierMedical, pk=pk)
     return render(request, 'consultation/dossier_detail.html', {'dossier': dossier})
 
 
+def dossier_pdf(request, pk):
+    dossier = get_object_or_404(DossierMedical, pk=pk)
+    from .pdf import dossier_pdf_response
+    return dossier_pdf_response(dossier)
+
+
 # Consultations
 
-@role_required('admin', 'medecin')
+@permission_required('consultation.view')
 def consultation_liste(request):
     consultations = (Consultation.objects
                      .select_related('rendez_vous__patient', 'rendez_vous__medecin')
@@ -255,7 +261,7 @@ def consultation_ajouter(request):
     })
 
 
-@role_required('admin', 'medecin', 'infirmier')
+@permission_required('consultation.view')
 def consultation_detail(request, pk):
     consultation = get_object_or_404(Consultation, pk=pk)
     return render(request, 'consultation/detail_consultation.html', {'consultation': consultation})
@@ -295,7 +301,7 @@ def consultation_supprimer(request, pk):
 
 # Examens
 
-@role_required('admin', 'medecin', 'laborantin')
+@permission_required('examen.view')
 def examens(request):
     qs = ExamenMedical.objects.select_related(
         'consultation__rendez_vous__patient',
@@ -413,7 +419,7 @@ def examen_supprimer(request, pk):
 
 # Resultats d'examen (laborantin)
 
-@role_required('admin', 'medecin', 'laborantin')
+@permission_required('resultat.view')
 def resultats(request):
     qs = ResultatExamen.objects.select_related('patient', 'examen').order_by('-date_examen')
     role = getattr(getattr(request.user, 'profil', None), 'role', None)
@@ -515,10 +521,16 @@ def resultat_transmettre(request, pk):
     return redirect('consultation:resultats')
 
 
-@role_required('admin', 'medecin', 'laborantin')
+@permission_required('resultat.view')
 def resultat_detail(request, pk):
     res = get_object_or_404(ResultatExamen, pk=pk)
     return render(request, 'consultation/resultat_detail.html', {'resultat': res})
+
+
+def resultat_pdf(request, pk):
+    res = get_object_or_404(ResultatExamen, pk=pk)
+    from .pdf import resultat_pdf_response
+    return resultat_pdf_response(res)
 
 
 @role_required('admin', 'laborantin')
@@ -578,7 +590,7 @@ def resultat_purger(request, pk):
 
 # Ordonnances
 
-@role_required('admin', 'medecin')
+@permission_required('ordonnance.view')
 def ordonnances(request):
     qs = (Ordonnance.objects
           .select_related('consultation__rendez_vous__patient',
@@ -616,21 +628,38 @@ def ordonnance_ajouter(request):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
+    from pharmacie.models import Medicament
+    from pharmacie.specialites import code_specialite, SPECIALITES_DICT
+
     consultation_id = request.GET.get('consultation')
+    consultations = list(Consultation.objects.select_related(
+        'rendez_vous__patient', 'rendez_vous__medecin').order_by('-date'))
+    for c in consultations:
+        c.code_spec = code_specialite(c.rendez_vous.medecin.specialite) or ''
+
+    catalogue = [{
+        'libelle':     m.libelle(),
+        'indication':  m.indication,
+        'commun':      m.commun,
+        'specialites': [s.code for s in m.specialites.all()],
+    } for m in Medicament.objects.filter(actif=True).prefetch_related('specialites').order_by('nom')]
+
     return render(request, 'consultation/ordonnance_form.html', {
-        'consultations': Consultation.objects.all().order_by('-date'),
+        'consultations':   consultations,
         'consultation_id': consultation_id,
-        'action': 'Creer',
+        'catalogue':       catalogue,
+        'specialites_map': SPECIALITES_DICT,
+        'action':          'Creer',
     })
 
 
-@role_required('admin', 'medecin')
+@permission_required('ordonnance.view')
 def ordonnance_detail(request, pk):
     ordonnance = get_object_or_404(Ordonnance, pk=pk)
     return render(request, 'consultation/ordonnance_detail.html', {'ordonnance': ordonnance})
 
 
-@role_required('admin', 'medecin')
+@permission_required('ordonnance.view')
 def ordonnance_imprimer(request, pk):
     ordonnance = get_object_or_404(
         Ordonnance.objects.select_related(
@@ -639,7 +668,8 @@ def ordonnance_imprimer(request, pk):
         ),
         pk=pk,
     )
-    return render(request, 'consultation/ordonnance_imprimer.html', {'ordonnance': ordonnance})
+    from .pdf import ordonnance_pdf_response
+    return ordonnance_pdf_response(ordonnance)
 
 
 @role_required('admin', 'medecin')
@@ -658,7 +688,7 @@ def ordonnance_supprimer(request, pk):
 
 # Hospitalisations
 
-@role_required('admin', 'medecin', 'infirmier', 'receptionniste')
+@permission_required('hospitalisation.view')
 def hospitalisations(request):
     from datetime import date, timedelta
     qs = Hospitalisation.objects.select_related('patient', 'medecin').all().order_by('-date_entree')
@@ -884,7 +914,7 @@ def hospit_supprimer(request, pk):
 
 # Traitements
 
-@role_required('admin', 'medecin', 'infirmier')
+@permission_required('traitement.view')
 def traitements(request):
     qs = Traitement.objects.select_related(
         'patient',
@@ -958,7 +988,7 @@ def _progression_traitement(t):
     }
 
 
-@role_required('admin', 'medecin', 'infirmier')
+@permission_required('traitement.view')
 def traitement_detail(request, pk):
     t = get_object_or_404(
         Traitement.objects.select_related('patient', 'infirmier'), pk=pk)
@@ -970,7 +1000,7 @@ def traitement_detail(request, pk):
     })
 
 
-@role_required('admin', 'medecin', 'infirmier')
+@permission_required('traitement.view')
 def traitement_suivi(request, pk):
     """Évolution d'un traitement au format JSON (interrogé périodiquement par la
     page de détail pour un suivi en temps réel, sans rechargement)."""

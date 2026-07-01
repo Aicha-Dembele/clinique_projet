@@ -101,12 +101,13 @@
           <option value="{{ c.pk }}"
             data-prix="{{ c.get_tarif.prix|default:0 }}"
             data-label="{{ c.rendez_vous.medecin.specialite|default:'Générale' }}"
+            {% if c.pk in consult_facturees %}disabled{% endif %}
             {% if facture and facture.consultation_id == c.pk %}selected{% endif %}
             {% if pre_consultation == c.pk|stringformat:"s" %}selected{% endif %}>
             {{ c.rendez_vous.patient.nom }} {{ c.rendez_vous.patient.prenom }}
             — Dr. {{ c.rendez_vous.medecin.nom }}
             ({{ c.rendez_vous.medecin.specialite|default:"Générale" }})
-            — {{ c.rendez_vous.date|date:'d/m/Y' }}
+            — {{ c.rendez_vous.date|date:'d/m/Y' }}{% if c.pk in consult_facturees %} — ✓ déjà facturée{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -129,13 +130,14 @@
             data-prix="{{ h.get_prix_nuit|default:0 }}"
             data-jours="{{ h.nombre_jours }}"
             data-type="{{ h.type_chambre }}"
+            {% if h.pk in hospit_facturees %}disabled{% endif %}
             {% if facture and facture.hospitalisation_id == h.pk %}selected{% endif %}
             {% if pre_hospit == h.pk|stringformat:"s" %}selected{% endif %}>
             {{ h.patient.nom }} {{ h.patient.prenom }}
             — Ch. {{ h.numero_chambre }}
             — {{ h.type_chambre|capfirst }}
             — {{ h.nombre_jours }} nuit{% if h.nombre_jours > 1 %}s{% endif %}
-            ({{ h.date_entree|date:'d/m' }}{% if h.date_sortie %} → {{ h.date_sortie|date:'d/m' }}{% else %} en cours{% endif %})
+            ({{ h.date_entree|date:'d/m' }}{% if h.date_sortie %} → {{ h.date_sortie|date:'d/m' }}{% else %} en cours{% endif %}){% if h.pk in hospit_facturees %} — ✓ déjà facturée{% endif %}
           </option>
           {% endfor %}
         </select>

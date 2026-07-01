@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from .models import Profil, Role, Permission, Notification, JournalAudit
 from .decorators import admin_required, role_required
 from .recherche import termes_q
-from personnel.models import Medecin, Infirmier, Laborantin, Receptionniste
+from personnel.models import Medecin, Infirmier, Laborantin, Receptionniste, Pharmacien
 
 
 # Durée de session quand « Se souvenir de moi » est coché (30 jours).
@@ -102,6 +102,9 @@ def utilisateur_ajouter(request):
                 elif role.code == 'receptionniste':
                     Profil.objects.filter(receptionniste_id=personnel_id).update(receptionniste=None)
                     profil.receptionniste = Receptionniste.objects.filter(pk=personnel_id).first()
+                elif role.code == 'pharmacien':
+                    Profil.objects.filter(pharmacien_id=personnel_id).update(pharmacien=None)
+                    profil.pharmacien = Pharmacien.objects.filter(pk=personnel_id).first()
             profil.save()
         messages.success(request, "Utilisateur cree avec succes.")
         return redirect('comptes:utilisateurs_liste')
@@ -112,6 +115,7 @@ def utilisateur_ajouter(request):
         'infirmiers': Infirmier.objects.all(),
         'laborantins': Laborantin.objects.all(),
         'receptionnistes': Receptionniste.objects.all(),
+        'pharmaciens': Pharmacien.objects.all(),
     })
 
 
@@ -140,7 +144,7 @@ def utilisateur_modifier(request, pk):
         profil.adresse = request.POST.get('adresse', '').strip()
 
         personnel_id = request.POST.get('personnel_id', '').strip() or None
-        profil.medecin = profil.infirmier = profil.laborantin = profil.receptionniste = None
+        profil.medecin = profil.infirmier = profil.laborantin = profil.receptionniste = profil.pharmacien = None
 
         if personnel_id:
             with transaction.atomic():
@@ -157,6 +161,9 @@ def utilisateur_modifier(request, pk):
                 elif profil.role.code == 'receptionniste':
                     Profil.objects.filter(receptionniste_id=personnel_id).exclude(pk=profil.pk).update(receptionniste=None)
                     profil.receptionniste = Receptionniste.objects.filter(pk=personnel_id).first()
+                elif profil.role.code == 'pharmacien':
+                    Profil.objects.filter(pharmacien_id=personnel_id).exclude(pk=profil.pk).update(pharmacien=None)
+                    profil.pharmacien = Pharmacien.objects.filter(pk=personnel_id).first()
 
         with transaction.atomic():
             user.save()
@@ -172,6 +179,7 @@ def utilisateur_modifier(request, pk):
         'infirmiers': Infirmier.objects.all(),
         'laborantins': Laborantin.objects.all(),
         'receptionnistes': Receptionniste.objects.all(),
+        'pharmaciens': Pharmacien.objects.all(),
     })
 
 

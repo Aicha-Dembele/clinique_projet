@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from comptes.decorators import role_required, admin_required
 from comptes.recherche import termes_q
 
-from .models import Medecin, Infirmier, Laborantin, AgentAdministratif, Receptionniste
+from .models import Medecin, Infirmier, Laborantin, AgentAdministratif, Receptionniste, Pharmacien
 
 
 # Services / spécialités de laboratoire proposés dans le formulaire laborantin.
@@ -30,6 +30,7 @@ def personnel_liste(request):
     laborantins     = Laborantin.objects.all()
     agents          = AgentAdministratif.objects.all()
     receptionnistes = Receptionniste.objects.all()
+    pharmaciens     = Pharmacien.objects.all()
 
     if q:
         f = termes_q(q, 'nom', 'prenom')
@@ -37,10 +38,12 @@ def personnel_liste(request):
         infirmiers      = infirmiers.filter(f)
         laborantins     = laborantins.filter(f)
         receptionnistes = receptionnistes.filter(f)
+        pharmaciens     = pharmaciens.filter(f)
 
     total_medecins   = Medecin.objects.count()
     total_infirmiers = Infirmier.objects.count()
-    total_personnel  = total_medecins + total_infirmiers + Laborantin.objects.count() + Receptionniste.objects.count()
+    total_personnel  = (total_medecins + total_infirmiers + Laborantin.objects.count()
+                        + Receptionniste.objects.count() + Pharmacien.objects.count())
 
     return render(request, 'personnel/liste.html', {
         'medecins':        medecins,
@@ -48,6 +51,7 @@ def personnel_liste(request):
         'laborantins':     laborantins,
         'agents':          agents,
         'receptionnistes': receptionnistes,
+        'pharmaciens':     pharmaciens,
         'filtre':          filtre,
         'q':               q,
         'total_medecins':  total_medecins,
@@ -262,5 +266,56 @@ def receptionniste_supprimer(request, pk):
         return redirect("personnel:liste")
     return render(request, "partials/confirmer_suppression.html", {
         "objet": f"{receptionniste.nom} {receptionniste.prenom}",
+        "retour_url": "/personnel/",
+    })
+
+
+@admin_required
+def pharmacien_ajouter(request):
+    if request.method == "POST":
+        try:
+            Pharmacien.objects.create(
+                nom=request.POST["nom"],
+                prenom=request.POST["prenom"],
+                telephone=request.POST["telephone"],
+                role="pharmacien",
+                mot_de_passe=request.POST["mot_de_passe"],
+                adresse=request.POST.get("adresse", ""),
+                service=request.POST.get("service", "Pharmacie"),
+                photo=request.FILES.get("photo"),
+            )
+            messages.success(request, "Pharmacien ajouté.")
+            return redirect("personnel:liste")
+        except Exception as e:
+            messages.error(request, f"Erreur : {e}")
+    return render(request, "personnel/pharmacien_form.html", {"action": "Ajouter"})
+
+
+@admin_required
+def pharmacien_modifier(request, pk):
+    pharmacien = get_object_or_404(Pharmacien, pk=pk)
+    if request.method == "POST":
+        pharmacien.nom = request.POST["nom"]
+        pharmacien.prenom = request.POST["prenom"]
+        pharmacien.telephone = request.POST["telephone"]
+        pharmacien.adresse = request.POST.get("adresse", "")
+        pharmacien.service = request.POST.get("service", "Pharmacie")
+        if request.FILES.get("photo"):
+            pharmacien.photo = request.FILES["photo"]
+        pharmacien.save()
+        messages.success(request, "Pharmacien modifié.")
+        return redirect("personnel:liste")
+    return render(request, "personnel/pharmacien_form.html", {"pharmacien": pharmacien, "action": "Modifier"})
+
+
+@admin_required
+def pharmacien_supprimer(request, pk):
+    pharmacien = get_object_or_404(Pharmacien, pk=pk)
+    if request.method == "POST":
+        pharmacien.delete()
+        messages.success(request, "Pharmacien supprimé.")
+        return redirect("personnel:liste")
+    return render(request, "partials/confirmer_suppression.html", {
+        "objet": f"{pharmacien.nom} {pharmacien.prenom}",
         "retour_url": "/personnel/",
     })

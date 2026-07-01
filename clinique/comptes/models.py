@@ -21,6 +21,7 @@ class Role(models.Model):
         ('laborantin', 'Laborantin'),
         ('infirmier', 'Infirmier'),
         ('receptionniste', 'Receptionniste'),
+        ('pharmacien', 'Pharmacien'),
     ]
 
     code = models.CharField(max_length=30, unique=True, choices=ROLE_CHOICES)
@@ -52,6 +53,8 @@ class Profil(models.Model):
         'personnel.Laborantin', on_delete=models.SET_NULL, null=True, blank=True, related_name='profil')
     receptionniste = models.OneToOneField(
         'personnel.Receptionniste', on_delete=models.SET_NULL, null=True, blank=True, related_name='profil')
+    pharmacien = models.OneToOneField(
+        'personnel.Pharmacien', on_delete=models.SET_NULL, null=True, blank=True, related_name='profil')
 
     date_creation = models.DateTimeField(auto_now_add=True)
 

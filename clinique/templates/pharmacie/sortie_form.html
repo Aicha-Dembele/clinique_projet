@@ -12,7 +12,7 @@
 <a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}<style>
-.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 660px; margin-left: auto; margin-right: auto; }
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; animation: fadeUp .5s ease both; max-width: 720px; margin-left: auto; margin-right: auto; }
 .form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
 .form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
 .form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
@@ -22,28 +22,91 @@
 .stock-now { border-radius: .75rem; padding: .8rem 1.1rem; margin-top: .25rem; display: none; align-items: center; justify-content: space-between; background: rgba(0,136,170,.06); border: 1px solid rgba(0,136,170,.2); }
 .stock-now.show { display: flex; }
 .stock-warn { color: #ef4444 !important; font-weight: 800; }
-.actions-row { max-width: 660px; margin-left: auto; margin-right: auto; }
+.actions-row { max-width: 720px; margin-left: auto; margin-right: auto; }
+
+/* ── Lignes de l'ordonnance ── */
+.ol-row { display: flex; align-items: center; gap: .8rem; padding: .7rem .9rem; border: 1px solid var(--card-border); border-radius: .8rem; margin-bottom: .55rem; background: var(--input-bg); }
+.ol-row.ol-ok    { border-color: rgba(16,185,129,.35); }
+.ol-row.ol-warn  { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.05); }
+.ol-row.ol-miss  { border-color: rgba(239,68,68,.30);  background: rgba(239,68,68,.05); }
+.ol-check input { width: 18px; height: 18px; cursor: pointer; }
+.ol-info { flex: 1; min-width: 0; }
+.ol-nom { font-size: .88rem; font-weight: 700; color: var(--text-primary); }
+.ol-pos { font-size: .72rem; color: var(--text-muted); margin-top: 1px; }
+.ol-badge { font-size: .68rem; font-weight: 800; padding: .25em .7em; border-radius: 999px; white-space: nowrap; }
+.ol-badge-ok   { background: rgba(16,185,129,.14); color: #10b981; }
+.ol-badge-warn { background: rgba(245,158,11,.14); color: #f59e0b; }
+.ol-badge-miss { background: rgba(239,68,68,.14);  color: #ef4444; }
+.ol-qte { width: 72px; padding: .35rem .5rem; border: 1px solid var(--card-border); border-radius: .55rem; background: var(--card-bg); color: var(--text-primary); font-weight: 700; text-align: center; }
+#ordo-resume { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .9rem; }
 </style>{% endblock %}
 {% block content %}
-<form method="post" id="sortie-form">
-  {% csrf_token %}
 
+{{ ordo_par_patient|json_script:"ordo-data" }}
+
+<!-- ══ CARTE A : DISPENSER L'ORDONNANCE DU PATIENT ══ -->
+<form method="post" id="ordo-form">
+  {% csrf_token %}
+  <input type="hidden" name="ordonnance" id="ordo-id" value="">
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-prescription2"></i></span>
+      <div>
+        <div class="form-section-title">Dispenser l'ordonnance d'un patient</div>
+        <div class="form-section-sub">Choisissez le patient : son ordonnance s'affiche, les médicaments en stock peuvent être dispensés.</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="ordo-patient">Patient <span class="req-mark">*</span></label>
+        <select id="ordo-patient" name="patient" class="f-input f-select" onchange="chargerOrdos()">
+          <option value="">— Choisir un patient —</option>
+          {% for p in patients %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6" id="ordo-pick-wrap" style="display:none">
+        <label class="f-label" for="ordo-pick">Ordonnance</label>
+        <select id="ordo-pick" class="f-input f-select" onchange="rendreOrdo()"></select>
+      </div>
+    </div>
+
+    <!-- Aucune ordonnance -->
+    <div id="ordo-vide" class="helper" style="display:none;color:#f59e0b;margin-top:1rem">
+      <i class="bi bi-exclamation-triangle"></i> Ce patient n'a aucune ordonnance enregistrée. Utilisez la sortie manuelle ci-dessous.
+    </div>
+
+    <!-- Lignes de l'ordonnance -->
+    <div id="ordo-corps" style="display:none;margin-top:1.1rem">
+      <div id="ordo-resume"></div>
+      <div id="ordo-lignes"></div>
+      <div class="helper"><i class="bi bi-receipt"></i> Les médicaments cochés sont retirés du stock et ajoutés à la facture du patient.</div>
+      <div class="actions-row d-flex flex-wrap gap-2 justify-content-end mt-3">
+        <button type="submit" class="btn-c btn-primary-c" id="ordo-submit"><i class="bi bi-capsule"></i> Dispenser les médicaments cochés</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- ══ CARTE B : SORTIE MANUELLE (HORS ORDONNANCE) ══ -->
+<form method="post" id="manual-form">
+  {% csrf_token %}
   <div class="form-section">
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-box-arrow-up"></i></span>
       <div>
-        <div class="form-section-title">Dispensation de médicament</div>
-        <div class="form-section-sub">Retire des unités du stock (ordonnance, soin, péremption…)</div>
+        <div class="form-section-title">Sortie manuelle (hors ordonnance)</div>
+        <div class="form-section-sub">Un seul médicament — soin infirmier, péremption, ajustement…</div>
       </div>
     </div>
     <div class="row g-3">
 
       <div class="col-12">
         <label class="f-label" for="medicament">Médicament <span class="req-mark">*</span></label>
-        <select id="medicament" name="medicament" class="f-input f-select" required onchange="onMedChange()">
+        <select id="medicament" name="medicament" class="f-input f-select" onchange="onMedChange()">
           <option value="">— Choisir un médicament —</option>
           {% for m in medicaments %}
-          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}"
+          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}" data-prix="{{ m.prix_unitaire|stringformat:'.2f' }}"
             {% if pre_medicament == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nom }}{% if m.dosage %} {{ m.dosage }}{% endif %} — stock : {{ m.quantite_stock }} {{ m.unite }}</option>
           {% endfor %}
         </select>
@@ -54,77 +117,161 @@
       </div>
 
       <div class="col-12 col-md-6">
-        <label class="f-label" for="quantite">Quantité à dispenser <span class="req-mark">*</span></label>
-        <input id="quantite" type="number" name="quantite" min="1" step="1" class="f-input" required placeholder="0" oninput="checkQte()">
+        <label class="f-label" for="quantite">Quantité à dispenser</label>
+        <input id="quantite" type="number" name="quantite" min="1" step="1" class="f-input" placeholder="0" oninput="checkQte()">
         <div class="helper" id="qte-help"></div>
       </div>
 
       <div class="col-12 col-md-6">
-        <label class="f-label" for="patient">Patient (optionnel)</label>
-        <select id="patient" name="patient" class="f-input f-select">
-          <option value="">—</option>
-          {% for p in patients %}
-          <option value="{{ p.pk }}">{{ p }}</option>
-          {% endfor %}
-        </select>
+        <label class="f-label" for="prix_unitaire">Prix unitaire (FCFA)</label>
+        <input id="prix_unitaire" type="number" name="prix_unitaire" min="0" step="0.01" class="f-input" placeholder="0" oninput="calcMontant()">
+        <div class="helper">Par défaut, le prix du médicament.</div>
       </div>
 
       <div class="col-12">
+        <div class="stock-now show" id="montant-box">
+          <span style="font-size:.8rem;color:var(--text-muted);font-weight:600">Montant total de la sortie</span>
+          <span style="font-weight:800;color:#0088aa" id="montant-val">0 FCFA</span>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="f-label" for="patient">Patient (facturé automatiquement)</label>
+        <select id="patient" name="patient" class="f-input f-select" onchange="filtrerOrdonnances()">
+          <option value="">— Aucun (sortie non facturée) —</option>
+          {% for p in patients %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}
+        </select>
+        <div class="helper"><i class="bi bi-receipt"></i> Si un patient est choisi, le médicament est ajouté à sa facture.</div>
+      </div>
+
+      <div class="col-12 col-md-6">
         <label class="f-label" for="ordonnance">Ordonnance liée (optionnel)</label>
         <select id="ordonnance" name="ordonnance" class="f-input f-select">
           <option value="">—</option>
           {% for o in ordonnances %}
-          <option value="{{ o.pk }}">Ord. #{{ o.pk }} — {{ o.date|date:'d/m/Y' }}{% if o.consultation.rendez_vous.patient %} — {{ o.consultation.rendez_vous.patient }}{% endif %}</option>
+          <option value="{{ o.pk }}" data-patient="{{ o.consultation.rendez_vous.patient_id }}">Ord. #{{ o.pk }} — {{ o.date|date:'d/m/Y' }}{% if o.consultation.rendez_vous.patient %} — {{ o.consultation.rendez_vous.patient }}{% endif %}</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="col-12">
         <label class="f-label" for="motif">Motif</label>
-        <input id="motif" type="text" name="motif" class="f-input" placeholder="Dispensation ordonnance, soin infirmier…">
+        <input id="motif" type="text" name="motif" class="f-input" placeholder="Soin infirmier, péremption…">
       </div>
 
     </div>
-  </div>
-
-  <div class="actions-row d-flex flex-wrap gap-2 justify-content-end">
-    <a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
-    <button type="submit" class="btn-c btn-primary-c" id="submit-btn"><i class="bi bi-box-arrow-up"></i> Dispenser</button>
+    <div class="actions-row d-flex flex-wrap gap-2 justify-content-end mt-2">
+      <a href="{% url 'pharmacie:medicaments' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
+      <button type="submit" class="btn-c btn-secondary-c" id="submit-btn"><i class="bi bi-box-arrow-up"></i> Sortie manuelle</button>
+    </div>
   </div>
 </form>
 {% endblock %}
 {% block extra_js %}
 <script>
-function currentStock() {
-  const sel = document.getElementById('medicament');
-  const opt = sel.options[sel.selectedIndex];
-  return opt && opt.value ? parseInt(opt.dataset.stock || '0') : null;
+const ORDO_DATA = JSON.parse(document.getElementById('ordo-data').textContent);
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=(s==null)?'':s; return d.innerHTML; }
+
+// ── Carte A : ordonnance du patient ──
+function chargerOrdos(){
+  const pid  = document.getElementById('ordo-patient').value;
+  const pick = document.getElementById('ordo-pick');
+  const pickWrap = document.getElementById('ordo-pick-wrap');
+  const vide = document.getElementById('ordo-vide');
+  const corps= document.getElementById('ordo-corps');
+  const list = ORDO_DATA[pid] || [];
+  pick.innerHTML = '';
+  if (!pid){ pickWrap.style.display='none'; vide.style.display='none'; corps.style.display='none'; return; }
+  if (list.length === 0){ pickWrap.style.display='none'; corps.style.display='none'; vide.style.display='block'; return; }
+  vide.style.display='none';
+  list.forEach((o,i)=>{ const opt=document.createElement('option'); opt.value=i; opt.textContent='Ordonnance #'+o.id+' — '+o.date; pick.appendChild(opt); });
+  pickWrap.style.display = list.length>1 ? 'block' : 'none';
+  pick.value='0';
+  rendreOrdo();
 }
-function onMedChange() {
-  const sel = document.getElementById('medicament');
-  const opt = sel.options[sel.selectedIndex];
-  const box = document.getElementById('stock-now');
-  if (opt && opt.value) {
-    document.getElementById('stock-now-val').textContent = (opt.dataset.stock || '0') + ' ' + (opt.dataset.unite || '');
+
+function rendreOrdo(){
+  const pid  = document.getElementById('ordo-patient').value;
+  const list = ORDO_DATA[pid] || [];
+  const idx  = parseInt(document.getElementById('ordo-pick').value || '0');
+  const o = list[idx]; if(!o) return;
+  document.getElementById('ordo-id').value = o.id;
+
+  let dispo=0, rup=0, abs=0;
+  const rows = o.lignes.map(l=>{
+    if (l.statut === 'disponible'){
+      dispo++;
+      return `<div class="ol-row ol-ok">
+        <label class="ol-check"><input type="checkbox" checked onchange="toggleLigne(this)"></label>
+        <input type="hidden" name="ligne_med" value="${l.medicament_id}">
+        <div class="ol-info"><div class="ol-nom">${escapeHtml(l.nom)}</div>${l.posologie?`<div class="ol-pos">${escapeHtml(l.posologie)}</div>`:''}</div>
+        <span class="ol-badge ol-badge-ok">En stock · ${l.stock} ${escapeHtml(l.unite)}</span>
+        <input type="number" class="ol-qte" name="ligne_qte" value="1" min="1" max="${l.stock}" title="Quantité à dispenser">
+      </div>`;
+    }
+    if (l.statut === 'rupture'){
+      rup++;
+      return `<div class="ol-row ol-warn">
+        <div class="ol-info"><div class="ol-nom">${escapeHtml(l.nom)}</div>${l.posologie?`<div class="ol-pos">${escapeHtml(l.posologie)}</div>`:''}</div>
+        <span class="ol-badge ol-badge-warn"><i class="bi bi-exclamation-triangle-fill"></i> Rupture de stock</span>
+      </div>`;
+    }
+    abs++;
+    return `<div class="ol-row ol-miss">
+      <div class="ol-info"><div class="ol-nom">${escapeHtml(l.nom)}</div>${l.posologie?`<div class="ol-pos">${escapeHtml(l.posologie)}</div>`:''}</div>
+      <span class="ol-badge ol-badge-miss"><i class="bi bi-x-circle-fill"></i> Pas dans notre stock</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('ordo-lignes').innerHTML = rows || '<div class="helper">Ordonnance sans médicament identifiable.</div>';
+  document.getElementById('ordo-resume').innerHTML =
+      `<span class="ol-badge ol-badge-ok">${dispo} disponible(s)</span>`
+    + (rup ? `<span class="ol-badge ol-badge-warn">${rup} en rupture</span>` : '')
+    + (abs ? `<span class="ol-badge ol-badge-miss">${abs} hors stock</span>` : '');
+  document.getElementById('ordo-submit').disabled = (dispo === 0);
+  document.getElementById('ordo-corps').style.display='block';
+}
+
+function toggleLigne(cb){
+  const row = cb.closest('.ol-row');
+  const hid = row.querySelector('input[name="ligne_med"]');
+  const qte = row.querySelector('input[name="ligne_qte"]');
+  hid.disabled = !cb.checked;
+  qte.disabled = !cb.checked;
+  row.style.opacity = cb.checked ? '1' : '.5';
+}
+
+// ── Carte B : sortie manuelle ──
+function currentStock(){ const sel=document.getElementById('medicament'); const opt=sel.options[sel.selectedIndex]; return opt&&opt.value?parseInt(opt.dataset.stock||'0'):null; }
+function onMedChange(){
+  const sel=document.getElementById('medicament'); const opt=sel.options[sel.selectedIndex]; const box=document.getElementById('stock-now');
+  if (opt && opt.value){
+    document.getElementById('stock-now-val').textContent=(opt.dataset.stock||'0')+' '+(opt.dataset.unite||'');
     box.classList.add('show');
-  } else {
-    box.classList.remove('show');
-  }
+    const prix=document.getElementById('prix_unitaire'); if(!prix.value) prix.value=parseFloat(opt.dataset.prix||'0')||'';
+  } else { box.classList.remove('show'); }
   checkQte();
 }
-function checkQte() {
-  const stock = currentStock();
-  const qte = parseInt(document.getElementById('quantite').value || '0');
-  const help = document.getElementById('qte-help');
-  const btn = document.getElementById('submit-btn');
-  if (stock !== null && qte > stock) {
-    help.innerHTML = '<span class="stock-warn"><i class="bi bi-exclamation-triangle"></i> Quantité supérieure au stock disponible (' + stock + ').</span>';
-    btn.disabled = true;
-  } else {
-    help.textContent = '';
-    btn.disabled = false;
-  }
+function checkQte(){
+  const stock=currentStock(); const qte=parseInt(document.getElementById('quantite').value||'0');
+  const help=document.getElementById('qte-help'); const btn=document.getElementById('submit-btn');
+  if (stock!==null && qte>stock){ help.innerHTML='<span class="stock-warn"><i class="bi bi-exclamation-triangle"></i> Quantité supérieure au stock disponible ('+stock+').</span>'; btn.disabled=true; }
+  else { help.textContent=''; btn.disabled=false; }
+  calcMontant();
 }
+function calcMontant(){
+  const qte=parseFloat(document.getElementById('quantite').value||'0'); const prix=parseFloat(document.getElementById('prix_unitaire').value||'0');
+  const total=(qte>0&&prix>0)?Math.round(qte*prix):0;
+  document.getElementById('montant-val').textContent=total.toLocaleString('fr-FR').replace(/,/g,' ')+' FCFA';
+}
+function filtrerOrdonnances(){
+  const pid=document.getElementById('patient').value; const sel=document.getElementById('ordonnance');
+  for (const opt of sel.options){ if(!opt.value) continue; const match=!pid||opt.dataset.patient===pid; opt.hidden=!match; if(!match&&opt.selected) sel.value=''; }
+}
+
+chargerOrdos();
 onMedChange();
+filtrerOrdonnances();
 </script>
 {% endblock %}

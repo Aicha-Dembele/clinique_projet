@@ -181,5 +181,30 @@ def dashboard(request):
         }
         return render(request, 'receptionniste/dashboard.html', ctx)
 
+    # ── PHARMACIEN ─────────────────────────────────────────────────
+    elif role == 'pharmacien':
+        from pharmacie.models import Medicament, MouvementStock
+        from django.db.models import F, DecimalField
+        from django.db.models.functions import Coalesce
+
+        actifs    = Medicament.objects.filter(actif=True)
+        en_alerte = [m for m in actifs if m.est_en_alerte()]
+        rupture   = [m for m in actifs if m.est_rupture()]
+        valeur = actifs.aggregate(
+            v=Coalesce(Sum(F('prix_unitaire') * F('quantite_stock'),
+                           output_field=DecimalField(max_digits=14, decimal_places=2)), 0,
+                       output_field=DecimalField(max_digits=14, decimal_places=2))
+        )['v']
+        ctx = {
+            **base_ctx,
+            'nb_medicaments':     actifs.count(),
+            'nb_alerte':          len(en_alerte),
+            'nb_rupture':         len(rupture),
+            'valeur_stock':       valeur,
+            'medic_a_reapprovisionner': (rupture + en_alerte)[:10],
+            'mouvements_recents': MouvementStock.objects.select_related('medicament').order_by('-date')[:8],
+        }
+        return render(request, 'pharmacien/dashboard.html', ctx)
+
     # Fallback → admin
     return redirect('dashboard')

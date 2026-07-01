@@ -13,6 +13,7 @@ urlpatterns = [
     # Dossiers médicaux
     path('dossiers/', views.dossiers, name='dossiers'),
     path('dossiers/<int:pk>/', views.dossier_detail, name='dossier_detail'),
+    path('dossiers/<int:pk>/pdf/', views.dossier_pdf, name='dossier_pdf'),
 
     # Consultations
     path('', views.consultation_liste, name='liste'),
@@ -32,6 +33,7 @@ urlpatterns = [
     path('resultats/ajouter/', views.resultat_ajouter, name='resultat_ajouter'),
     path('resultats/corbeille/', views.resultat_corbeille, name='resultat_corbeille'),
     path('resultats/<int:pk>/', views.resultat_detail, name='resultat_detail'),
+    path('resultats/<int:pk>/pdf/', views.resultat_pdf, name='resultat_pdf'),
     path('resultats/<int:pk>/modifier/', views.resultat_modifier, name='resultat_modifier'),
     path('resultats/<int:pk>/transmettre/', views.resultat_transmettre, name='resultat_transmettre'),
     path('resultats/<int:pk>/supprimer/', views.resultat_supprimer, name='resultat_supprimer'),

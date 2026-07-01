@@ -28,6 +28,7 @@
       <div class="stat-h-info">
         <div class="stat-h-lbl">Entrées</div>
         <div class="stat-h-val">{{ nb_entrees }}</div>
+        <div style="font-size:.74rem;font-weight:700;color:#10b981;margin-top:.1rem">{{ val_entrees }} FCFA</div>
       </div>
     </div>
   </div>
@@ -37,6 +38,7 @@
       <div class="stat-h-info">
         <div class="stat-h-lbl">Sorties</div>
         <div class="stat-h-val">{{ nb_sorties }}</div>
+        <div style="font-size:.74rem;font-weight:700;color:#0088aa;margin-top:.1rem">{{ val_sorties }} FCFA</div>
       </div>
     </div>
   </div>
@@ -77,6 +79,8 @@
           <th>Type</th>
           <th>Médicament</th>
           <th>Quantité</th>
+          <th class="text-end">Prix unit.</th>
+          <th class="text-end">Montant</th>
           <th>Patient</th>
           <th>Motif</th>
           <th>Par</th>
@@ -98,7 +102,12 @@
           <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:{% if mv.type_mouvement == 'entree' %}#10b981{% else %}#ef4444{% endif %}">
             {% if mv.type_mouvement == 'entree' %}+{% else %}−{% endif %}{{ mv.quantite }} {{ mv.medicament.unite }}
           </td>
-          <td>{% if mv.patient %}{{ mv.patient }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</td>
+          <td class="text-end" style="white-space:nowrap;color:var(--text-muted)">{{ mv.prix_unitaire|floatformat:0 }} FCFA</td>
+          <td class="text-end" style="white-space:nowrap;font-weight:800">{{ mv.montant|floatformat:0 }} FCFA</td>
+          <td>
+            {% if mv.patient %}{{ mv.patient }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+            {% if mv.facture_id %}<br><a href="{% url 'facturation:detail' mv.facture_id %}" class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;font-size:.66rem;text-decoration:none"><i class="bi bi-receipt"></i> FAC-{{ mv.facture_id|stringformat:"04d" }}</a>{% endif %}
+          </td>
           <td style="color:var(--text-muted);font-size:.82rem">{{ mv.motif|default:'—' }}</td>
           <td style="color:var(--text-muted);font-size:.82rem">{% if mv.utilisateur %}{{ mv.utilisateur.username }}{% else %}—{% endif %}</td>
           {% if is_admin %}
@@ -111,7 +120,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="{% if is_admin %}8{% else %}7{% endif %}" class="text-center py-5" style="color:var(--text-muted)">
+          <td colspan="{% if is_admin %}10{% else %}9{% endif %}" class="text-center py-5" style="color:var(--text-muted)">
             <i class="bi bi-arrow-left-right text-muted" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
             Aucun mouvement de stock enregistré.
           </td>

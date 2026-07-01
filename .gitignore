@@ -6,8 +6,10 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Base de données locale
+# Base de données locale + sauvegardes
 db.sqlite3
+*.sqlite3
+db.backup_*
 
 # Fichiers téléversés par les utilisateurs et fichiers statiques collectés
 media/
@@ -26,3 +28,6 @@ Thumbs.db
 
 # Fichiers de sauvegarde
 *.bak
+
+# Scripts de débogage jetables
+_t.py

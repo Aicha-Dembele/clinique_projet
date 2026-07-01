@@ -66,6 +66,23 @@
   outline: none;
 }
 .f-select option { background: #003a50; color: #fff; }
+
+/* ── Assistant de prescription ── */
+.rx-assist { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 1rem; padding: 1rem 1.1rem; }
+.rx-assist-hdr { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .85rem; }
+.rx-assist-hdr > div { font-weight: 800; color: #fff; font-size: .95rem; display: flex; align-items: center; gap: .5rem; }
+.rx-spec-badge { font-size: .7rem; font-weight: 700; background: rgba(0,212,238,.25); color: #d7f6ff; border: 1px solid rgba(0,212,238,.5); padding: .2rem .6rem; border-radius: 999px; text-transform: capitalize; }
+.rx-search { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.25); border-radius: .7rem; padding: .45rem .8rem; color: #fff; font-size: .85rem; min-width: 220px; }
+.rx-search::placeholder { color: rgba(255,255,255,.55); }
+.rx-search:focus { outline: none; border-color: rgba(0,212,238,.7); box-shadow: 0 0 0 3px rgba(0,212,238,.2); }
+.rx-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .6rem; max-height: 320px; overflow-y: auto; padding: .15rem; }
+.rx-card { text-align: left; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.2); border-radius: .8rem; padding: .65rem .8rem; cursor: pointer; transition: all .15s; color: #fff; }
+.rx-card:hover { background: rgba(0,212,238,.22); border-color: rgba(0,212,238,.6); transform: translateY(-1px); }
+.rx-card-nom { font-weight: 800; font-size: .85rem; display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
+.rx-card-nom .bi { color: #7ef0ff; font-size: .95rem; }
+.rx-card-ind { font-size: .72rem; color: rgba(255,255,255,.75); margin-top: .25rem; line-height: 1.4; }
+.rx-empty { grid-column: 1/-1; text-align: center; color: rgba(255,255,255,.7); font-size: .82rem; padding: 1.2rem; }
+.rx-hint { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .7rem; display: flex; align-items: center; gap: .4rem; }
 </style>
 {% endblock %}
 {% block content %}
@@ -98,10 +115,10 @@
     <div class="row g-3">
       <div class="col-12 col-md-6">
         <label class="f-label">Consultation <span class="req-mark">*</span></label>
-        <select name="consultation" class="f-input f-select" required>
+        <select id="consultation-select" name="consultation" class="f-input f-select" required onchange="majAssistant()">
           <option value="">-- Choisir une consultation --</option>
           {% for c in consultations %}
-          <option value="{{ c.pk }}" {% if consultation_id and c.pk|stringformat:"s" == consultation_id %}selected{% endif %}>
+          <option value="{{ c.pk }}" data-spec="{{ c.code_spec }}" {% if consultation_id and c.pk|stringformat:"s" == consultation_id %}selected{% endif %}>
             {{ c.rendez_vous.patient }} — Dr. {{ c.rendez_vous.medecin }} — {{ c.rendez_vous.date|date:'d/m/Y' }}
           </option>
           {% endfor %}
@@ -113,14 +130,97 @@
       </div>
       <div class="col-12">
         <label class="f-label">Médicaments prescrits <span class="req-mark">*</span></label>
-        <textarea name="medicaments" class="f-input" rows="6" placeholder="Liste des médicaments, posologie..." required></textarea>
+        <textarea id="medicaments-area" name="medicaments" class="f-input" rows="6" placeholder="Liste des médicaments, posologie..." required></textarea>
+      </div>
+
+      <!-- ── Assistant de prescription ── -->
+      <div class="col-12">
+        <div class="rx-assist">
+          <div class="rx-assist-hdr">
+            <div>
+              <i class="bi bi-magic"></i> Aide à la prescription
+              <span id="rx-spec-badge" class="rx-spec-badge">toutes spécialités</span>
+            </div>
+            <input type="text" id="rx-search" class="rx-search" placeholder="Rechercher un médicament…" oninput="rendreListe()">
+          </div>
+          <div id="rx-list" class="rx-list"></div>
+          <div class="rx-hint"><i class="bi bi-info-circle"></i> Tout le catalogue est disponible, par ordre alphabétique. Tapez les premières lettres (ex. « p ») pour n'afficher que les médicaments commençant par ces lettres. Cliquez un médicament pour l'ajouter à l'ordonnance.</div>
+        </div>
       </div>
     </div>
   </div>
+
+  {{ catalogue|json_script:"rx-catalogue" }}
+  {{ specialites_map|json_script:"rx-spec-map" }}
 
   <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
     <a href="{% url 'consultation:ordonnances' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
     <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
   </div>
 </form>
+{% endblock %}
+{% block extra_js %}
+<script>
+const RX_CATALOGUE = JSON.parse(document.getElementById('rx-catalogue').textContent);
+const RX_SPECMAP   = JSON.parse(document.getElementById('rx-spec-map').textContent);
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = (s == null) ? '' : s;
+  return d.innerHTML;
+}
+function specCourante() {
+  const sel = document.getElementById('consultation-select');
+  const opt = sel.options[sel.selectedIndex];
+  return opt ? (opt.dataset.spec || '') : '';
+}
+// Normalise pour comparaison : minuscules, sans accents (« é » → « e »).
+function _norm(s){
+  return (s || '').toLowerCase()
+    .replace(/[àâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[îï]/g,'i')
+    .replace(/[ôö]/g,'o').replace(/[ûüù]/g,'u').replace(/ç/g,'c');
+}
+
+function medocsFiltres() {
+  // Tout le catalogue (déjà trié alphabétiquement), filtré par PRÉFIXE de saisie :
+  // « a » affiche tous les médicaments commençant par a, « p » ceux par p, etc.
+  let liste = RX_CATALOGUE;
+  const q = _norm(document.getElementById('rx-search').value.trim());
+  if (q) liste = liste.filter(m => _norm(m.libelle).startsWith(q));
+  return liste;
+}
+function rendreListe() {
+  const box = document.getElementById('rx-list');
+  const liste = medocsFiltres();
+  if (!liste.length) {
+    box.innerHTML = '<div class="rx-empty">Aucun médicament ne correspond.</div>';
+    return;
+  }
+  box.innerHTML = liste.map(m => {
+    const i = RX_CATALOGUE.indexOf(m);
+    return `<div class="rx-card" onclick="ajouterMedoc(${i})">
+      <div class="rx-card-nom">${escapeHtml(m.libelle)} <i class="bi bi-plus-circle-fill"></i></div>
+      ${m.indication ? `<div class="rx-card-ind">${escapeHtml(m.indication)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+function ajouterMedoc(i) {
+  const m = RX_CATALOGUE[i];
+  if (!m) return;
+  const area = document.getElementById('medicaments-area');
+  const prefixe = '- ' + m.libelle + ' :';
+  const deja = area.value.split('\n').some(l => l.trim().startsWith(prefixe));
+  if (!deja) {
+    if (area.value && !area.value.endsWith('\n')) area.value += '\n';
+    area.value += prefixe + ' ';
+  }
+  area.focus();
+}
+function majAssistant() {
+  const badge = document.getElementById('rx-spec-badge');
+  if (badge) badge.textContent = 'catalogue complet (' + RX_CATALOGUE.length + ')';
+  rendreListe();
+}
+majAssistant();
+</script>
 {% endblock %}

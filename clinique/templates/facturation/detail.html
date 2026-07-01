@@ -10,8 +10,7 @@
 <li class="breadcrumb-item active">Détail</li>
 {% endblock %}
 {% block page_actions %}
-<button type="button" onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer"></i> Imprimer</button>
-<a href="{% url 'facturation:facture_pdf' facture.pk %}" target="_blank" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+<a href="{% url 'facturation:facture_pdf' facture.pk %}" target="_blank" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer (PDF)</a>
 <a href="{% url 'facturation:modifier' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-pencil"></i> Modifier</a>
 <a href="{% url 'facturation:recalculer' facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-clockwise"></i> Recalculer</a>
 <a href="{% url 'facturation:supprimer' facture.pk %}" class="btn-c btn-danger-c no-print"><i class="bi bi-trash"></i> Supprimer</a>
@@ -125,6 +124,8 @@
                 <span class="pill" style="background:rgba(139,92,246,.12);color:#8b5cf6;font-size:.68rem">Examen</span>
               {% elif ligne.type_service == 'hospitalisation' %}
                 <span class="pill" style="background:rgba(245,158,11,.12);color:#f59e0b;font-size:.68rem">Hospitalisation</span>
+              {% elif ligne.type_service == 'medicament' %}
+                <span class="pill" style="background:rgba(16,185,129,.12);color:#10b981;font-size:.68rem">Médicament</span>
               {% endif %}
             </td>
             <td style="font-weight:600">{{ ligne.description }}</td>

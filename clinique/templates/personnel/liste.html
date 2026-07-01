@@ -29,6 +29,10 @@
         <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(245,158,11,.12);color:#f59e0b;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-person-workspace"></i></span>
         Réceptionniste
       </a>
+      <a href="{% url 'personnel:pharmacien_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(20,184,166,.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(20,184,166,.12);color:#14b8a6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-capsule-pill"></i></span>
+        Pharmacien
+      </a>
     </div>
   </div>
 {% endblock %}
@@ -224,6 +228,7 @@ img.pcard-av { object-fit:cover; }
     <a href="?filtre=infirmiers{% if q %}&q={{ q }}{% endif %}"   class="ftab {% if filtre == 'infirmiers' %}active{% endif %}"><i class="bi bi-heart-pulse me-1"></i>Infirmiers</a>
     <a href="?filtre=laborantins{% if q %}&q={{ q }}{% endif %}"  class="ftab {% if filtre == 'laborantins' %}active{% endif %}">Laborantins</a>
     <a href="?filtre=recep{% if q %}&q={{ q }}{% endif %}"        class="ftab {% if filtre == 'recep' %}active{% endif %}">Réceptionnistes</a>
+    <a href="?filtre=pharmaciens{% if q %}&q={{ q }}{% endif %}" class="ftab {% if filtre == 'pharmaciens' %}active{% endif %}"><i class="bi bi-capsule-pill me-1"></i>Pharmaciens</a>
   </div>
   <form method="get" class="d-flex gap-2" style="min-width:260px">
     <input type="hidden" name="filtre" value="{{ filtre }}">
@@ -418,8 +423,52 @@ img.pcard-av { object-fit:cover; }
 {% endif %}
 {% endif %}
 
+<!-- ══ PHARMACIENS ══ -->
+{% if filtre == 'tous' or filtre == 'pharmaciens' %}
+{% if pharmaciens %}
+<div class="section-hdr"><i class="bi bi-capsule-pill me-2"></i>Pharmaciens</div>
+<div class="row g-3 mb-2">
+  {% for ph in pharmaciens %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="pcard">
+      <div class="pcard-hdr">
+        <div class="d-flex align-items-center gap-2">
+          {% if ph.photo %}
+          <img src="{{ ph.photo.url }}" alt="" class="pcard-av">
+          {% else %}
+          <div class="pcard-av av-teal">{{ ph.nom|slice:":1" }}{{ ph.prenom|slice:":1" }}</div>
+          {% endif %}
+          <div>
+            <div class="pcard-name">{{ ph.nom }} {{ ph.prenom }}</div>
+            <div class="pcard-role">Pharmacien</div>
+          </div>
+        </div>
+        <span class="pstatus pstatus-serv">En service</span>
+      </div>
+      <div class="pcard-info">
+        <div class="pcard-info-row"><i class="bi bi-telephone"></i> {{ ph.telephone }}</div>
+        <div class="pcard-info-row"><i class="bi bi-building"></i> {{ ph.service }}</div>
+      </div>
+      <div class="pcard-div"></div>
+      <div class="pcard-ftr">
+        <div>
+          <div class="pcard-stat-lbl">Service</div>
+          <div class="pcard-stat-val">{{ ph.service|truncatechars:15 }}</div>
+        </div>
+        <div class="pcard-btns">
+          <a href="{% url 'personnel:pharmacien_modifier' ph.pk %}" class="pcard-btn pcard-btn-outline">Profil</a>
+          <a href="{% url 'personnel:pharmacien_supprimer' ph.pk %}" class="pcard-btn pcard-btn-danger">Supprimer</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
 <!-- Vide -->
-{% if not medecins and not infirmiers and not laborantins and not receptionnistes %}
+{% if not medecins and not infirmiers and not laborantins and not receptionnistes and not pharmaciens %}
 <div class="text-center py-5" style="color:var(--text-muted)">
   <i class="bi bi-people" style="font-size:3rem;display:block;margin-bottom:1rem;opacity:.4"></i>
   Aucun personnel trouvé.

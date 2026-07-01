@@ -59,6 +59,11 @@ PERMISSIONS = [
     ('tarif.view', 'Consulter les tarifs'),
     ('tarif.manage', 'Gerer les tarifs'),
 
+    ('pharmacie.view', 'Consulter la pharmacie et le stock'),
+    ('medicament.manage', 'Gerer les medicaments (catalogue)'),
+    ('stock.entree', 'Enregistrer une entree de stock'),
+    ('stock.sortie', 'Dispenser un medicament (sortie de stock)'),
+
     ('user.manage', 'Gerer les utilisateurs'),
     ('role.manage', 'Gerer les roles et permissions'),
     ('rapport.view', 'Consulter les rapports'),
@@ -87,6 +92,7 @@ ROLE_PERMISSIONS = {
     'infirmier': [
         'patient.view',
         'dossier.view',
+        'consultation.view',
         'traitement.view', 'traitement.administrer',
         'hospitalisation.view',
     ],
@@ -97,6 +103,15 @@ ROLE_PERMISSIONS = {
         'facture.view', 'facture.add', 'facture.change',
         'paiement.view', 'paiement.add', 'paiement.change',
         'tarif.view',
+        'pharmacie.view', 'medicament.manage', 'stock.entree', 'stock.sortie',
+    ],
+    'pharmacien': [
+        'patient.view',
+        'ordonnance.view',
+        'traitement.view',
+        'pharmacie.view', 'medicament.manage',
+        'stock.entree', 'stock.sortie',
+        'facture.view',
     ],
 }
 
@@ -107,6 +122,7 @@ ROLE_LIBELLES = {
     'laborantin': 'Laborantin',
     'infirmier': 'Infirmier',
     'receptionniste': 'Receptionniste',
+    'pharmacien': 'Pharmacien',
 }
 
 

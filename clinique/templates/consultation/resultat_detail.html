@@ -14,7 +14,7 @@
   <a href="{% url 'consultation:resultat_modifier' resultat.pk %}" class="btn-c btn-primary-c no-print"><i class="bi bi-pencil"></i> Modifier</a>
   <a href="{% url 'consultation:resultat_supprimer' resultat.pk %}" class="btn-c btn-danger-c no-print"><i class="bi bi-trash"></i> Supprimer</a>
   {% endif %}
-  <button onclick="window.print()" class="btn-c btn-outline-c no-print"><i class="bi bi-printer-fill"></i> Imprimer</button>
+  <a href="{% url 'consultation:resultat_pdf' resultat.pk %}" target="_blank" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer (PDF)</a>
   <a href="{% url 'consultation:resultats' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 
@@ -96,7 +96,7 @@
     </div>
     {% endif %}
     <div class="d-flex gap-2 justify-content-end mt-3 no-print">
-      <button onclick="window.print()" class="btn-c btn-primary-c"><i class="bi bi-printer-fill"></i> Imprimer le résultat</button>
+      <a href="{% url 'consultation:resultat_pdf' resultat.pk %}" target="_blank" class="btn-c btn-primary-c"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer le résultat (PDF)</a>
     </div>
   </div>
 </div>

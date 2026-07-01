@@ -42,7 +42,7 @@
         <select id="medicament" name="medicament" class="f-input f-select" required onchange="onMedChange()">
           <option value="">— Choisir un médicament —</option>
           {% for m in medicaments %}
-          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}"
+          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}" data-prix="{{ m.prix_unitaire|stringformat:'.2f' }}"
             {% if pre_medicament == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nom }}{% if m.dosage %} {{ m.dosage }}{% endif %} — stock : {{ m.quantite_stock }} {{ m.unite }}</option>
           {% endfor %}
         </select>
@@ -52,14 +52,27 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-4">
         <label class="f-label" for="quantite">Quantité à ajouter <span class="req-mark">*</span></label>
-        <input id="quantite" type="number" name="quantite" min="1" step="1" class="f-input" required placeholder="0">
+        <input id="quantite" type="number" name="quantite" min="1" step="1" class="f-input" required placeholder="0" oninput="calcMontant()">
       </div>
 
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-4">
+        <label class="f-label" for="prix_unitaire">Prix unitaire (FCFA)</label>
+        <input id="prix_unitaire" type="number" name="prix_unitaire" min="0" step="0.01" class="f-input" placeholder="0" oninput="calcMontant()">
+        <div class="helper">Par défaut, le prix du médicament. Modifiable (coût d'achat).</div>
+      </div>
+
+      <div class="col-12 col-md-4">
         <label class="f-label" for="motif">Motif</label>
         <input id="motif" type="text" name="motif" class="f-input" placeholder="Achat fournisseur, don…">
+      </div>
+
+      <div class="col-12">
+        <div class="stock-now show" id="montant-box" style="background:rgba(0,136,170,.06);border-color:rgba(0,136,170,.2)">
+          <span style="font-size:.8rem;color:var(--text-muted);font-weight:600">Montant total de l'entrée</span>
+          <span style="font-weight:800;color:#0088aa" id="montant-val">0 FCFA</span>
+        </div>
       </div>
 
     </div>
@@ -80,9 +93,19 @@ function onMedChange() {
   if (opt && opt.value) {
     document.getElementById('stock-now-val').textContent = (opt.dataset.stock || '0') + ' ' + (opt.dataset.unite || '');
     box.classList.add('show');
+    const prix = document.getElementById('prix_unitaire');
+    if (!prix.value) prix.value = parseFloat(opt.dataset.prix || '0') || '';
   } else {
     box.classList.remove('show');
   }
+  calcMontant();
+}
+function calcMontant() {
+  const qte  = parseFloat(document.getElementById('quantite').value || '0');
+  const prix = parseFloat(document.getElementById('prix_unitaire').value || '0');
+  const total = (qte > 0 && prix > 0) ? Math.round(qte * prix) : 0;
+  document.getElementById('montant-val').textContent =
+    total.toLocaleString('fr-FR').replace(/,/g, ' ') + ' FCFA';
 }
 onMedChange();
 </script>
