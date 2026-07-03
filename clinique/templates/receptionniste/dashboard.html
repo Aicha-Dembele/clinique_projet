@@ -4,7 +4,7 @@
 {% block title %}Dashboard Réceptionniste{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Accueil & Réception{% endblock %}
-{% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} 📞{% endblock %}
+{% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 {% block page_actions %}
 <a href="{% url 'patients:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>

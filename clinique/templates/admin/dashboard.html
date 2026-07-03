@@ -4,7 +4,7 @@
 {% block title %}Tableau de bord{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Tableau de bord{% endblock %}
-{% block page_heading %}Bonjour, {{ request.user.get_full_name|default:request.user.username }} 👋{% endblock %}
+{% block page_heading %}Bonjour, {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 
 {% block page_actions %}

@@ -4,7 +4,7 @@
 {% block title %}Dashboard Pharmacien{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Pharmacie{% endblock %}
-{% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} 💊{% endblock %}
+{% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 {% block page_actions %}
 <a href="{% url 'pharmacie:entree_stock' %}" class="btn-c btn-outline-c"><i class="bi bi-box-arrow-in-down"></i> Entrée de stock</a>

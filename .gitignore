@@ -31,3 +31,6 @@ Thumbs.db
 
 # Scripts de débogage jetables
 _t.py
+
+# Diagrammes de soutenance (non versionnés)
+diagrammes/
