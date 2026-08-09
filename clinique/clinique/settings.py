@@ -193,6 +193,17 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     X_FRAME_OPTIONS = 'DENY'            # anti clickjacking
 
+# ─────────────────────────────────────────────────────────────
+# Stripe — paiement par carte bancaire SIMULÉ (mode test).
+# Créer un compte sur dashboard.stripe.com puis copier les clés de test
+# (pk_test_… / sk_test_…) depuis dashboard.stripe.com/test/apikeys,
+# via variables d'environnement ou local_settings.py (non versionné).
+# Carte de test « paiement réussi » : 4242 4242 4242 4242,
+# CVC quelconque (ex. 123), date d'expiration future (ex. 12/29).
+# ─────────────────────────────────────────────────────────────
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+
 # Surcharges locales non versionnées (ex. EMAIL_HOST_PASSWORD).
 try:
     from .local_settings import *  # noqa: F401,F403

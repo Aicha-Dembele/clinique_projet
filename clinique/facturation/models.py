@@ -238,6 +238,37 @@ class Facture(models.Model):
     def montant_paye(self):
         return sum(p.montant for p in self.paiements.all()) or Decimal('0')
 
+    # Ordre d'affichage des prestations sur la facture (détail + PDF)
+    GROUPES_LIGNES = [
+        ('consultation',    'Consultation'),
+        ('examen',          'Examens'),
+        ('hospitalisation', 'Hospitalisation'),
+        ('medicament',      'Médicaments (ordonnance)'),
+    ]
+
+    def lignes_groupees(self):
+        """Lignes regroupées par type de prestation, dans un ordre fixe, avec
+        sous-total par groupe. Travaille sur les lignes déjà préchargées
+        (prefetch_related) : aucune requête supplémentaire."""
+        lignes = list(self.lignes.all())
+        groupes = []
+        for code, label in self.GROUPES_LIGNES:
+            items = [l for l in lignes if l.type_service == code]
+            if items:
+                groupes.append({
+                    'code': code, 'label': label, 'lignes': items,
+                    'sous_total': sum(l.sous_total() for l in items),
+                })
+        # Types inattendus : jamais perdus, regroupés en fin de facture
+        connus = {code for code, _ in self.GROUPES_LIGNES}
+        autres = [l for l in lignes if l.type_service not in connus]
+        if autres:
+            groupes.append({
+                'code': 'autre', 'label': 'Autres prestations', 'lignes': autres,
+                'sous_total': sum(l.sous_total() for l in autres),
+            })
+        return groupes
+
     # ── Répartition assurance / patient ───────────────────────────
     def part_assurance(self):
         """Montant pris en charge par l'assurance (arrondi au franc)."""
@@ -289,7 +320,6 @@ class Paiement(models.Model):
     MODE_CHOICES = [
         ('cash',         'Espèces'),
         ('orange_money', 'Orange Money'),
-        ('moov_money',   'Moov Money'),
         ('carte',        'Carte bancaire'),
     ]
 

@@ -32,7 +32,7 @@
     .login-card{
       position:relative;z-index:10;
       width:100%;max-width:400px;margin:1rem;
-      background:rgba(255,255,255,.09);
+      background:rgba(6,22,42,.55);
       backdrop-filter:blur(28px);
       -webkit-backdrop-filter:blur(28px);
       border:1px solid rgba(255,255,255,.20);
@@ -53,38 +53,38 @@
       animation:logoPop .7s cubic-bezier(.23,1,.32,1) .15s both;
     }
     @keyframes logoPop{from{opacity:0;transform:scale(.65)}to{opacity:1;transform:scale(1)}}
-    .logo-name{font-size:1.15rem;font-weight:800;color:#00d4ee;letter-spacing:.1em;text-transform:uppercase;margin-top:.8rem;text-shadow:0 0 22px rgba(0,210,238,.5);}
-    .logo-sub{font-size:.71rem;color:rgba(255,255,255,.5);font-weight:500;margin-top:.18rem;letter-spacing:.05em;text-align:center}
+    .logo-name{font-size:1.4rem;font-weight:800;color:#2ee4ff;letter-spacing:.1em;text-transform:uppercase;margin-top:.8rem;text-shadow:0 0 22px rgba(0,210,238,.6);}
+    .logo-sub{font-size:.88rem;color:rgba(255,255,255,.85);font-weight:500;margin-top:.18rem;letter-spacing:.05em;text-align:center}
 
     /* ── Titre ── */
-    .login-title{text-align:center;font-size:1.02rem;font-weight:700;color:rgba(255,255,255,.88);margin-bottom:1.5rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
-    .login-title i{font-size:1.1rem;color:#00d4ee}
+    .login-title{text-align:center;font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+    .login-title i{font-size:1.3rem;color:#2ee4ff}
 
     /* ── Erreurs ── */
-    .error-box{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);border-radius:.75rem;padding:.75rem 1rem;margin-bottom:1rem;font-size:.8rem;color:#fca5a5;font-weight:600;display:flex;align-items:center;gap:.5rem}
+    .error-box{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.45);border-radius:.75rem;padding:.75rem 1rem;margin-bottom:1rem;font-size:.92rem;color:#ffb8b8;font-weight:600;display:flex;align-items:center;gap:.5rem}
 
     /* ── Champs ── */
     .f-group{margin-bottom:.9rem}
     .f-wrap{position:relative;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);border-radius:.8rem;display:flex;align-items:center;transition:border-color .2s,box-shadow .2s}
     .f-wrap:focus-within{border-color:rgba(0,210,238,.7);box-shadow:0 0 0 3px rgba(0,210,238,.15)}
-    .f-ico{padding:0 .85rem;color:rgba(255,255,255,.45);font-size:1rem}
-    .f-input{flex:1;padding:.88rem .85rem .88rem 0;background:transparent;border:none;outline:none;font-family:'Outfit',sans-serif;font-size:.9rem;color:#fff}
-    .f-input::placeholder{color:rgba(255,255,255,.38)}
-    .f-eye{padding:0 .9rem;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.38);font-size:.95rem;transition:color .15s}
+    .f-ico{padding:0 .85rem;color:rgba(255,255,255,.75);font-size:1.1rem}
+    .f-input{flex:1;padding:.88rem .85rem .88rem 0;background:transparent;border:none;outline:none;font-family:'Outfit',sans-serif;font-size:1.02rem;color:#fff}
+    .f-input::placeholder{color:rgba(255,255,255,.6)}
+    .f-eye{padding:0 .9rem;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.6);font-size:1.05rem;transition:color .15s}
     .f-eye:hover{color:rgba(255,255,255,.8)}
 
     /* ── Options ── */
     .f-options{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;margin-top:-.1rem}
     .f-check{display:flex;align-items:center;gap:.4rem;cursor:pointer}
-    .f-check input{accent-color:#00d4ee;width:14px;height:14px}
-    .f-check span{font-size:.75rem;color:rgba(255,255,255,.58)}
-    .forgot-link{font-size:.75rem;color:#00d4ee;text-decoration:none;font-weight:600;transition:opacity .15s}
+    .f-check input{accent-color:#00d4ee;width:16px;height:16px}
+    .f-check span{font-size:.9rem;color:rgba(255,255,255,.9)}
+    .forgot-link{font-size:.9rem;color:#2ee4ff;text-decoration:none;font-weight:600;transition:opacity .15s}
     .forgot-link:hover{opacity:.7}
 
     /* ── Boutons ── */
-    .btn-login{width:100%;padding:.95rem;border:none;border-radius:.9rem;background:linear-gradient(135deg,#0078aa,#00d4ee);color:#fff;font-family:'Outfit',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 8px 26px rgba(0,150,200,.45);transition:transform .2s,filter .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+    .btn-login{width:100%;padding:.95rem;border:none;border-radius:.9rem;background:linear-gradient(135deg,#0078aa,#00d4ee);color:#fff;font-family:'Outfit',sans-serif;font-size:1.08rem;font-weight:700;cursor:pointer;box-shadow:0 8px 26px rgba(0,150,200,.45);transition:transform .2s,filter .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
     .btn-login:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 14px 34px rgba(0,150,200,.55)}
-    .btn-cancel{width:100%;padding:.82rem;border:1px solid rgba(255,255,255,.18);border-radius:.9rem;background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;margin-top:.6rem;display:flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none}
+    .btn-cancel{width:100%;padding:.82rem;border:1px solid rgba(255,255,255,.30);border-radius:.9rem;background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);font-family:'Outfit',sans-serif;font-size:.98rem;font-weight:600;cursor:pointer;transition:all .2s;margin-top:.6rem;display:flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none}
     .btn-cancel:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.32)}
 
     /* ── Particules ── */
@@ -96,6 +96,22 @@
     .bg-photo{
       background-image:url('{% static "consultation/img/ME1.jpeg" %}')!important;
       background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;
+    }
+
+    /* ── Téléphone ──────────────────────────────────────────────────
+       Le body est centré en flex avec overflow:hidden : dès que la carte
+       est plus haute que l'écran, le débordement se fait en haut ET en bas,
+       et le haut (logo, nom) devient invisible et inatteignable.
+       Sur petit écran on repasse donc en défilement vertical normal et on
+       resserre le logo et les marges. L'affichage bureau n'est pas touché. */
+    @media (max-width: 575.98px){
+      body{overflow-y:auto;overflow-x:hidden;align-items:flex-start;padding:1.25rem 0}
+      .login-card{margin:0 auto;padding:1.8rem 1.4rem 1.6rem}
+      .logo-img{width:74px;height:74px}
+      .logo-wrap{margin-bottom:1.1rem}
+      .logo-name{font-size:1.2rem}
+      .login-title{margin-bottom:1.1rem}
+      .f-options{margin-bottom:1.1rem}
     }
   </style>
 </head>
@@ -130,13 +146,14 @@
       <div class="f-wrap">
         <span class="f-ico"><i class="bi bi-person-fill"></i></span>
         <input type="text" name="username" class="f-input" placeholder="Nom d'utilisateur"
-               required autofocus value="{% if form.username.value %}{{ form.username.value }}{% endif %}">
+               required {% if not remembered_username %}autofocus{% endif %}
+               value="{{ form.username.value|default:remembered_username|default:'' }}">
       </div>
     </div>
     <div class="f-group">
       <div class="f-wrap">
         <span class="f-ico"><i class="bi bi-lock-fill"></i></span>
-        <input type="password" name="password" id="pw" class="f-input" placeholder="••••••••" required>
+        <input type="password" name="password" id="pw" class="f-input" placeholder="••••••••" required {% if remembered_username %}autofocus{% endif %}>
         <button type="button" class="f-eye" onclick="togglePw()">
           <i class="bi bi-eye-fill" id="pw-eye"></i>
         </button>
@@ -144,7 +161,7 @@
     </div>
     <div class="f-options">
       <label class="f-check">
-        <input type="checkbox" name="remember">
+        <input type="checkbox" name="remember" {% if remembered_username %}checked{% endif %}>
         <span>Se souvenir de moi</span>
       </label>
       <a href="{% url 'password_reset' %}" class="forgot-link">Mot de passe oublié ?</a>

@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -19,9 +20,9 @@ from .models import (
 )
 from patients.models import Patient
 from personnel.models import Medecin, Laborantin, Infirmier
-from comptes.decorators import role_required, permission_required
+from comptes.decorators import role_required, permission_required, get_role
 from comptes.models import JournalAudit
-from comptes.recherche import termes_q
+from comptes.recherche import termes_q, nouveau_en_tete
 
 
 def _get_personnel(user, attr):
@@ -175,20 +176,33 @@ def rdv_supprimer(request, pk):
 
 # Dossiers medicaux
 
+def _dossiers_visibles(request):
+    """Dossiers qu'un utilisateur peut voir. Un médecin ne voit que les dossiers
+    dont il est propriétaire OU qui lui ont été transmis (partagés). L'admin (et
+    les autres rôles non liés à une fiche médecin) voient tout."""
+    base = DossierMedical.objects.all()
+    medecin = _get_personnel(request.user, 'medecin')
+    if medecin:
+        base = base.filter(
+            models.Q(medecin=medecin) | models.Q(partage_avec=medecin)
+        ).distinct()
+    return base, medecin
+
+
 @permission_required('dossier.view')
 def dossiers(request):
-    qs = DossierMedical.objects.select_related('patient').all().order_by('-date_creation')
+    visibles, medecin = _dossiers_visibles(request)
+    qs = visibles.select_related('patient', 'medecin').order_by('-date_creation')
 
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
 
     today = timezone.localdate()
-    base = DossierMedical.objects.all()
-    total_dossiers     = base.count()
-    nouveaux_mois      = base.filter(date_creation__year=today.year, date_creation__month=today.month).count()
-    patients_suivis    = base.values('patient').distinct().count()
-    avec_consultations = base.filter(consultations__isnull=False).distinct().count()
+    total_dossiers     = visibles.count()
+    nouveaux_mois      = visibles.filter(date_creation__year=today.year, date_creation__month=today.month).count()
+    patients_suivis    = visibles.values('patient').distinct().count()
+    avec_consultations = visibles.filter(consultations__isnull=False).distinct().count()
 
     return render(request, 'consultation/dossiers.html', {
         'dossiers':           qs,
@@ -197,19 +211,93 @@ def dossiers(request):
         'nouveaux_mois':      nouveaux_mois,
         'patients_suivis':    patients_suivis,
         'avec_consultations': avec_consultations,
+        'mon_medecin_id':     medecin.pk if medecin else None,
     })
 
 
 @permission_required('dossier.view')
 def dossier_detail(request, pk):
-    dossier = get_object_or_404(DossierMedical, pk=pk)
-    return render(request, 'consultation/dossier_detail.html', {'dossier': dossier})
+    dossier = get_object_or_404(
+        DossierMedical.objects.select_related('patient', 'medecin'), pk=pk)
+    medecin = _get_personnel(request.user, 'medecin')
+    if medecin and not dossier.est_accessible_par(medecin):
+        messages.error(request, "Ce dossier médical ne vous a pas été transmis.")
+        return redirect('consultation:dossiers')
+    # Le partage est réservé au propriétaire du dossier (ou à l'admin).
+    est_proprietaire = bool(medecin and dossier.medecin_id in (medecin.pk, None))
+    peut_partager = get_role(request.user) == 'admin' or est_proprietaire
+    return render(request, 'consultation/dossier_detail.html', {
+        'dossier':       dossier,
+        'peut_partager': peut_partager,
+    })
 
 
+@permission_required('dossier.view')
 def dossier_pdf(request, pk):
     dossier = get_object_or_404(DossierMedical, pk=pk)
+    medecin = _get_personnel(request.user, 'medecin')
+    if medecin and not dossier.est_accessible_par(medecin):
+        messages.error(request, "Ce dossier médical ne vous a pas été transmis.")
+        return redirect('consultation:dossiers')
     from .pdf import dossier_pdf_response
     return dossier_pdf_response(dossier)
+
+
+def _notifier_medecin_dossier(dossier, medecin_cible, expediteur):
+    """Prévient un médecin qu'un confrère lui a transmis un dossier (cloche).
+    Une erreur ici ne doit pas empêcher le partage."""
+    try:
+        user = getattr(getattr(medecin_cible, 'profil', None), 'user', None)
+        if not user:
+            return
+        from comptes.models import Notification
+        Notification.creer(
+            user=user,
+            titre="Dossier médical transmis",
+            message=f"{dossier.patient} — transmis par {expediteur.get_username()}",
+            url=reverse('consultation:dossier_detail', args=[dossier.pk]),
+            icone='bi-folder-symlink-fill',
+        )
+    except Exception:
+        pass
+
+
+@role_required('admin', 'medecin')
+def dossier_partager(request, pk):
+    """Transmet le dossier d'un patient à un ou plusieurs autres médecins.
+    Seul le médecin propriétaire (ou l'admin) peut le faire."""
+    dossier = get_object_or_404(
+        DossierMedical.objects.select_related('patient', 'medecin'), pk=pk)
+    medecin = _get_personnel(request.user, 'medecin')
+
+    # Un médecin ne peut transmettre que SES propres dossiers.
+    if medecin and dossier.medecin_id not in (medecin.pk, None):
+        messages.error(request, "Seul le médecin propriétaire peut transmettre ce dossier.")
+        return redirect('consultation:dossiers')
+
+    if request.method == 'POST':
+        ids = request.POST.getlist('medecins')
+        cibles = Medecin.objects.filter(pk__in=ids).exclude(pk=dossier.medecin_id)
+        n = 0
+        for cible in cibles:
+            dossier.partage_avec.add(cible)
+            _notifier_medecin_dossier(dossier, cible, request.user)
+            n += 1
+        if n:
+            messages.success(request, f"Dossier transmis à {n} médecin(s).")
+        else:
+            messages.info(request, "Aucun médecin sélectionné.")
+        return redirect('consultation:dossier_detail', pk=dossier.pk)
+
+    autres = Medecin.objects.all().order_by('nom', 'prenom')
+    if dossier.medecin_id:
+        autres = autres.exclude(pk=dossier.medecin_id)
+    deja_partage = set(dossier.partage_avec.values_list('pk', flat=True))
+    return render(request, 'consultation/dossier_partager.html', {
+        'dossier':      dossier,
+        'medecins':     autres,
+        'deja_partage': deja_partage,
+    })
 
 
 # Consultations
@@ -218,7 +306,9 @@ def dossier_pdf(request, pk):
 def consultation_liste(request):
     consultations = (Consultation.objects
                      .select_related('rendez_vous__patient', 'rendez_vous__medecin')
-                     .order_by('-date'))
+                     .prefetch_related('ordonnance_set')
+                     .order_by('rendez_vous__patient__nom',
+                               'rendez_vous__patient__prenom'))
     medecin = _get_personnel(request.user, 'medecin')
     if medecin:
         consultations = consultations.filter(rendez_vous__medecin=medecin)
@@ -230,9 +320,13 @@ def consultation_liste(request):
                      'rendez_vous__medecin__nom', 'motif', 'diagnostic')
         )
 
+    nb_ordonnance = consultations.filter(ordonnance__isnull=False).distinct().count()
+    consultations, new_pk = nouveau_en_tete(request, consultations)
     return render(request, 'consultation/liste.html', {
         'consultations': consultations,
         'q': q,
+        'new_pk': new_pk,
+        'consultations_ordonnance': nb_ordonnance,
     })
 
 
@@ -240,14 +334,18 @@ def consultation_liste(request):
 def consultation_ajouter(request):
     if request.method == 'POST':
         try:
-            Consultation.objects.create(
+            c = Consultation.objects.create(
                 rendez_vous_id=request.POST['rendez_vous'],
                 motif=request.POST['motif'],
                 diagnostic=request.POST.get('diagnostic', ''),
                 observation=request.POST.get('observation', ''),
             )
-            messages.success(request, 'Consultation enregistree.')
-            return redirect('consultation:liste')
+            # Toute consultation doit se conclure par une ordonnance :
+            # on enchaîne directement sur le formulaire de prescription.
+            messages.success(request,
+                             "Consultation enregistrée. Prescrivez maintenant "
+                             "l'ordonnance du patient pour la clôturer.")
+            return redirect(f"{reverse('consultation:ordonnance_ajouter')}?consultation={c.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -306,16 +404,19 @@ def examens(request):
     qs = ExamenMedical.objects.select_related(
         'consultation__rendez_vous__patient',
         'consultation__rendez_vous__medecin',
-    ).all().order_by('-id')
+    ).all().order_by('patient__nom', 'patient__prenom')
     role = getattr(getattr(request.user, 'profil', None), 'role', None)
     if role and role.code == 'medecin':
+        # Le médecin ne voit que les examens qu'il a demandés lui-même.
         medecin = _get_personnel(request.user, 'medecin')
-        if medecin:
-            qs = qs.filter(consultation__rendez_vous__medecin=medecin)
+        qs = qs.filter(medecin=medecin) if medecin else qs.none()
     elif role and role.code == 'laborantin':
+        # Le laborantin ne voit QUE les examens qui lui sont adressés.
         labo = _get_personnel(request.user, 'laborantin')
-        if labo:
-            qs = qs.filter(laborantin=labo) | qs.filter(laborantin__isnull=True)
+        qs = qs.filter(laborantin=labo) if labo else qs.none()
+
+    # Statistiques calculées sur le périmètre visible par l'utilisateur
+    stats_qs = qs
 
     q = request.GET.get('q', '').strip()
     if q:
@@ -326,11 +427,12 @@ def examens(request):
         )
 
     qs = qs.prefetch_related('resultats')
-    all_qs = ExamenMedical.objects.all()
+    examens_liste, new_pk = nouveau_en_tete(request, qs)
     return render(request, 'consultation/examens.html', {
-        'examens':          qs,
-        'examens_termines': all_qs.filter(resultats__isnull=False).distinct().count(),
-        'examens_encours':  all_qs.filter(resultats__isnull=True).count(),
+        'examens':          examens_liste,
+        'new_pk':           new_pk,
+        'examens_termines': stats_qs.filter(resultats__isnull=False).distinct().count(),
+        'examens_encours':  stats_qs.filter(resultats__isnull=True).count(),
     })
 
 
@@ -347,7 +449,30 @@ def _type_examen_from_post(request, defaut=''):
     return val or defaut
 
 
-@role_required('admin', 'medecin')
+def _notifier_laborantin_examen(examen):
+    """Prévient le laborantin qu'un médecin lui a adressé un examen à réaliser
+    (cloche). Une erreur ici ne doit jamais empêcher l'enregistrement de l'examen."""
+    try:
+        labo = examen.laborantin if examen.laborantin_id else None
+        if not labo:
+            return
+        user = getattr(getattr(labo, 'profil', None), 'user', None)
+        if not user:
+            return
+        from comptes.models import Notification
+        medecin = f"Dr. {examen.medecin.nom}" if examen.medecin_id else "Un médecin"
+        Notification.creer(
+            user=user,
+            titre="Nouvel examen à réaliser",
+            message=f"{examen.type_examen} — {examen.patient} ({medecin})",
+            url=reverse('consultation:examen_detail', args=[examen.pk]),
+            icone='bi-eyedropper',
+        )
+    except Exception:
+        pass
+
+
+@permission_required('examen.demander')
 def examen_ajouter(request):
     if request.method == 'POST':
         try:
@@ -355,7 +480,7 @@ def examen_ajouter(request):
             if not medecin_id:
                 m = _get_personnel(request.user, 'medecin')
                 medecin_id = m.id if m else None
-            ExamenMedical.objects.create(
+            ex = ExamenMedical.objects.create(
                 patient_id=request.POST['patient'],
                 consultation_id=request.POST['consultation'],
                 laborantin_id=request.POST.get('laborantin') or None,
@@ -364,8 +489,10 @@ def examen_ajouter(request):
                 motif=request.POST.get('motif', ''),
                 date=request.POST.get('date') or None,
             )
+            # Le laborantin désigné est prévenu de l'examen qui lui est adressé.
+            _notifier_laborantin_examen(ex)
             messages.success(request, 'Examen demande.')
-            return redirect('consultation:examens')
+            return redirect(f"{reverse('consultation:examens')}?new={ex.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -379,16 +506,39 @@ def examen_ajouter(request):
     })
 
 
-@role_required('admin', 'medecin', 'laborantin')
+@permission_required('examen.view')
+def examen_detail(request, pk):
+    """Vue en lecture seule d'un examen médical.
+
+    Le laborantin ne peut pas ajouter ni modifier un examen : il consulte ici
+    l'examen que le médecin lui a transmis et qu'il doit réaliser."""
+    examen = get_object_or_404(
+        ExamenMedical.objects.select_related(
+            'consultation__rendez_vous__patient',
+            'consultation__rendez_vous__medecin',
+            'patient', 'medecin', 'laborantin',
+        ).prefetch_related('resultats'),
+        pk=pk,
+    )
+    return render(request, 'consultation/examen_detail.html', {'examen': examen})
+
+
+# La demande et la modification d'un examen sont réservées au médecin (et à
+# l'admin). Le laborantin, lui, ne fait que consulter (voir examen_detail).
+@role_required('admin', 'medecin')
 def examen_modifier(request, pk):
     examen = get_object_or_404(ExamenMedical, pk=pk)
     if request.method == 'POST':
+        ancien_labo = examen.laborantin_id
         examen.type_examen = _type_examen_from_post(request, examen.type_examen)
         examen.motif = request.POST.get('motif', examen.motif)
         examen.date = request.POST.get('date') or examen.date
         if request.POST.get('laborantin'):
             examen.laborantin_id = request.POST['laborantin']
         examen.save()
+        # Nouveau laborantin affecté (différent de l'ancien) → on le prévient.
+        if examen.laborantin_id and examen.laborantin_id != ancien_labo:
+            _notifier_laborantin_examen(examen)
         messages.success(request, 'Examen modifie.')
         return redirect('consultation:examens')
 
@@ -403,7 +553,7 @@ def examen_modifier(request, pk):
     })
 
 
-@role_required('admin', 'medecin')
+@role_required('admin')
 def examen_supprimer(request, pk):
     examen = get_object_or_404(ExamenMedical, pk=pk)
     if request.method == 'POST':
@@ -421,7 +571,8 @@ def examen_supprimer(request, pk):
 
 @permission_required('resultat.view')
 def resultats(request):
-    qs = ResultatExamen.objects.select_related('patient', 'examen').order_by('-date_examen')
+    qs = ResultatExamen.objects.select_related('patient', 'examen').order_by(
+        'patient__nom', 'patient__prenom')
     role = getattr(getattr(request.user, 'profil', None), 'role', None)
     if role and role.code == 'laborantin':
         labo = _get_personnel(request.user, 'laborantin')
@@ -436,8 +587,10 @@ def resultats(request):
     if q:
         qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', 'examen__type_examen'))
 
-    page = Paginator(qs, 25).get_page(request.GET.get('page'))
-    return render(request, 'consultation/resultats_liste.html', {'resultats': page, 'q': q})
+    resultats_liste, new_pk = nouveau_en_tete(request, qs)
+    page = Paginator(resultats_liste, 25).get_page(request.GET.get('page'))
+    return render(request, 'consultation/resultats_liste.html',
+                  {'resultats': page, 'q': q, 'new_pk': new_pk})
 
 
 @role_required('admin', 'laborantin')
@@ -447,16 +600,17 @@ def resultat_ajouter(request):
         try:
             examen = get_object_or_404(ExamenMedical, pk=request.POST['examen'])
             labo = _get_personnel(request.user, 'laborantin')
-            ResultatExamen.objects.create(
+            res = ResultatExamen.objects.create(
                 patient=examen.patient,
                 examen=examen,
                 medecin=examen.medecin,
                 laborantin=labo,
                 resultat=request.POST['resultat'],
                 observations=request.POST.get('observations', ''),
+                image=request.FILES.get('image'),
             )
             messages.success(request, 'Resultat enregistre.')
-            return redirect('consultation:resultats')
+            return redirect(f"{reverse('consultation:resultats')}?new={res.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -474,6 +628,8 @@ def resultat_modifier(request, pk):
     if request.method == 'POST':
         res.resultat = request.POST['resultat']
         res.observations = request.POST.get('observations', '')
+        if request.FILES.get('image'):
+            res.image = request.FILES['image']
         res.save()
         JournalAudit.enregistrer(request.user, 'modification', res)
         messages.success(request, 'Resultat modifie.')
@@ -515,6 +671,9 @@ def resultat_transmettre(request, pk):
     res = get_object_or_404(ResultatExamen, pk=pk)
     res.transmis = True
     res.date_transmission = timezone.now()
+    # (Re)transmission → le médecin doit le (re)lire
+    res.lu_par_medecin = False
+    res.date_lecture = None
     res.save()
     _notifier_medecin_resultat(res)
     messages.success(request, 'Resultat transmis au medecin.')
@@ -524,6 +683,14 @@ def resultat_transmettre(request, pk):
 @permission_required('resultat.view')
 def resultat_detail(request, pk):
     res = get_object_or_404(ResultatExamen, pk=pk)
+    # Ouverture par le médecin concerné → résultat marqué comme lu
+    # (update ciblé pour ne pas déclencher les effets de bord de save())
+    medecin = _get_personnel(request.user, 'medecin')
+    if (medecin and res.transmis and not res.lu_par_medecin
+            and res.examen_id and res.examen.medecin_id == medecin.pk):
+        ResultatExamen.objects.filter(pk=res.pk).update(
+            lu_par_medecin=True, date_lecture=timezone.now())
+        res.lu_par_medecin = True
     return render(request, 'consultation/resultat_detail.html', {'resultat': res})
 
 
@@ -537,10 +704,9 @@ def resultat_pdf(request, pk):
 def resultat_supprimer(request, pk):
     res = get_object_or_404(ResultatExamen, pk=pk)
     if request.method == 'POST':
-        res.soft_delete(request.user)
-        JournalAudit.enregistrer(request.user, 'suppression', res,
-                                 details='Déplacé vers la corbeille')
-        messages.success(request, 'Resultat deplace vers la corbeille.')
+        JournalAudit.enregistrer(request.user, 'suppression', res)
+        res.delete()
+        messages.success(request, 'Resultat supprime.')
         return redirect('consultation:resultats')
 
     return render(request, 'partials/confirmer_suppression.html', {
@@ -549,53 +715,25 @@ def resultat_supprimer(request, pk):
     })
 
 
-@role_required('admin', 'laborantin')
-def resultat_corbeille(request):
-    """Liste des résultats en corbeille (soft-delete)."""
-    qs = ResultatExamen.objets_tous.filter(supprime=True).order_by('-date_suppression')
-    return render(request, 'consultation/resultats_corbeille.html', {'resultats': qs})
-
-
-@role_required('admin', 'laborantin')
-def resultat_restaurer(request, pk):
-    res = get_object_or_404(ResultatExamen.objets_tous, pk=pk, supprime=True)
-    if request.method == 'POST':
-        res.restaurer()
-        JournalAudit.enregistrer(request.user, 'restauration', res)
-        messages.success(request, 'Resultat restaure.')
-        return redirect('consultation:resultat_corbeille')
-
-    return render(request, 'partials/confirmer_suppression.html', {
-        'objet': f'Restaurer RES-{pk:04d} - {res.examen.type_examen} ({res.patient})',
-        'retour_url': '/consultation/resultats/corbeille/',
-    })
-
-
-@role_required('admin')
-def resultat_purger(request, pk):
-    """Suppression DÉFINITIVE depuis la corbeille (admin uniquement)."""
-    res = get_object_or_404(ResultatExamen.objets_tous, pk=pk, supprime=True)
-    if request.method == 'POST':
-        JournalAudit.enregistrer(request.user, 'purge', res,
-                                 details='Suppression définitive depuis la corbeille')
-        res.delete()
-        messages.success(request, 'Resultat supprime definitivement.')
-        return redirect('consultation:resultat_corbeille')
-
-    return render(request, 'partials/confirmer_suppression.html', {
-        'objet': f'SUPPRIMER DÉFINITIVEMENT RES-{pk:04d} - {res.examen.type_examen} ({res.patient})',
-        'retour_url': '/consultation/resultats/corbeille/',
-    })
-
-
 # Ordonnances
 
 @permission_required('ordonnance.view')
 def ordonnances(request):
+    # nb_achats / date_achat : sorties de stock liées à l'ordonnance → indique
+    # que les médicaments ont été achetés dans NOTRE pharmacie (et quand).
     qs = (Ordonnance.objects
           .select_related('consultation__rendez_vous__patient',
                           'consultation__rendez_vous__medecin')
-          .order_by('-date'))
+          .annotate(
+              nb_achats=models.Count(
+                  'dispensations',
+                  filter=models.Q(dispensations__type_mouvement='sortie')),
+              date_achat=models.Max(
+                  'dispensations__date',
+                  filter=models.Q(dispensations__type_mouvement='sortie')),
+          )
+          .order_by('consultation__rendez_vous__patient__nom',
+                    'consultation__rendez_vous__patient__prenom'))
     medecin = _get_personnel(request.user, 'medecin')
     if medecin:
         qs = qs.filter(consultation__rendez_vous__medecin=medecin)
@@ -608,23 +746,25 @@ def ordonnances(request):
                      'consultation__rendez_vous__medecin__nom', 'medicaments')
         )
 
+    ordonnances_liste, new_pk = nouveau_en_tete(request, qs)
     return render(request, 'consultation/ordonnances.html', {
-        'ordonnances': qs,
+        'ordonnances': ordonnances_liste,
         'q': q,
+        'new_pk': new_pk,
     })
 
 
-@role_required('admin', 'medecin')
+@permission_required('ordonnance.add')
 def ordonnance_ajouter(request):
     if request.method == 'POST':
         try:
-            Ordonnance.objects.create(
+            o = Ordonnance.objects.create(
                 consultation_id=request.POST['consultation'],
                 date=request.POST['date'],
                 medicaments=request.POST['medicaments'],
             )
             messages.success(request, 'Ordonnance creee.')
-            return redirect('consultation:ordonnances')
+            return redirect(f"{reverse('consultation:ordonnances')}?new={o.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -672,7 +812,7 @@ def ordonnance_imprimer(request, pk):
     return ordonnance_pdf_response(ordonnance)
 
 
-@role_required('admin', 'medecin')
+@permission_required('ordonnance.delete')
 def ordonnance_supprimer(request, pk):
     ordonnance = get_object_or_404(Ordonnance, pk=pk)
     if request.method == 'POST':
@@ -691,7 +831,14 @@ def ordonnance_supprimer(request, pk):
 @permission_required('hospitalisation.view')
 def hospitalisations(request):
     from datetime import date, timedelta
-    qs = Hospitalisation.objects.select_related('patient', 'medecin').all().order_by('-date_entree')
+    qs = Hospitalisation.objects.select_related('patient', 'medecin').all().order_by(
+        'patient__nom', 'patient__prenom')
+
+    # Un médecin ne voit que les hospitalisations dont il est le médecin traitant.
+    # L'admin (non lié à une fiche médecin) voit tout.
+    medecin = _get_personnel(request.user, 'medecin')
+    if medecin:
+        qs = qs.filter(medecin=medecin)
 
     # Filtre service (type_chambre)
     service_filtre = request.GET.get('service', '')
@@ -706,21 +853,25 @@ def hospitalisations(request):
                      'numero_chambre', 'type_chambre')
         )
 
-    total_en_cours   = Hospitalisation.objects.filter(date_sortie__isnull=True).count()
-    patients_critiques = Hospitalisation.objects.filter(etat_clinique='critique', date_sortie__isnull=True).count()
+    # Stats et grille chambres également limitées au médecin connecté.
+    base_h = Hospitalisation.objects.all()
+    if medecin:
+        base_h = base_h.filter(medecin=medecin)
+    total_en_cours   = base_h.filter(date_sortie__isnull=True).count()
+    patients_critiques = base_h.filter(etat_clinique='critique', date_sortie__isnull=True).count()
     today = date.today()
-    sorties_prevues  = Hospitalisation.objects.filter(date_sortie=today).count()
+    sorties_prevues  = base_h.filter(date_sortie=today).count()
 
     # Services distincts pour le filtre
     services = Hospitalisation.objects.values_list('type_chambre', flat=True).distinct().order_by('type_chambre')
 
     # Grille chambres : plan fixe 101-110 (VIP), 201-210/301-302 (double), 303-310/401-410 (simple)
     occ_par_chambre = {}
-    for h in (Hospitalisation.objects.filter(date_sortie__isnull=True)
+    for h in (base_h.filter(date_sortie__isnull=True)
               .select_related('patient', 'medecin')):
         occ_par_chambre.setdefault(h.numero_chambre, []).append(h)
     sorties_jour = set(
-        Hospitalisation.objects.filter(date_sortie=today)
+        base_h.filter(date_sortie=today)
         .values_list('numero_chambre', flat=True)
     )
     type_par_num = dict(Hospitalisation.plan_chambres())
@@ -759,8 +910,10 @@ def hospitalisations(request):
             })
         etages.append(rangee)
 
+    hospit_liste, new_pk = nouveau_en_tete(request, qs)
     return render(request, 'consultation/hospitalisations.html', {
-        'hospitalisations': qs,
+        'hospitalisations': hospit_liste,
+        'new_pk':           new_pk,
         'total_en_cours':   total_en_cours,
         'chambres_libres':  chambres_libres,
         'patients_critiques': patients_critiques,
@@ -825,7 +978,7 @@ def _form_context(action, hospit=None, form_data=None, exclure_pk=None):
     return ctx
 
 
-@role_required('admin', 'medecin', 'receptionniste')
+@permission_required('hospitalisation.add')
 def hospit_ajouter(request):
     if request.method == 'POST':
         numero = (request.POST.get('numero_chambre') or '').strip()
@@ -839,7 +992,7 @@ def hospit_ajouter(request):
             return render(request, 'consultation/hospit_form.html',
                           _form_context('Ajouter', form_data=request.POST))
         try:
-            Hospitalisation.objects.create(
+            h = Hospitalisation.objects.create(
                 patient_id=request.POST['patient'],
                 medecin_id=request.POST['medecin'],
                 type_chambre=type_chambre,
@@ -850,14 +1003,14 @@ def hospit_ajouter(request):
                 date_sortie=request.POST.get('date_sortie') or None,
             )
             messages.success(request, 'Hospitalisation enregistree.')
-            return redirect('consultation:hospitalisations')
+            return redirect(f"{reverse('consultation:hospitalisations')}?new={h.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
     return render(request, 'consultation/hospit_form.html', _form_context('Ajouter'))
 
 
-@role_required('admin', 'medecin', 'receptionniste')
+@permission_required('hospitalisation.change')
 def hospit_modifier(request, pk):
     hospit = get_object_or_404(Hospitalisation, pk=pk)
     if request.method == 'POST':
@@ -884,7 +1037,7 @@ def hospit_modifier(request, pk):
                   _form_context('Modifier', hospit=hospit, exclure_pk=hospit.pk))
 
 
-@role_required('admin', 'medecin', 'receptionniste')
+@permission_required('hospitalisation.change')
 def hospit_sortie(request, pk):
     """Marque la sortie du patient (date de sortie = aujourd'hui)."""
     hospit = get_object_or_404(Hospitalisation, pk=pk)
@@ -898,7 +1051,7 @@ def hospit_sortie(request, pk):
     return redirect('consultation:hospitalisations')
 
 
-@role_required('admin', 'receptionniste')
+@permission_required('hospitalisation.delete')
 def hospit_supprimer(request, pk):
     hospit = get_object_or_404(Hospitalisation, pk=pk)
     if request.method == 'POST':
@@ -920,7 +1073,13 @@ def traitements(request):
         'patient',
         'consultation__rendez_vous__patient',
         'consultation__rendez_vous__medecin',
-    ).order_by('-id')
+    ).order_by('patient__nom', 'patient__prenom')
+
+    # Un médecin ne voit que les traitements qu'il a prescrits (rattachés à sa
+    # consultation). L'admin (non lié à une fiche médecin) voit tout.
+    medecin = _get_personnel(request.user, 'medecin')
+    if medecin:
+        qs = qs.filter(consultation__rendez_vous__medecin=medecin)
 
     # Recherche (patient, médecin, description)
     q = request.GET.get('q', '').strip()
@@ -931,28 +1090,59 @@ def traitements(request):
         )
 
     base = Traitement.objects.all()
+    if medecin:
+        base = base.filter(consultation__rendez_vous__medecin=medecin)
+    traitements_liste, new_pk = nouveau_en_tete(request, qs)
     return render(request, 'consultation/traitements.html', {
-        'traitements': qs,
+        'traitements': traitements_liste,
         'q': q,
+        'new_pk': new_pk,
         'traitements_prescrits_count': base.filter(statut='prescrit').count(),
         'traitements_en_cours_count': base.filter(statut='en_cours').count(),
         'traitements_termines_count': base.filter(statut='termine').count(),
     })
 
 
+def _notifier_infirmier_traitement(traitement):
+    """Prévient l'infirmier qu'un médecin lui a confié le suivi d'un traitement
+    (cloche). Une erreur ici ne doit jamais empêcher l'enregistrement du traitement."""
+    try:
+        infirmier = traitement.infirmier if traitement.infirmier_id else None
+        if not infirmier:
+            return
+        user = getattr(getattr(infirmier, 'profil', None), 'user', None)
+        if not user:
+            return
+        from comptes.models import Notification
+        desc = (traitement.description or '').strip()
+        if len(desc) > 80:
+            desc = desc[:79] + '…'
+        Notification.creer(
+            user=user,
+            titre="Nouveau traitement à suivre",
+            message=f"{traitement.patient} — {desc}",
+            url=reverse('consultation:traitement_detail', args=[traitement.pk]),
+            icone='bi-capsule',
+        )
+    except Exception:
+        pass
+
+
 @role_required('admin', 'medecin')
 def traitement_ajouter(request):
     if request.method == 'POST':
         try:
-            Traitement.objects.create(
+            t = Traitement.objects.create(
                 patient_id=request.POST['patient'],
                 consultation_id=request.POST.get('consultation') or None,
                 infirmier_id=request.POST.get('infirmier') or None,
                 description=request.POST['description'],
                 duree=request.POST.get('duree', 1),
             )
+            # L'infirmier désigné est prévenu du traitement dont il a la charge.
+            _notifier_infirmier_traitement(t)
             messages.success(request, 'Traitement prescrit.')
-            return redirect('consultation:traitements')
+            return redirect(f"{reverse('consultation:traitements')}?new={t.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 

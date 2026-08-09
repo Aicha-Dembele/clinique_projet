@@ -6,10 +6,10 @@ def _user_permissions(request):
     user = request.user
     if not user.is_authenticated:
         return set()
-    role = get_role(user)
-    if role == 'admin':
-        from .models import Permission
-        return set(Permission.objects.values_list('code', flat=True))
+    # L'administrateur est soumis à sa liste de permissions comme les autres rôles.
+    # Il garde toutefois TOUJOURS l'accès à « Rôles & Permissions » (protégée par
+    # admin_required, basé sur le rôle et non sur une permission), donc il peut
+    # toujours se re-donner des droits — impossible de se verrouiller.
     try:
         return set(user.profil.role.permissions.values_list('code', flat=True))
     except Exception:
@@ -46,6 +46,40 @@ def _stock_alertes(role):
         return 0
 
 
+def _resultats_non_lus(request, role):
+    """Nombre de résultats d'examens transmis au médecin connecté et pas encore
+    lus par lui (badge du menu). Un résultat est marqué lu quand le médecin
+    ouvre son détail ; une retransmission le repasse en non lu."""
+    if role != 'medecin':
+        return 0
+    try:
+        from consultation.models import ResultatExamen
+        medecin = getattr(request.user.profil, 'medecin', None)
+        if not medecin:
+            return 0
+        return ResultatExamen.objects.filter(
+            examen__medecin=medecin, transmis=True, lu_par_medecin=False).count()
+    except Exception:
+        return 0
+
+
+def _examens_a_faire(request, role):
+    """Nombre d'examens adressés au laborantin connecté et pas encore réalisés
+    (badge du menu « Examens médicaux »). Un examen est « à faire » tant qu'aucun
+    résultat n'y est rattaché."""
+    if role != 'laborantin':
+        return 0
+    try:
+        from consultation.models import ExamenMedical
+        labo = getattr(request.user.profil, 'laborantin', None)
+        if not labo:
+            return 0
+        return ExamenMedical.objects.filter(
+            laborantin=labo, resultats__isnull=True).distinct().count()
+    except Exception:
+        return 0
+
+
 def _notifications(request):
     """(nombre_non_lues, 8 dernières) pour la cloche de la barre du haut."""
     if not request.user.is_authenticated:
@@ -73,6 +107,8 @@ def role_context(request):
         'user_permissions': codes,
         'perms': _PermLookup(codes),
         'stock_alertes': _stock_alertes(role),
+        'resultats_non_lus': _resultats_non_lus(request, role),
+        'examens_a_faire': _examens_a_faire(request, role),
         'notifications_non_lues': notif_count,
         'notifications_recentes': notif_list,
     }

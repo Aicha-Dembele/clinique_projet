@@ -1,13 +1,15 @@
 ﻿from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
 
 from patients.models import Patient
-from comptes.decorators import role_required, get_role, permission_required
-from comptes.recherche import termes_q
+from comptes.decorators import (role_required, role_required_strict, get_role,
+                                permission_required)
+from comptes.recherche import termes_q, nouveau_en_tete
 
 
 def _medecin_courant(request):
@@ -151,7 +153,7 @@ def dashboard(request):
 def patient_liste(request):
     q = request.GET.get('q', '')
     sexe = request.GET.get('sexe', '')
-    qs = Patient.objects.select_related('assurance').order_by('-date_creation')
+    qs = Patient.objects.select_related('assurance').order_by('nom', 'prenom')
     qs = _restreindre_au_medecin(request, qs)
 
     if q:
@@ -159,8 +161,20 @@ def patient_liste(request):
     if sexe:
         qs = qs.filter(sexe=sexe)
 
-    page = Paginator(qs, 25).get_page(request.GET.get('page'))
-    return render(request, 'patients/liste.html', {'patients': page, 'q': q})
+    aujourd_hui = timezone.now()
+    stats = qs.aggregate(
+        # istartswith : tolère « Feminin » sans accent ou « M »/« F » d'anciennes saisies
+        nb_hommes=Count('pk', distinct=True, filter=Q(sexe__istartswith='m')),
+        nb_femmes=Count('pk', distinct=True, filter=Q(sexe__istartswith='f')),
+        nb_nouveaux=Count('pk', distinct=True,
+                          filter=Q(date_creation__year=aujourd_hui.year,
+                                   date_creation__month=aujourd_hui.month)),
+    )
+
+    patients_liste, new_pk = nouveau_en_tete(request, qs)
+    page = Paginator(patients_liste, 25).get_page(request.GET.get('page'))
+    return render(request, 'patients/liste.html',
+                  {'patients': page, 'q': q, 'new_pk': new_pk, **stats})
 
 
 @permission_required('patient.view')
@@ -198,7 +212,8 @@ def patient_detail(request, pk):
             messages.error(request, "Ce patient ne fait pas partie de vos patients.")
             return redirect('patients:liste')
 
-    from consultation.models import DossierMedical, Rendez_vous, Consultation, ExamenMedical
+    from consultation.models import (DossierMedical, Rendez_vous, Consultation,
+                                     ExamenMedical, Hospitalisation)
     from facturation.models import Facture
 
     try:
@@ -206,23 +221,49 @@ def patient_detail(request, pk):
     except Exception:
         dossier = None
 
+    # Cloisonnement : un médecin ne voit le dossier que s'il en est le
+    # propriétaire ou s'il lui a été transmis. Sinon on le masque ici.
+    if dossier and get_role(request.user) == 'medecin':
+        med = _medecin_courant(request)
+        if med and not dossier.est_accessible_par(med):
+            dossier = None
+
+    # Le médecin soigne, il ne facture pas : la situation financière du patient
+    # ne lui est pas envoyée du tout (et pas seulement masquée à l'affichage).
+    if get_role(request.user) == 'medecin':
+        factures = Facture.objects.none()
+    else:
+        factures = Facture.objects.filter(patient=patient).order_by('-id')[:5]
+
+    # Séjours du patient. Même cloisonnement que la liste des hospitalisations :
+    # un médecin ne voit que les séjours dont il est le médecin traitant.
+    hospitalisations = Hospitalisation.objects.filter(patient=patient).select_related('medecin')
+    med_courant = _medecin_courant(request)
+    if get_role(request.user) == 'medecin' and med_courant:
+        hospitalisations = hospitalisations.filter(medecin=med_courant)
+    hospitalisations = hospitalisations.order_by('-date_entree')[:5]
+
     return render(request, 'patients/detail.html', {
         'patient': patient,
         'dossier': dossier,
         'rdvs': Rendez_vous.objects.filter(patient=patient).order_by('-date')[:5],
         'consultations': Consultation.objects.filter(rendez_vous__patient=patient).order_by('-date')[:5],
         'examens': ExamenMedical.objects.filter(patient=patient).order_by('-id')[:5],
-        'factures': Facture.objects.filter(patient=patient).order_by('-id')[:5],
+        'hospitalisations': hospitalisations,
+        'factures': factures,
     })
 
 
-@role_required('admin', 'receptionniste')
+# Fiches patient : réservées à la réception. L'administrateur en est exclu
+# (séparation des tâches) — d'où role_required_strict, qui ne lui laisse
+# aucun passe-droit, contrairement à role_required.
+@role_required_strict('receptionniste')
 def patient_ajouter(request):
     from facturation.models import Assurance
 
     if request.method == 'POST':
         try:
-            Patient.objects.create(
+            p = Patient.objects.create(
                 nom=request.POST['nom'],
                 prenom=request.POST['prenom'],
                 sexe=request.POST.get('sexe', ''),
@@ -236,7 +277,7 @@ def patient_ajouter(request):
                 numero_assure=request.POST.get('numero_assure', ''),
             )
             messages.success(request, 'Patient ajouté avec succès.')
-            return redirect('patients:liste')
+            return redirect(f"{reverse('patients:liste')}?new={p.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -246,7 +287,7 @@ def patient_ajouter(request):
     })
 
 
-@role_required('admin', 'receptionniste')
+@role_required_strict('receptionniste')
 def patient_modifier(request, pk):
     from facturation.models import Assurance
 
@@ -278,7 +319,7 @@ def patient_modifier(request, pk):
     })
 
 
-@role_required('admin', 'receptionniste')
+@role_required_strict('receptionniste')
 def patient_supprimer(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     if request.method == 'POST':

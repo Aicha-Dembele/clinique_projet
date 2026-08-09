@@ -8,7 +8,9 @@
 {% block breadcrumb %}<li class="breadcrumb-item active">Hospitalisation</li>{% endblock %}
 {% block page_actions %}
 <button type="button" class="btn-c btn-outline-c" onclick="openPlanChambres()"><i class="bi bi-grid-3x3-gap-fill"></i> Plan des chambres</button>
+{% if 'hospitalisation.add' in user_permissions %}
 <a href="{% url 'consultation:hospit_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouvelle admission</a>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}<style>
@@ -232,13 +234,17 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
           </thead>
           <tbody>
             {% for hospit in hospitalisations %}
-            <tr>
+            <tr{% if hospit.pk == new_pk %} class="row-new"{% endif %}>
               <td>
                 <div class="d-flex align-items-center gap-2">
                   <div class="av-sm">{{ hospit.patient.nom|slice:":1" }}{{ hospit.patient.prenom|slice:":1" }}</div>
+                  {% if 'dossier.view' in user_permissions %}
                   <a href="{% url 'patients:detail' hospit.patient.pk %}" style="font-weight:700;color:var(--text-primary);text-decoration:none">
                     {{ hospit.patient.prenom }} {{ hospit.patient.nom }}
                   </a>
+                  {% else %}
+                  <span style="font-weight:700;color:var(--text-primary)">{{ hospit.patient.prenom }} {{ hospit.patient.nom }}</span>
+                  {% endif %}
                 </div>
               </td>
               <td style="font-weight:700">{{ hospit.numero_chambre }}</td>
@@ -249,15 +255,21 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
               <td><span class="etat-badge etat-{{ hospit.etat.code }}">{{ hospit.etat.label }}</span></td>
               <td>
                 <div class="d-flex gap-1">
+                  {% if 'dossier.view' in user_permissions %}
                   <a href="{% url 'patients:detail' hospit.patient.pk %}" class="act-btn" title="Dossier"><i class="bi bi-file-earmark-medical"></i></a>
-                  {% if not hospit.date_sortie %}
+                  {% endif %}
+                  {% if not hospit.date_sortie and 'hospitalisation.change' in user_permissions %}
                   <form method="post" action="{% url 'consultation:hospit_sortie' hospit.pk %}" style="display:inline" onsubmit="return confirm('Confirmer la sortie de ce patient ?');">
                     {% csrf_token %}
                     <button type="submit" class="act-btn" title="Marquer la sortie" style="cursor:pointer;border-color:rgba(37,99,235,.4);color:#2563eb"><i class="bi bi-box-arrow-right"></i></button>
                   </form>
                   {% endif %}
+                  {% if 'hospitalisation.change' in user_permissions %}
                   <a href="{% url 'consultation:hospit_modifier' hospit.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
+                  {% endif %}
+                  {% if 'hospitalisation.delete' in user_permissions %}
                   <a href="{% url 'consultation:hospit_supprimer' hospit.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
+                  {% endif %}
                 </div>
               </td>
             </tr>

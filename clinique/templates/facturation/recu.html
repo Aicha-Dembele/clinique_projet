@@ -99,7 +99,6 @@
         <span class="recu-row-val">
           {% if paiement.mode_paiement == 'cash' %}<i class="bi bi-cash-stack me-1" style="color:#0088aa"></i>Espèces
           {% elif paiement.mode_paiement == 'orange_money' %}<i class="bi bi-phone-fill me-1" style="color:#f97316"></i>Orange Money
-          {% elif paiement.mode_paiement == 'moov_money' %}<i class="bi bi-phone-fill me-1" style="color:#3b82f6"></i>Moov Money
           {% elif paiement.mode_paiement == 'carte' %}<i class="bi bi-credit-card-fill me-1" style="color:#a855f7"></i>Carte bancaire
           {% else %}{{ paiement.get_mode_paiement_display }}{% endif %}
         </span>

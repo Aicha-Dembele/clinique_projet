@@ -11,7 +11,9 @@
 
 {% block extra_css %}
 <style>
-  .role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1.1rem; }
+  /* min(100%, …) : la colonne ne peut jamais dépasser la largeur dispo
+     (sinon elle déborde de l'écran sur téléphone). Sans effet sur bureau. */
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 1.1rem; }
   .role-card {
     position: relative;
     background: var(--card-bg);

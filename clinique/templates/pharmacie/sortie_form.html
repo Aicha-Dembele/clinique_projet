@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block body_class %}page-consultation-bg page-pharmacie-bg{% endblock %}
 {% block title %}Sortie de stock{% endblock %}
 {% block nav_pharmacie %}active{% endblock %}
 {% block page_title %}Pharmacie{% endblock %}
@@ -72,8 +72,8 @@
     </div>
 
     <!-- Aucune ordonnance -->
-    <div id="ordo-vide" class="helper" style="display:none;color:#f59e0b;margin-top:1rem">
-      <i class="bi bi-exclamation-triangle"></i> Ce patient n'a aucune ordonnance enregistrée. Utilisez la sortie manuelle ci-dessous.
+    <div id="ordo-vide" class="helper" style="display:none;color:#ef4444;margin-top:1rem">
+      <i class="bi bi-exclamation-triangle"></i> Ce patient n'a aucune ordonnance enregistrée — la vente de médicaments sans ordonnance n'est pas autorisée. Le médecin doit d'abord créer l'ordonnance.
     </div>
 
     <!-- Lignes de l'ordonnance -->
@@ -95,8 +95,8 @@
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-box-arrow-up"></i></span>
       <div>
-        <div class="form-section-title">Sortie manuelle (hors ordonnance)</div>
-        <div class="form-section-sub">Un seul médicament — soin infirmier, péremption, ajustement…</div>
+        <div class="form-section-title">Sortie manuelle</div>
+        <div class="form-section-sub">Un seul médicament — soin infirmier, péremption, ajustement… La vente à un patient exige son ordonnance.</div>
       </div>
     </div>
     <div class="row g-3">
@@ -138,20 +138,21 @@
       <div class="col-12 col-md-6">
         <label class="f-label" for="patient">Patient (facturé automatiquement)</label>
         <select id="patient" name="patient" class="f-input f-select" onchange="filtrerOrdonnances()">
-          <option value="">— Aucun (sortie non facturée) —</option>
+          <option value="">— Aucun (sortie interne non facturée) —</option>
           {% for p in patients %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}
         </select>
-        <div class="helper"><i class="bi bi-receipt"></i> Si un patient est choisi, le médicament est ajouté à sa facture.</div>
+        <div class="helper"><i class="bi bi-receipt"></i> Si un patient est choisi, son ordonnance devient obligatoire et le médicament est ajouté à sa facture.</div>
       </div>
 
       <div class="col-12 col-md-6">
-        <label class="f-label" for="ordonnance">Ordonnance liée (optionnel)</label>
-        <select id="ordonnance" name="ordonnance" class="f-input f-select">
+        <label class="f-label" for="ordonnance">Ordonnance du patient <span class="req-mark" id="ordo-req" style="display:none">*</span></label>
+        <select id="ordonnance" name="ordonnance" class="f-input f-select" onchange="checkQte()">
           <option value="">—</option>
           {% for o in ordonnances %}
           <option value="{{ o.pk }}" data-patient="{{ o.consultation.rendez_vous.patient_id }}">Ord. #{{ o.pk }} — {{ o.date|date:'d/m/Y' }}{% if o.consultation.rendez_vous.patient %} — {{ o.consultation.rendez_vous.patient }}{% endif %}</option>
           {% endfor %}
         </select>
+        <div class="helper" id="ordo-rule-help"></div>
       </div>
 
       <div class="col-12">
@@ -256,8 +257,18 @@ function onMedChange(){
 function checkQte(){
   const stock=currentStock(); const qte=parseInt(document.getElementById('quantite').value||'0');
   const help=document.getElementById('qte-help'); const btn=document.getElementById('submit-btn');
-  if (stock!==null && qte>stock){ help.innerHTML='<span class="stock-warn"><i class="bi bi-exclamation-triangle"></i> Quantité supérieure au stock disponible ('+stock+').</span>'; btn.disabled=true; }
-  else { help.textContent=''; btn.disabled=false; }
+  const qteKo = (stock!==null && qte>stock);
+  help.innerHTML = qteKo ? '<span class="stock-warn"><i class="bi bi-exclamation-triangle"></i> Quantité supérieure au stock disponible ('+stock+').</span>' : '';
+
+  // Règle clinique : vente à un patient impossible sans son ordonnance
+  const pid=document.getElementById('patient').value;
+  const oid=document.getElementById('ordonnance').value;
+  const ordoKo = !!pid && !oid;
+  document.getElementById('ordo-req').style.display = pid ? 'inline' : 'none';
+  document.getElementById('ordo-rule-help').innerHTML = ordoKo
+    ? '<span class="stock-warn"><i class="bi bi-exclamation-triangle"></i> Vente sans ordonnance interdite : sélectionnez l\'ordonnance du patient.</span>' : '';
+
+  btn.disabled = qteKo || ordoKo;
   calcMontant();
 }
 function calcMontant(){
@@ -268,6 +279,7 @@ function calcMontant(){
 function filtrerOrdonnances(){
   const pid=document.getElementById('patient').value; const sel=document.getElementById('ordonnance');
   for (const opt of sel.options){ if(!opt.value) continue; const match=!pid||opt.dataset.patient===pid; opt.hidden=!match; if(!match&&opt.selected) sel.value=''; }
+  checkQte();
 }
 
 chargerOrdos();

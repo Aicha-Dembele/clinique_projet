@@ -28,7 +28,7 @@ class RechercheListesTests(TestCase):
     def setUp(self):
         self.med = Medecin.objects.create(
             nom='House', prenom='G', telephone='1', service='Diag',
-            specialite='Généraliste', role='medecin', mot_de_passe='x')
+            specialite='Généraliste', role='medecin')
 
         self.dupont = _patient('Dupont', 'Jean')
         self.martin = _patient('Martin', 'Lucie')

@@ -214,6 +214,22 @@ def resultat_pdf_response(resultat):
             elements.append(Spacer(1, 2 * mm))
             elements.append(Paragraph(resultat.observations.replace("\n", "<br/>"), body_style))
 
+        # Image du résultat (scanner, radio, échographie…), redimensionnée pour tenir dans la page
+        if resultat.image:
+            try:
+                from reportlab.platypus import Image as RLImage
+                from PIL import Image as PILImage
+                chemin = resultat.image.path
+                with PILImage.open(chemin) as im:
+                    iw, ih = im.size
+                echelle = min((174 * mm) / iw, (120 * mm) / ih, 1)
+                elements.append(Spacer(1, 6 * mm))
+                elements.append(Paragraph("Image du résultat :", section))
+                elements.append(Spacer(1, 2 * mm))
+                elements.append(RLImage(chemin, width=iw * echelle, height=ih * echelle))
+            except Exception:
+                pass  # un fichier image manquant ne doit pas empêcher le PDF
+
         if resultat.transmis and resultat.date_transmission:
             elements.append(Spacer(1, 6 * mm))
             dt = timezone.localtime(resultat.date_transmission).strftime("%d/%m/%Y à %H:%M")

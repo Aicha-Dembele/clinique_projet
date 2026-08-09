@@ -182,6 +182,43 @@ class MouvementStock(models.Model):
             quantite_stock=models.F('quantite_stock') + delta
         )
 
+    def _stock_actuel(self):
+        """Quantité en stock lue en base (l'instance self.medicament peut être périmée)."""
+        return (Medicament.objects.filter(pk=self.medicament_id)
+                .values_list('quantite_stock', flat=True).first() or 0)
+
+    def _notifier_si_seuil_franchi(self, avant, apres):
+        """Notifie les pharmaciens (cloche) quand le stock FRANCHIT le seuil
+        d'alerte ou tombe en rupture. Déclenchée uniquement au franchissement,
+        pas à chaque sortie, pour ne pas noyer la cloche de doublons."""
+        try:
+            medicament = Medicament.objects.get(pk=self.medicament_id)
+            seuil = medicament.seuil_alerte
+            reste = max(apres, 0)
+            if avant > 0 and apres <= 0:
+                titre = f"Rupture de stock : {medicament.libelle()}"
+                message = (f"Le stock est épuisé (0 {medicament.unite}). "
+                           "Réapprovisionnement urgent nécessaire.")
+            elif avant > seuil and apres <= seuil:
+                titre = f"Stock insuffisant : {medicament.libelle()}"
+                message = (f"Il ne reste que {reste} {medicament.unite} "
+                           f"(seuil d'alerte : {seuil}). Pensez à réapprovisionner.")
+            else:
+                return
+
+            from django.urls import reverse
+            from comptes.models import Notification, Profil
+            url = reverse('pharmacie:medicaments')
+            pharmaciens = (Profil.objects
+                           .filter(role__code='pharmacien', user__is_active=True)
+                           .select_related('user'))
+            for profil in pharmaciens:
+                Notification.creer(profil.user, titre, message,
+                                   url=url, icone='bi-capsule')
+        except Exception:
+            # Une alerte qui échoue ne doit jamais bloquer le mouvement de stock.
+            pass
+
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         # Fige le prix courant du médicament si aucun prix n'a été fourni
@@ -190,12 +227,19 @@ class MouvementStock(models.Model):
         super().save(*args, **kwargs)
         if is_new:
             delta = self.quantite if self.type_mouvement == 'entree' else -self.quantite
+            avant = self._stock_actuel()
             self._appliquer(delta)
+            if delta < 0:
+                self._notifier_si_seuil_franchi(avant, avant + delta)
 
     def delete(self, *args, **kwargs):
         # Annule l'effet du mouvement avant suppression
         delta = -self.quantite if self.type_mouvement == 'entree' else self.quantite
+        avant = self._stock_actuel()
         self._appliquer(delta)
+        # La suppression d'une ENTRÉE fait baisser le stock : on vérifie le seuil aussi.
+        if delta < 0:
+            self._notifier_si_seuil_franchi(avant, avant + delta)
         facture = self.facture
         super().delete(*args, **kwargs)
         # Recalcule la facture pour retirer la ligne du médicament dispensé

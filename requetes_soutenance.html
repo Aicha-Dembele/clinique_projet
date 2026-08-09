@@ -1,0 +1,429 @@
+<title>Requêtes SQL — soutenance Clinique Névroglie</title>
+<style>
+  :root{
+    --encre:#0A2A44; --turquoise:#0D818F; --cyan:#21C1CE; --menthe:#8DE8DC;
+    --fond:#F1F6F9; --carte:#FFFFFF; --texte:#12324A; --doux:#5F7F94;
+    --bord:#D8E7EF; --panneau:#F2F8FA; --ambre:#8A5B0E; --ambre-fond:#FDF4E4;
+    --ombre:0 1px 2px rgba(10,42,68,.05), 0 6px 18px rgba(10,42,68,.06);
+    --serif:Cambria,"Iowan Old Style",Georgia,"Times New Roman",serif;
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,"Courier New",monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --fond:#081D2C; --carte:#0F2B3E; --texte:#DCEBF3; --doux:#8DAABC;
+      --bord:#1C4159; --panneau:#0B2334; --menthe:#8DE8DC;
+      --ambre:#E8B765; --ambre-fond:#2A2114;
+      --ombre:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"]{
+    --fond:#081D2C; --carte:#0F2B3E; --texte:#DCEBF3; --doux:#8DAABC;
+    --bord:#1C4159; --panneau:#0B2334;
+    --ambre:#E8B765; --ambre-fond:#2A2114;
+    --ombre:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.28);
+  }
+  :root[data-theme="light"]{
+    --fond:#F1F6F9; --carte:#FFFFFF; --texte:#12324A; --doux:#5F7F94;
+    --bord:#D8E7EF; --panneau:#F2F8FA;
+    --ambre:#8A5B0E; --ambre-fond:#FDF4E4;
+    --ombre:0 1px 2px rgba(10,42,68,.05), 0 6px 18px rgba(10,42,68,.06);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--fond); color:var(--texte);
+    font-family:var(--sans); font-size:16px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1000px; margin:0 auto; padding:0 20px 80px}
+
+  /* ---------------------------------------------------------- en-tete */
+  .tete{padding:56px 0 32px; border-bottom:1px solid var(--bord)}
+  .kicker{
+    font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--turquoise); font-weight:700; margin:0 0 14px
+  }
+  .tete h1{
+    font-family:var(--serif); font-weight:700; font-size:clamp(30px,4.6vw,46px);
+    line-height:1.15; margin:0 0 14px; text-wrap:balance; letter-spacing:-.01em;
+  }
+  .chapeau{font-size:17px; color:var(--doux); margin:0; max-width:64ch}
+  .faits{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px}
+  .fait{
+    background:var(--carte); border:1px solid var(--bord); border-radius:9px;
+    padding:9px 14px; font-size:13.5px; color:var(--doux);
+  }
+  .fait b{color:var(--texte); font-variant-numeric:tabular-nums}
+
+  /* ------------------------------------------------------------- nav */
+  nav{
+    position:sticky; top:0; z-index:5; background:var(--fond);
+    border-bottom:1px solid var(--bord); margin-bottom:34px;
+    display:flex; flex-wrap:wrap; gap:4px; padding:10px 0;
+  }
+  nav a{
+    display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+    padding:6px 12px; border-radius:7px; text-decoration:none;
+    color:var(--doux); font-size:13.5px; font-weight:600;
+  }
+  nav a span{
+    display:grid; place-items:center; width:19px; height:19px; border-radius:5px;
+    background:var(--turquoise); color:#fff; font-size:11px; font-weight:700;
+  }
+  nav a:hover{background:var(--panneau); color:var(--texte)}
+  nav a:focus-visible{outline:2px solid var(--cyan); outline-offset:2px}
+
+  /* --------------------------------------------------------- sections */
+  section{margin-bottom:52px; scroll-margin-top:64px}
+  .sec{display:flex; align-items:flex-start; gap:16px; margin-bottom:8px}
+  .lettre{
+    flex:none; display:grid; place-items:center; width:38px; height:38px;
+    border-radius:10px; background:var(--turquoise); color:#fff;
+    font-family:var(--serif); font-size:20px; font-weight:700;
+  }
+  .sec h2{
+    font-family:var(--serif); font-size:25px; font-weight:700;
+    margin:2px 0 2px; line-height:1.2;
+  }
+  .sous{margin:0; font-family:var(--mono); font-size:12.5px; color:var(--turquoise)}
+  .intro{margin:0 0 22px 54px; color:var(--doux); font-size:15px; max-width:62ch}
+
+  /* --------------------------------------------------------- requetes */
+  .q{
+    background:var(--carte); border:1px solid var(--bord); border-radius:12px;
+    padding:20px 22px; margin-bottom:14px; box-shadow:var(--ombre);
+  }
+  .q.vedette{border-color:var(--turquoise)}
+  .qh{display:flex; align-items:baseline; gap:12px; margin-bottom:14px}
+  .code{
+    flex:none; font-family:var(--mono); font-size:12px; font-weight:700;
+    color:var(--turquoise); background:var(--panneau);
+    border:1px solid var(--bord); border-radius:6px; padding:3px 8px;
+  }
+  .vedette .code{background:var(--turquoise); color:#fff; border-color:var(--turquoise)}
+  .jury{margin:0; font-size:16.5px; font-weight:600; line-height:1.45; text-wrap:balance}
+
+  pre.sql{
+    margin:0; background:var(--panneau); border:1px solid var(--bord);
+    border-radius:9px; padding:14px 16px; overflow-x:auto;
+  }
+  pre.sql code{
+    font-family:var(--mono); font-size:13px; line-height:1.65;
+    color:var(--texte); white-space:pre;
+  }
+  pre.sql b{color:var(--turquoise); font-weight:700}
+  pre.sql i{color:#8A5B9E; font-style:normal; font-weight:600}
+  pre.sql u{color:#1D7A57; text-decoration:none}
+  @media (prefers-color-scheme:dark){
+    pre.sql b{color:var(--menthe)} pre.sql i{color:#C9A2E0} pre.sql u{color:#7FD9AC}
+  }
+  :root[data-theme="dark"] pre.sql b{color:var(--menthe)}
+  :root[data-theme="dark"] pre.sql i{color:#C9A2E0}
+  :root[data-theme="dark"] pre.sql u{color:#7FD9AC}
+
+  .note{
+    margin:12px 0 0; padding:10px 13px; border-radius:8px;
+    background:var(--ambre-fond); color:var(--ambre);
+    font-size:13.5px; line-height:1.55;
+  }
+  .lab{
+    margin:16px 0 8px; font-size:11px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--doux); font-weight:700;
+  }
+  .tbl{overflow-x:auto; border:1px solid var(--bord); border-radius:9px}
+  table{border-collapse:collapse; width:100%; font-size:13px}
+  th,td{
+    padding:7px 12px; text-align:left; white-space:nowrap;
+    border-bottom:1px solid var(--bord); font-variant-numeric:tabular-nums;
+  }
+  th{
+    background:var(--panneau); font-family:var(--mono); font-size:11.5px;
+    font-weight:700; color:var(--doux); text-transform:lowercase;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  .reste{margin:7px 0 0; font-size:12.5px; color:var(--doux); font-style:italic}
+  .vide{margin:0; font-size:13px; color:var(--doux)}
+
+  /* ---------------------------------------------------------- alertes */
+  .bloc{
+    background:var(--carte); border:1px solid var(--bord); border-radius:12px;
+    padding:22px 24px; margin-bottom:16px; box-shadow:var(--ombre);
+  }
+  .bloc h3{
+    font-family:var(--serif); font-size:20px; margin:0 0 12px; font-weight:700;
+  }
+  .bloc ol,.bloc ul{margin:0; padding-left:20px}
+  .bloc li{margin-bottom:12px; max-width:70ch}
+  .bloc li:last-child{margin-bottom:0}
+  .bloc code{
+    font-family:var(--mono); font-size:12.5px; background:var(--panneau);
+    border:1px solid var(--bord); border-radius:5px; padding:1px 5px;
+  }
+  .attention{border-color:var(--ambre)}
+  .attention h3{color:var(--ambre)}
+
+  .pied{
+    margin-top:44px; padding-top:22px; border-top:1px solid var(--bord);
+    font-size:13.5px; color:var(--doux);
+  }
+  @media (max-width:640px){
+    .page{padding:0 15px 60px}
+    .intro{margin-left:0}
+    .qh{flex-direction:column; gap:8px}
+  }
+  @media print{
+    nav{display:none} .q{break-inside:avoid; box-shadow:none}
+    body{background:#fff}
+  }
+</style>
+
+<div class="page">
+  <header class="tete">
+    <p class="kicker">Soutenance · Licence 3 MIAGE · TechnoLAB-ISTA</p>
+    <h1>Les requêtes SQL que le jury peut vous demander</h1>
+    <p class="chapeau">
+      34 requêtes classées de la plus simple à la plus pointue, écrites sur le
+      schéma réel de <code>clinique_db</code>. Chacune a été exécutée sur votre base :
+      les résultats affichés ici sont les vrais.
+    </p>
+    <div class="faits">
+      <span class="fait">MySQL <b>8.0.46</b></span>
+      <span class="fait">port <b>3307</b></span>
+      <span class="fait"><b>43</b> tables</span>
+      <span class="fait"><b>66</b> clés étrangères</span>
+      <span class="fait">collation <b>utf8mb4_bin</b></span>
+    </div>
+  </header>
+
+  <nav><a href="#sA"><span>A</span>Les bases</a><a href="#sB"><span>B</span>Calculs et fonctions</a><a href="#sC"><span>C</span>Agrégation</a><a href="#sD"><span>D</span>Jointures</a><a href="#sE"><span>E</span>Sous-requêtes</a><a href="#sF"><span>F</span>Requêtes métier</a><a href="#sG"><span>G</span>Comptes et permissions</a><a href="#sH"><span>H</span>Structure de la base</a></nav>
+
+  <div class="bloc attention">
+    <h3>Trois pièges de votre base, à connaître avant d'ouvrir la console</h3>
+    <ol>
+      <li>
+        <b>Le port n'est pas 3306.</b> Votre serveur MySQL écoute sur
+        <code>3307</code>. La connexion se fait avec
+        <code>mysql -u root -p -P 3307 -h 127.0.0.1 clinique_db</code>.
+        Sans <code>-P 3307</code>, vous aurez une erreur de connexion devant le jury.
+      </li>
+      <li>
+        <b>Les comparaisons de texte distinguent les majuscules.</b> La base est en
+        <code>utf8mb4_bin</code>, donc <code>WHERE code = 'MEDECIN'</code> ne renvoie
+        rien alors que <code>'medecin'</code> fonctionne. Ce choix est volontaire : trois
+        comptes s'appellent <code>AICHA</code>, <code>Aicha</code> et <code>aicha</code>,
+        et une collation insensible à la casse les aurait fait entrer en conflit.
+        C'est une bonne réponse si on vous interroge sur les collations.
+      </li>
+      <li>
+        <b>Les fuseaux horaires ont dû être chargés à la main.</b> MySQL sous Windows
+        est livré sans ses tables de fuseaux : <code>CONVERT_TZ</code> renvoyait
+        <code>NULL</code> et toute requête groupant par mois échouait. Les fuseaux
+        <code>UTC</code> et <code>Africa/Bamako</code> ont été insérés dans
+        <code>mysql.time_zone</code>.
+      </li>
+    </ol>
+  </div>
+
+  <section id="sA"><header class="sec"><span class="lettre">A</span><div><h2>Les bases</h2><p class="sous">SELECT, WHERE, ORDER BY, LIMIT</p></div></header><p class="intro">Presque toujours la première demande. Le jury vérifie que vous savez lire une table.</p><article class="q"><div class="qh"><span class="code">A1</span><p class="jury">« Montrez-moi la liste de vos patients. »</p></div><pre class="sql"><code><b>SELECT</b> id, nom, prenom, sexe, telephone
+<b>FROM</b> patients_patient
+<b>ORDER BY</b> nom</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>nom</th><th>prenom</th><th>sexe</th><th>telephone</th></tr></thead><tbody><tr><td>5</td><td>DIO</td><td>Nabou</td><td>Féminin</td><td>+223 95520200</td></tr><tr><td>1</td><td>Diallo</td><td>Mami</td><td>Féminin</td><td>+223 95222200</td></tr><tr><td>13</td><td>Diarra</td><td>Awa </td><td>Féminin</td><td>+223 93001000</td></tr><tr><td>6</td><td>Kayupé</td><td>Patrick</td><td>Masculin</td><td>+223 90081021</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">A2</span><p class="jury">« Comment retrouvez-vous un patient dont on ne connaît qu&#x27;une partie du nom ? »</p></div><pre class="sql"><code><b>SELECT</b> id, nom, prenom, telephone
+<b>FROM</b> patients_patient
+<b>WHERE</b> nom LIKE &#x27;%Diallo%&#x27; <b>OR</b> prenom LIKE &#x27;%Diallo%&#x27;</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>nom</th><th>prenom</th><th>telephone</th></tr></thead><tbody><tr><td>1</td><td>Diallo</td><td>Mami</td><td>+223 95222200</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">A3</span><p class="jury">« Sortez uniquement les patientes, classées par nom. »</p></div><pre class="sql"><code><b>SELECT</b> nom, prenom, date_naissance
+<b>FROM</b> patients_patient
+<b>WHERE</b> sexe = &#x27;Féminin&#x27;
+<b>ORDER BY</b> nom</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>nom</th><th>prenom</th><th>date_naissance</th></tr></thead><tbody><tr><td>DIO</td><td>Nabou</td><td>2026-06-05</td></tr><tr><td>Diallo</td><td>Mami</td><td>2000-10-05</td></tr><tr><td>Diarra</td><td>Awa </td><td>2002-07-01</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">A4</span><p class="jury">« Quels sont vos cinq médicaments les plus chers ? »</p></div><pre class="sql"><code><b>SELECT</b> nom, forme, dosage, prix_unitaire
+<b>FROM</b> pharmacie_medicament
+<b>ORDER BY</b> prix_unitaire <b>DESC</b>
+<b>LIMIT</b> 5</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>nom</th><th>forme</th><th>dosage</th><th>prix_unitaire</th></tr></thead><tbody><tr><td>Lévétiracétam</td><td>comprimé</td><td>500 mg</td><td>5000.00</td></tr><tr><td>Augmentin</td><td>Comprimé</td><td>1 g</td><td>4500.00</td></tr><tr><td>Sumatriptan</td><td>comprimé</td><td>50 mg</td><td>4000.00</td></tr><tr><td>Gants d&#x27;examen</td><td></td><td></td><td>3500.00</td></tr><tr><td>Ventoline</td><td>Aérosol</td><td>100 µg</td><td>3500.00</td></tr></tbody></table></div></article></section><section id="sB"><header class="sec"><span class="lettre">B</span><div><h2>Calculs et fonctions</h2><p class="sous">TIMESTAMPDIFF, SUM sur expression</p></div></header><p class="intro">On vous demande une valeur qui n&#x27;existe pas telle quelle dans la base.</p><article class="q"><div class="qh"><span class="code">B1</span><p class="jury">« Quel âge ont vos patients ? La base ne stocke que la date de naissance. »</p></div><pre class="sql"><code><b>SELECT</b> nom, prenom, date_naissance,
+       <i>TIMESTAMPDIFF</i>(YEAR, date_naissance, <i>CURDATE</i>()) <b>AS</b> age
+<b>FROM</b> patients_patient
+<b>ORDER BY</b> age <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>nom</th><th>prenom</th><th>date_naissance</th><th>age</th></tr></thead><tbody><tr><td>Diallo</td><td>Mami</td><td>2000-10-05</td><td>25</td></tr><tr><td>Diarra</td><td>Awa </td><td>2002-07-01</td><td>24</td></tr><tr><td>DIO</td><td>Nabou</td><td>2026-06-05</td><td>0</td></tr><tr><td>Kayupé</td><td>Patrick</td><td>2026-06-20</td><td>0</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">B2</span><p class="jury">« Combien vaut le stock de votre pharmacie ? »</p></div><pre class="sql"><code><b>SELECT</b> <i>COUNT</i>(*)                              <b>AS</b> references_en_stock,
+       <i>SUM</i>(quantite_stock)                   <b>AS</b> unites_totales,
+       <i>SUM</i>(quantite_stock * prix_unitaire)   <b>AS</b> valeur_stock_fcfa
+<b>FROM</b> pharmacie_medicament
+<b>WHERE</b> actif = 1</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>references_en_stock</th><th>unites_totales</th><th>valeur_stock_fcfa</th></tr></thead><tbody><tr><td>41</td><td>2788</td><td>2258100.00</td></tr></tbody></table></div></article></section><section id="sC"><header class="sec"><span class="lettre">C</span><div><h2>Agrégation</h2><p class="sous">COUNT, SUM, AVG, GROUP BY, HAVING</p></div></header><p class="intro">Le cœur de l&#x27;épreuve. GROUP BY sépare ceux qui récitent de ceux qui comprennent.</p><article class="q"><div class="qh"><span class="code">C1</span><p class="jury">« Combien de patients par sexe ? »</p></div><pre class="sql"><code><b>SELECT</b> sexe, <i>COUNT</i>(*) <b>AS</b> nombre
+<b>FROM</b> patients_patient
+<b>GROUP BY</b> sexe</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>sexe</th><th>nombre</th></tr></thead><tbody><tr><td>Féminin</td><td>3</td></tr><tr><td>Masculin</td><td>1</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">C2</span><p class="jury">« Quel montant avez-vous facturé, et combien reste impayé ? »</p></div><pre class="sql"><code><b>SELECT</b> statut,
+       <i>COUNT</i>(*)            <b>AS</b> nb_factures,
+       <i>SUM</i>(montant_total)  <b>AS</b> total_fcfa,
+       <i>ROUND</i>(<i>AVG</i>(montant_total)) <b>AS</b> moyenne_fcfa
+<b>FROM</b> facturation_facture
+<b>GROUP BY</b> statut
+<b>ORDER BY</b> total_fcfa <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>statut</th><th>nb_factures</th><th>total_fcfa</th><th>moyenne_fcfa</th></tr></thead><tbody><tr><td>payé</td><td>4</td><td>225000.00</td><td>56250</td></tr><tr><td>partiel</td><td>1</td><td>118400.00</td><td>118400</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">C3</span><p class="jury">« Quelles sont vos recettes mois par mois ? »</p></div><pre class="sql"><code><b>SELECT</b> <i>DATE_FORMAT</i>(date, &#x27;%Y-%m&#x27;) <b>AS</b> mois,
+       <i>COUNT</i>(*)                   <b>AS</b> nb_paiements,
+       <i>SUM</i>(montant)               <b>AS</b> encaisse_fcfa
+<b>FROM</b> facturation_paiement
+<b>GROUP BY</b> mois
+<b>ORDER BY</b> mois</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>mois</th><th>nb_paiements</th><th>encaisse_fcfa</th></tr></thead><tbody><tr><td>2026-04</td><td>1</td><td>15000.00</td></tr><tr><td>2026-06</td><td>2</td><td>42000.00</td></tr><tr><td>2026-07</td><td>3</td><td>83000.00</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">C4</span><p class="jury">« Comment vos patients paient-ils ? »</p></div><pre class="sql"><code><b>SELECT</b> mode_paiement,
+       <i>COUNT</i>(*)     <b>AS</b> nb,
+       <i>SUM</i>(montant) <b>AS</b> total_fcfa,
+       <i>ROUND</i>(100 * <i>SUM</i>(montant) / (<b>SELECT</b> <i>SUM</i>(montant) <b>FROM</b> facturation_paiement), 1) <b>AS</b> part_pourcent
+<b>FROM</b> facturation_paiement
+<b>GROUP BY</b> mode_paiement
+<b>ORDER BY</b> total_fcfa <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>mode_paiement</th><th>nb</th><th>total_fcfa</th><th>part_pourcent</th></tr></thead><tbody><tr><td>orange_money</td><td>3</td><td>93000.00</td><td>66.4</td></tr><tr><td>cash</td><td>2</td><td>42000.00</td><td>30.0</td></tr><tr><td>carte</td><td>1</td><td>5000.00</td><td>3.6</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">C5</span><p class="jury">« Quels médecins ont des rendez-vous, et combien ? »</p></div><pre class="sql"><code><b>SELECT</b> m.nom, m.prenom, m.specialite,
+       <i>COUNT</i>(r.id) <b>AS</b> nb_rendez_vous
+<b>FROM</b> personnel_medecin m
+<b>JOIN</b> consultation_rendez_vous r <b>ON</b> r.medecin_id = m.id
+<b>GROUP BY</b> m.id, m.nom, m.prenom, m.specialite
+<b>HAVING</b> <i>COUNT</i>(r.id) &gt;= 1
+<b>ORDER BY</b> nb_rendez_vous <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>nom</th><th>prenom</th><th>specialite</th><th>nb_rendez_vous</th></tr></thead><tbody><tr><td>Cisse</td><td>Ami</td><td>GENERALISTE</td><td>3</td></tr></tbody></table></div></article></section><section id="sD"><header class="sec"><span class="lettre">D</span><div><h2>Jointures</h2><p class="sous">INNER JOIN, LEFT JOIN, 3 tables</p></div></header><p class="intro">La question qui tombe à coup sûr, parce que c&#x27;est la raison d&#x27;être du relationnel.</p><article class="q"><div class="qh"><span class="code">D1</span><p class="jury">« Affichez les rendez-vous avec le nom du patient et celui du médecin. »</p></div><pre class="sql"><code><b>SELECT</b> r.id, r.date, r.statut,
+       <i>CONCAT</i>(p.prenom, &#x27; &#x27;, p.nom) <b>AS</b> patient,
+       <i>CONCAT</i>(&#x27;Dr &#x27;, m.prenom, &#x27; &#x27;, m.nom) <b>AS</b> medecin
+<b>FROM</b> consultation_rendez_vous r
+<b>JOIN</b> patients_patient  p <b>ON</b> p.id = r.patient_id
+<b>JOIN</b> personnel_medecin m <b>ON</b> m.id = r.medecin_id
+<b>ORDER BY</b> r.date <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>date</th><th>statut</th><th>patient</th><th>medecin</th></tr></thead><tbody><tr><td>12</td><td>2026-06-21 10:41:00</td><td>termine</td><td>Patrick Kayupé</td><td>Dr Ami Cisse</td></tr><tr><td>10</td><td>2026-06-05 01:01:00</td><td>termine</td><td>Nabou DIO</td><td>Dr Ami Cisse</td></tr><tr><td>1</td><td>2026-04-16 12:00:00</td><td>termine</td><td>Mami Diallo</td><td>Dr Ami Cisse</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">D2</span><p class="jury">« Vos factures avec le patient et son assurance — même celles sans assurance. »</p></div><pre class="sql"><code><b>SELECT</b> f.id, f.date_creation, f.montant_total, f.statut,
+       <i>CONCAT</i>(p.prenom, &#x27; &#x27;, p.nom) <b>AS</b> patient,
+       <i>COALESCE</i>(a.nom, &#x27;Aucune&#x27;)    <b>AS</b> assurance
+<b>FROM</b> facturation_facture f
+<b>JOIN</b> patients_patient      p <b>ON</b> p.id = f.patient_id
+<b>LEFT</b> <b>JOIN</b> facturation_assurance a <b>ON</b> a.id = f.assurance_id
+<b>ORDER BY</b> f.date_creation <b>DESC</b></code></pre><p class="note">LEFT JOIN parce qu&#x27;une facture peut n&#x27;avoir aucune assurance : un INNER JOIN ferait disparaître ces factures-là, ce qui fausserait le total.</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>date_creation</th><th>montant_total</th><th>statut</th><th>patient</th><th>assurance</th></tr></thead><tbody><tr><td>31</td><td>2026-07-06 22:07:27.218000</td><td>118400.00</td><td>partiel</td><td>Nabou DIO</td><td>AMO</td></tr><tr><td>23</td><td>2026-06-29 23:34:34.367000</td><td>75000.00</td><td>payé</td><td>Patrick Kayupé</td><td>Aucune</td></tr><tr><td>19</td><td>2026-06-25 13:43:59.744000</td><td>90000.00</td><td>payé</td><td>Patrick Kayupé</td><td>AMO</td></tr><tr><td>10</td><td>2026-06-04 19:00:12.629000</td><td>20000.00</td><td>payé</td><td>Mami Diallo</td><td>Aucune</td></tr><tr><td>13</td><td>2026-06-04 19:00:12.629000</td><td>40000.00</td><td>payé</td><td>Mami Diallo</td><td>Aucune</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">D3</span><p class="jury">« Détaillez le contenu d&#x27;une facture. »</p></div><pre class="sql"><code><b>SELECT</b> f.id <b>AS</b> facture,
+       l.description, l.type_service, l.quantite, l.prix_unitaire,
+       (l.quantite * l.prix_unitaire) <b>AS</b> sous_total
+<b>FROM</b> facturation_facture f
+<b>JOIN</b> facturation_lignefacture l <b>ON</b> l.facture_id = f.id
+<b>ORDER BY</b> f.id, l.id</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>facture</th><th>description</th><th>type_service</th><th>quantite</th><th>prix_unitaire</th><th>sous_total</th></tr></thead><tbody><tr><td>10</td><td>GENERALE</td><td>consultation</td><td>1</td><td>10000.00</td><td>10000.00</td></tr><tr><td>10</td><td>Prise de sang (Prise de sang)</td><td>examen</td><td>1</td><td>5000.00</td><td>5000.00</td></tr><tr><td>10</td><td>Prise de sang (Prise de sang)</td><td>examen</td><td>1</td><td>5000.00</td><td>5000.00</td></tr><tr><td>13</td><td>GENERALE</td><td>consultation</td><td>1</td><td>10000.00</td><td>10000.00</td></tr><tr><td>13</td><td>Prise de sang (Prise de sang)</td><td>examen</td><td>1</td><td>5000.00</td><td>5000.00</td></tr></tbody></table></div><p class="reste">+ 13 autre(s) ligne(s)</p></article><article class="q vedette"><div class="qh"><span class="code">D4</span><p class="jury">« Comment prouvez-vous que le total d&#x27;une facture est juste ? »</p></div><pre class="sql"><code><b>SELECT</b> f.id,
+       f.montant_total                          <b>AS</b> total_enregistre,
+       <i>SUM</i>(l.quantite * l.prix_unitaire)        <b>AS</b> total_recalcule,
+       <b>CASE</b> <b>WHEN</b> f.montant_total = <i>SUM</i>(l.quantite * l.prix_unitaire)
+            <b>THEN</b> &#x27;OK&#x27; <b>ELSE</b> &#x27;ECART&#x27; <b>END</b>          <b>AS</b> verdict
+<b>FROM</b> facturation_facture f
+<b>JOIN</b> facturation_lignefacture l <b>ON</b> l.facture_id = f.id
+<b>GROUP BY</b> f.id, f.montant_total
+<b>ORDER BY</b> f.id</code></pre><p class="note">Un jury adore cette question : « comment savez-vous que c&#x27;est juste ? »</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>total_enregistre</th><th>total_recalcule</th><th>verdict</th></tr></thead><tbody><tr><td>10</td><td>20000.00</td><td>20000.00</td><td>OK</td></tr><tr><td>13</td><td>40000.00</td><td>40000.00</td><td>OK</td></tr><tr><td>19</td><td>90000.00</td><td>90000.00</td><td>OK</td></tr><tr><td>23</td><td>75000.00</td><td>75000.00</td><td>OK</td></tr><tr><td>31</td><td>118400.00</td><td>118400.00</td><td>OK</td></tr></tbody></table></div></article><article class="q vedette"><div class="qh"><span class="code">D5</span><p class="jury">« Montrez-moi les consultations d&#x27;un médecin en particulier. »</p></div><pre class="sql"><code><b>SELECT</b> c.id,
+       c.date,
+       <i>CONCAT</i>(p.prenom, &#x27; &#x27;, p.nom)        <b>AS</b> patient,
+       <i>CONCAT</i>(&#x27;Dr &#x27;, m.prenom, &#x27; &#x27;, m.nom) <b>AS</b> medecin,
+       c.motif,
+       c.diagnostic
+<b>FROM</b> consultation_consultation c
+<b>JOIN</b> consultation_rendez_vous r <b>ON</b> r.id = c.rendez_vous_id
+<b>JOIN</b> patients_patient         p <b>ON</b> p.id = r.patient_id
+<b>JOIN</b> personnel_medecin        m <b>ON</b> m.id = r.medecin_id
+<b>WHERE</b> m.id = 1
+<b>ORDER BY</b> c.date <b>DESC</b></code></pre><p class="note">Piège classique : la table consultation_consultation n&#x27;a PAS de colonne medecin_id. Dans ce modèle, le médecin est rattaché au rendez-vous, et la consultation se rattache au rendez-vous. Il faut donc remonter la chaîne consultation -&gt; rendez-vous -&gt; médecin. Écrire directement « WHERE medecin_id = 1 » renvoie l&#x27;erreur 1054, Unknown column.</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>date</th><th>patient</th><th>medecin</th><th>motif</th><th>diagnostic</th></tr></thead><tbody><tr><td>11</td><td>2026-06-20 10:52:15.866000</td><td>Patrick Kayupé</td><td>Dr Ami Cisse</td><td>Maux de tête, de la fievre, Insomnie a cause du projet tutor</td><td>Depression</td></tr><tr><td>3</td><td>2026-04-19 02:17:41.323000</td><td>Mami Diallo</td><td>Dr Ami Cisse</td><td>MALADE</td><td>RIEN</td></tr></tbody></table></div></article></section><section id="sE"><header class="sec"><span class="lettre">E</span><div><h2>Sous-requêtes</h2><p class="sous">NOT EXISTS, sous-requête dans FROM</p></div></header><p class="intro">Demande fréquente : « les patients qui n&#x27;ont jamais... ».</p><article class="q"><div class="qh"><span class="code">E1</span><p class="jury">« Quels patients ne sont jamais venus en rendez-vous ? »</p></div><pre class="sql"><code><b>SELECT</b> p.id, p.nom, p.prenom
+<b>FROM</b> patients_patient p
+<b>WHERE</b> <b>NOT</b> <b>EXISTS</b> (
+    <b>SELECT</b> 1 <b>FROM</b> consultation_rendez_vous r <b>WHERE</b> r.patient_id = p.id
+)</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>nom</th><th>prenom</th></tr></thead><tbody><tr><td>13</td><td>Diarra</td><td>Awa </td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">E2</span><p class="jury">« Quelles factures dépassent la moyenne ? »</p></div><pre class="sql"><code><b>SELECT</b> id, montant_total, statut
+<b>FROM</b> facturation_facture
+<b>WHERE</b> montant_total &gt; (<b>SELECT</b> <i>AVG</i>(montant_total) <b>FROM</b> facturation_facture)
+<b>ORDER BY</b> montant_total <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>montant_total</th><th>statut</th></tr></thead><tbody><tr><td>31</td><td>118400.00</td><td>partiel</td></tr><tr><td>19</td><td>90000.00</td><td>payé</td></tr><tr><td>23</td><td>75000.00</td><td>payé</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">E3</span><p class="jury">« Quel médicament sort le plus de votre stock ? »</p></div><pre class="sql"><code><b>SELECT</b> m.nom, m.forme, t.total_sorti
+<b>FROM</b> (
+    <b>SELECT</b> medicament_id, <i>SUM</i>(quantite) <b>AS</b> total_sorti
+    <b>FROM</b> pharmacie_mouvementstock
+    <b>WHERE</b> type_mouvement = &#x27;sortie&#x27;
+    <b>GROUP BY</b> medicament_id
+) t
+<b>JOIN</b> pharmacie_medicament m <b>ON</b> m.id = t.medicament_id
+<b>ORDER BY</b> t.total_sorti <b>DESC</b>
+<b>LIMIT</b> 5</code></pre><p class="note">Attention : la base est en utf8mb4_bin, donc les comparaisons de texte sont sensibles à la casse. La valeur stockée est &#x27;sortie&#x27; en minuscules ; écrire &#x27;SORTIE&#x27; ne renverrait aucune ligne.</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>nom</th><th>forme</th><th>total_sorti</th></tr></thead><tbody><tr><td>Sumatriptan</td><td>comprimé</td><td>26</td></tr><tr><td>Aiguille stérile</td><td></td><td>10</td></tr><tr><td>Sérum physiologique</td><td>poche</td><td>2</td></tr><tr><td>Sérum glucosé 5%</td><td>poche</td><td>2</td></tr><tr><td>Povidone iodée (Bétadine)</td><td>flacon</td><td>1</td></tr></tbody></table></div></article></section><section id="sF"><header class="sec"><span class="lettre">F</span><div><h2>Requêtes métier</h2><p class="sous">ce que l&#x27;application sert vraiment</p></div></header><p class="intro">Celles qui montrent que le projet répond à un besoin réel, pas à un exercice.</p><article class="q vedette"><div class="qh"><span class="code">F1</span><p class="jury">« Comment repérez-vous une rupture de stock avant qu&#x27;elle arrive ? »</p></div><pre class="sql"><code><b>SELECT</b> nom, dci, quantite_stock, seuil_alerte,
+       (seuil_alerte - quantite_stock) <b>AS</b> manque
+<b>FROM</b> pharmacie_medicament
+<b>WHERE</b> actif = 1 <b>AND</b> quantite_stock &lt;= seuil_alerte
+<b>ORDER BY</b> manque <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>nom</th><th>dci</th><th>quantite_stock</th><th>seuil_alerte</th><th>manque</th></tr></thead><tbody><tr><td>Sumatriptan</td><td>Sumatriptan</td><td>4</td><td>5</td><td>1</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">F2</span><p class="jury">« Vos données sont-elles complètes ? »</p></div><pre class="sql"><code><b>SELECT</b> <i>COUNT</i>(*)                         <b>AS</b> total_references,
+       <i>SUM</i>(date_peremption <b>IS</b> <b>NULL</b>)     <b>AS</b> sans_peremption,
+       <i>SUM</i>(date_peremption <b>IS</b> <b>NOT</b> <b>NULL</b>) <b>AS</b> avec_peremption
+<b>FROM</b> pharmacie_medicament
+<b>WHERE</b> actif = 1</code></pre><p class="note">Les 41 références sont dans ce cas ; c&#x27;est un constat assumable devant le jury, la saisie des péremptions reste à faire.</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>total_references</th><th>sans_peremption</th><th>avec_peremption</th></tr></thead><tbody><tr><td>41</td><td>41</td><td>0</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">F3</span><p class="jury">« Comment répartissez-vous entre la part patient et la part assurance ? »</p></div><pre class="sql"><code><b>SELECT</b> f.id,
+       <i>CONCAT</i>(p.prenom, &#x27; &#x27;, p.nom)                        <b>AS</b> patient,
+       <i>COALESCE</i>(a.nom, &#x27;Aucune&#x27;)                           <b>AS</b> assurance,
+       f.montant_total,
+       f.taux_prise_en_charge                              <b>AS</b> taux_pourcent,
+       <i>ROUND</i>(f.montant_total * f.taux_prise_en_charge/100) <b>AS</b> part_assurance,
+       <i>ROUND</i>(f.montant_total * (1 - f.taux_prise_en_charge/100)) <b>AS</b> part_patient
+<b>FROM</b> facturation_facture f
+<b>JOIN</b> patients_patient p <b>ON</b> p.id = f.patient_id
+<b>LEFT</b> <b>JOIN</b> facturation_assurance a <b>ON</b> a.id = f.assurance_id
+<b>ORDER BY</b> f.id</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>patient</th><th>assurance</th><th>montant_total</th><th>taux_pourcent</th><th>part_assurance</th><th>part_patient</th></tr></thead><tbody><tr><td>10</td><td>Mami Diallo</td><td>Aucune</td><td>20000.00</td><td>0.00</td><td>0</td><td>20000</td></tr><tr><td>13</td><td>Mami Diallo</td><td>Aucune</td><td>40000.00</td><td>0.00</td><td>0</td><td>40000</td></tr><tr><td>19</td><td>Patrick Kayupé</td><td>AMO</td><td>90000.00</td><td>70.00</td><td>63000</td><td>27000</td></tr><tr><td>23</td><td>Patrick Kayupé</td><td>Aucune</td><td>75000.00</td><td>0.00</td><td>0</td><td>75000</td></tr><tr><td>31</td><td>Nabou DIO</td><td>AMO</td><td>118400.00</td><td>70.00</td><td>82880</td><td>35520</td></tr></tbody></table></div></article><article class="q vedette"><div class="qh"><span class="code">F4</span><p class="jury">« Combien chaque patient vous doit-il encore ? »</p></div><pre class="sql"><code><b>SELECT</b> f.id,
+       <i>CONCAT</i>(p.prenom, &#x27; &#x27;, p.nom) <b>AS</b> patient,
+       <i>ROUND</i>(f.montant_total * (1 - f.taux_prise_en_charge/100)) <b>AS</b> part_patient,
+       <i>COALESCE</i>(<i>SUM</i>(pa.montant), 0)                              <b>AS</b> deja_paye,
+       <i>ROUND</i>(f.montant_total * (1 - f.taux_prise_en_charge/100))
+           - <i>COALESCE</i>(<i>SUM</i>(pa.montant), 0)                        <b>AS</b> reste_a_payer,
+       f.statut
+<b>FROM</b> facturation_facture f
+<b>JOIN</b> patients_patient p <b>ON</b> p.id = f.patient_id
+<b>LEFT</b> <b>JOIN</b> facturation_paiement pa <b>ON</b> pa.facture_id = f.id
+<b>GROUP BY</b> f.id, p.prenom, p.nom, f.montant_total, f.taux_prise_en_charge, f.statut
+<b>ORDER BY</b> reste_a_payer <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>id</th><th>patient</th><th>part_patient</th><th>deja_paye</th><th>reste_a_payer</th><th>statut</th></tr></thead><tbody><tr><td>31</td><td>Nabou DIO</td><td>35520</td><td>3000.00</td><td>32520.00</td><td>partiel</td></tr><tr><td>13</td><td>Mami Diallo</td><td>40000</td><td>15000.00</td><td>25000.00</td><td>payé</td></tr><tr><td>10</td><td>Mami Diallo</td><td>20000</td><td>20000.00</td><td>0.00</td><td>payé</td></tr><tr><td>19</td><td>Patrick Kayupé</td><td>27000</td><td>27000.00</td><td>0.00</td><td>payé</td></tr><tr><td>23</td><td>Patrick Kayupé</td><td>75000</td><td>75000.00</td><td>0.00</td><td>payé</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">F5</span><p class="jury">« Montrez vos hospitalisations et leur durée réelle. »</p></div><pre class="sql"><code><b>SELECT</b> h.numero_chambre, h.type_chambre,
+       <i>CONCAT</i>(p.prenom, &#x27; &#x27;, p.nom)                      <b>AS</b> patient,
+       h.date_entree, h.date_sortie,
+       <i>DATEDIFF</i>(h.date_sortie, h.date_entree)            <b>AS</b> duree_calculee,
+       h.nombre_jours                                    <b>AS</b> duree_facturee,
+       <b>CASE</b> <b>WHEN</b> h.date_sortie <b>IS</b> <b>NULL</b> <b>THEN</b> &#x27;En cours&#x27; <b>ELSE</b> &#x27;Termine&#x27; <b>END</b> <b>AS</b> etat
+<b>FROM</b> consultation_hospitalisation h
+<b>JOIN</b> patients_patient p <b>ON</b> p.id = h.patient_id
+<b>ORDER BY</b> h.date_entree <b>DESC</b></code></pre><p class="note">Le filtre « en cours » (date_sortie IS NULL) ne renvoie rien aujourd&#x27;hui : tous les patients enregistrés sont déjà sortis.</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>numero_chambre</th><th>type_chambre</th><th>patient</th><th>date_entree</th><th>date_sortie</th><th>duree_calculee</th><th>duree_facturee</th><th>etat</th></tr></thead><tbody><tr><td>101</td><td>vip</td><td>Patrick Kayupé</td><td>2026-06-21</td><td>2026-06-24</td><td>3</td><td>3</td><td>Termine</td></tr><tr><td>101</td><td>vip</td><td>Patrick Kayupé</td><td>2026-06-21</td><td>2026-06-24</td><td>3</td><td>3</td><td>Termine</td></tr><tr><td>303</td><td>simple</td><td>Mami Diallo</td><td>2026-06-20</td><td>2026-06-20</td><td>0</td><td>1</td><td>Termine</td></tr><tr><td>102</td><td>vip</td><td>Mami Diallo</td><td>2026-06-20</td><td>2026-06-20</td><td>0</td><td>1</td><td>Termine</td></tr><tr><td>3</td><td>double</td><td>Nabou DIO</td><td>2026-06-05</td><td>2026-06-08</td><td>3</td><td>3</td><td>Termine</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">F6</span><p class="jury">« Quelle est l&#x27;activité de chaque médecin ? »</p></div><pre class="sql"><code><b>SELECT</b> <i>CONCAT</i>(&#x27;Dr &#x27;, m.prenom, &#x27; &#x27;, m.nom) <b>AS</b> medecin, m.specialite,
+       (<b>SELECT</b> <i>COUNT</i>(*) <b>FROM</b> consultation_rendez_vous     r <b>WHERE</b> r.medecin_id = m.id) <b>AS</b> rendez_vous,
+       (<b>SELECT</b> <i>COUNT</i>(*) <b>FROM</b> consultation_hospitalisation h <b>WHERE</b> h.medecin_id = m.id) <b>AS</b> hospitalisations,
+       (<b>SELECT</b> <i>COUNT</i>(*) <b>FROM</b> consultation_examenmedical   e <b>WHERE</b> e.medecin_id = m.id) <b>AS</b> examens
+<b>FROM</b> personnel_medecin m
+<b>ORDER BY</b> rendez_vous <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>medecin</th><th>specialite</th><th>rendez_vous</th><th>hospitalisations</th><th>examens</th></tr></thead><tbody><tr><td>Dr Ami Cisse</td><td>GENERALISTE</td><td>3</td><td>5</td><td>3</td></tr><tr><td>Dr Clara Via</td><td>Dermatologie</td><td>0</td><td>0</td><td>0</td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">F7</span><p class="jury">« Où en sont les examens de laboratoire ? »</p></div><pre class="sql"><code><b>SELECT</b> statut, <i>COUNT</i>(*) <b>AS</b> nombre
+<b>FROM</b> consultation_examenmedical
+<b>GROUP BY</b> statut</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>statut</th><th>nombre</th></tr></thead><tbody><tr><td>termine</td><td>4</td></tr></tbody></table></div></article></section><section id="sG"><header class="sec"><span class="lettre">G</span><div><h2>Comptes et permissions</h2><p class="sous">le volet sécurité</p></div></header><p class="intro">Le prof a dit que SQLite n&#x27;était pas sûr : montrez que les accès sont cloisonnés.</p><article class="q"><div class="qh"><span class="code">G1</span><p class="jury">« Qui a quel rôle dans votre application ? »</p></div><pre class="sql"><code><b>SELECT</b> u.username, u.is_active, r.code <b>AS</b> role, r.libelle
+<b>FROM</b> auth_user u
+<b>LEFT</b> <b>JOIN</b> comptes_profil pr <b>ON</b> pr.user_id = u.id
+<b>LEFT</b> <b>JOIN</b> comptes_role   r  <b>ON</b> r.id = pr.role_id
+<b>ORDER BY</b> r.code, u.username</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>username</th><th>is_active</th><th>role</th><th>libelle</th></tr></thead><tbody><tr><td>Aicha</td><td>1</td><td>None</td><td>None</td></tr><tr><td>aicha</td><td>1</td><td>None</td><td>None</td></tr><tr><td>admin</td><td>1</td><td>admin</td><td>Administrateur</td></tr><tr><td>Infirmier</td><td>1</td><td>infirmier</td><td>Infirmier</td></tr><tr><td>Dy</td><td>1</td><td>laborantin</td><td>Laborantin</td></tr></tbody></table></div><p class="reste">+ 7 autre(s) ligne(s)</p></article><article class="q vedette"><div class="qh"><span class="code">G2</span><p class="jury">« Combien de permissions par rôle ? »</p></div><pre class="sql"><code><b>SELECT</b> r.libelle, <i>COUNT</i>(rp.permission_id) <b>AS</b> nb_permissions
+<b>FROM</b> comptes_role r
+<b>LEFT</b> <b>JOIN</b> comptes_role_permissions rp <b>ON</b> rp.role_id = r.id
+<b>GROUP BY</b> r.id, r.libelle
+<b>ORDER BY</b> nb_permissions <b>DESC</b></code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>libelle</th><th>nb_permissions</th></tr></thead><tbody><tr><td>Medecin</td><td>19</td></tr><tr><td>Receptionniste</td><td>16</td></tr><tr><td>Laborantin</td><td>6</td></tr><tr><td>Pharmacien</td><td>5</td></tr><tr><td>Infirmier</td><td>4</td></tr></tbody></table></div><p class="reste">+ 1 autre(s) ligne(s)</p></article><article class="q"><div class="qh"><span class="code">G3</span><p class="jury">« Que peut faire précisément un médecin ? »</p></div><pre class="sql"><code><b>SELECT</b> r.libelle <b>AS</b> role, pe.code, pe.libelle <b>AS</b> permission
+<b>FROM</b> comptes_role r
+<b>JOIN</b> comptes_role_permissions rp <b>ON</b> rp.role_id = r.id
+<b>JOIN</b> comptes_permission       pe <b>ON</b> pe.id = rp.permission_id
+<b>WHERE</b> r.code = &#x27;medecin&#x27;
+<b>ORDER BY</b> pe.code</code></pre><p class="note">Même piège qu&#x27;en E3 : les codes de rôle sont en minuscules et la base est sensible à la casse. &#x27;MEDECIN&#x27; ne renverrait rien, &#x27;medecin&#x27; fonctionne.</p><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>role</th><th>code</th><th>permission</th></tr></thead><tbody><tr><td>Medecin</td><td>consultation.add</td><td>Realiser une consultation</td></tr><tr><td>Medecin</td><td>consultation.change</td><td>Modifier une consultation</td></tr><tr><td>Medecin</td><td>consultation.view</td><td>Consulter les consultations</td></tr><tr><td>Medecin</td><td>diagnostic.add</td><td>Poser un diagnostic</td></tr><tr><td>Medecin</td><td>dossier.add</td><td>Creer un dossier medical</td></tr></tbody></table></div><p class="reste">+ 14 autre(s) ligne(s)</p></article></section><section id="sH"><header class="sec"><span class="lettre">H</span><div><h2>Structure de la base</h2><p class="sous">information_schema, DESCRIBE</p></div></header><p class="intro">Si on vous demande de prouver le schéma plutôt que de le décrire.</p><article class="q"><div class="qh"><span class="code">H1</span><p class="jury">« Combien de tables compte votre base ? »</p></div><pre class="sql"><code><b>SELECT</b> table_name, table_rows
+<b>FROM</b> information_schema.tables
+<b>WHERE</b> table_schema = &#x27;clinique_db&#x27;
+<b>ORDER BY</b> table_name</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>TABLE_NAME</th><th>TABLE_ROWS</th></tr></thead><tbody><tr><td>auth_group</td><td>0</td></tr><tr><td>auth_group_permissions</td><td>0</td></tr><tr><td>auth_permission</td><td>144</td></tr><tr><td>auth_user</td><td>12</td></tr><tr><td>auth_user_groups</td><td>0</td></tr></tbody></table></div><p class="reste">+ 38 autre(s) ligne(s)</p></article><article class="q"><div class="qh"><span class="code">H2</span><p class="jury">« Montrez la structure de la table des patients. »</p></div><pre class="sql"><code><b>DESCRIBE</b> patients_patient</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th><th>Extra</th></tr></thead><tbody><tr><td>id</td><td>bigint</td><td>NO</td><td>PRI</td><td>None</td><td>auto_increment</td></tr><tr><td>nom</td><td>varchar(100)</td><td>NO</td><td></td><td>None</td><td></td></tr><tr><td>prenom</td><td>varchar(100)</td><td>NO</td><td></td><td>None</td><td></td></tr><tr><td>date_naissance</td><td>date</td><td>NO</td><td></td><td>None</td><td></td></tr><tr><td>adresse</td><td>varchar(255)</td><td>NO</td><td></td><td>None</td><td></td></tr></tbody></table></div><p class="reste">+ 8 autre(s) ligne(s)</p></article><article class="q"><div class="qh"><span class="code">H3</span><p class="jury">« Montrez le SQL de création d&#x27;une table. »</p></div><pre class="sql"><code><b>SHOW CREATE TABLE</b> facturation_facture</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>Table</th><th>Create Table</th></tr></thead><tbody><tr><td>facturation_facture</td><td>CREATE TABLE `facturation_facture` (
+  `id` bigint NOT NULL </td></tr></tbody></table></div></article><article class="q"><div class="qh"><span class="code">H4</span><p class="jury">« Prouvez que vos tables sont bien reliées entre elles. »</p></div><pre class="sql"><code><b>SELECT</b> table_name <b>AS</b> depuis, column_name <b>AS</b> colonne,
+       referenced_table_name <b>AS</b> vers, referenced_column_name <b>AS</b> colonne_cible
+<b>FROM</b> information_schema.key_column_usage
+<b>WHERE</b> table_schema = &#x27;clinique_db&#x27; <b>AND</b> referenced_table_name <b>IS</b> <b>NOT</b> <b>NULL</b>
+<b>ORDER BY</b> table_name, column_name</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>depuis</th><th>colonne</th><th>vers</th><th>colonne_cible</th></tr></thead><tbody><tr><td>auth_group_permissions</td><td>group_id</td><td>auth_group</td><td>id</td></tr><tr><td>auth_group_permissions</td><td>permission_id</td><td>auth_permission</td><td>id</td></tr><tr><td>auth_permission</td><td>content_type_id</td><td>django_content_type</td><td>id</td></tr><tr><td>auth_user_groups</td><td>group_id</td><td>auth_group</td><td>id</td></tr><tr><td>auth_user_groups</td><td>user_id</td><td>auth_user</td><td>id</td></tr></tbody></table></div><p class="reste">+ 61 autre(s) ligne(s)</p></article><article class="q"><div class="qh"><span class="code">H5</span><p class="jury">« Quel encodage utilise votre base ? »</p></div><pre class="sql"><code><b>SELECT</b> default_character_set_name <b>AS</b> jeu, default_collation_name <b>AS</b> collation
+<b>FROM</b> information_schema.schemata
+<b>WHERE</b> schema_name = &#x27;clinique_db&#x27;</code></pre><p class="lab">Resultat sur votre base</p><div class="tbl"><table><thead><tr><th>jeu</th><th>collation</th></tr></thead><tbody><tr><td>utf8mb4</td><td>utf8mb4_bin</td></tr></tbody></table></div></article></section>
+
+  <div class="bloc attention">
+    <h3>Deux anomalies à corriger avant le jour J</h3>
+    <ul>
+      <li>
+        <b>La facture 13 est marquée « payé » alors qu'il reste 25 000 FCFA.</b>
+        Part patient 40 000, encaissé 15 000. Votre propre méthode
+        <code>update_statut()</code> la classerait en « partiel » : le statut stocké
+        n'a pas été recalculé après coup. Si le jury lance la requête F4, l'incohérence
+        saute aux yeux.
+      </li>
+      <li>
+        <b>Deux patients ont une date de naissance en 2026</b> (Nabou DIO et Patrick
+        Kayupé), donc un âge de 0 an. C'est visible dès la requête B1, qui est l'une
+        des plus probables.
+      </li>
+    </ul>
+  </div>
+
+  <div class="bloc">
+    <h3>Comment répondre quand vous séchez</h3>
+    <p style="margin:0 0 12px; max-width:70ch">
+      Personne n'écrit une jointure parfaite du premier coup sous pression. Dites à voix
+      haute ce que vous cherchez avant de taper : « je pars des factures, je joins les
+      patients sur <code>patient_id</code>, et je groupe par statut ». Un jury note le
+      raisonnement autant que la syntaxe.
+    </p>
+    <p style="margin:0; max-width:70ch">
+      Si une requête renvoie une erreur, lisez-la à voix haute : MySQL nomme presque
+      toujours la colonne ou la table fautive. Corriger devant le jury vaut mieux que
+      de rester bloquée en silence.
+    </p>
+  </div>
+
+  <p class="pied">
+    Les quatre requêtes encadrées en turquoise — D4, F1, F4, G2 — sont celles qui
+    montrent le mieux que l'application sert à quelque chose. Apprenez celles-là par
+    cœur, le reste se retrouve par raisonnement.
+  </p>
+</div>

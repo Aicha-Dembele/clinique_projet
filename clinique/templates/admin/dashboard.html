@@ -7,10 +7,8 @@
 {% block page_heading %}Bonjour, {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 
-{% block page_actions %}
-<a href="{% url 'patients:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
-<a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
-{% endblock %}
+{# Pas de « Nouveau patient » ici : l'enregistrement des patients relève de la
+   réception, pas de l'administration (cf. role_required_strict côté vues). #}
 
 {% block extra_css %}
 <style>
@@ -19,8 +17,8 @@
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 1rem;
-    padding: 1.05rem 1.15rem;
-    display: flex; align-items: center; gap: .9rem;
+    padding: .85rem 1rem;
+    display: flex; align-items: center; gap: .8rem;
     box-shadow: var(--shadow-sm);
     transition: transform .25s, box-shadow .25s, border-color .25s;
     animation: fadeUp .5s ease both;
@@ -28,27 +26,21 @@
   }
   .stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
   .stat-h-ico {
-    width: 48px; height: 48px; border-radius: .8rem;
+    width: 44px; height: 44px; border-radius: .75rem;
     display: inline-flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 1.2rem;
+    flex-shrink: 0; font-size: 1.15rem;
   }
   .stat-h-info { flex: 1; min-width: 0; }
-  .stat-h-lbl  { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .stat-h-lbl  { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   .stat-h-val  {
     font-family: 'Outfit', system-ui, sans-serif;
-    font-size: 1.6rem; font-weight: 700; color: var(--text-primary);
+    font-size: 1.55rem; font-weight: 700; color: var(--text-primary);
     letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem;
   }
   .stat-h-trend {
-    font-size: .68rem; font-weight: 700; margin-top: .25rem;
+    font-size: .68rem; font-weight: 700; margin-top: .2rem;
     display: inline-flex; align-items: center; gap: .2rem;
   }
-  .stat-h-spark {
-    width: 64px; height: 32px; flex-shrink: 0;
-    display: flex; align-items: flex-end; gap: 3px;
-  }
-  .spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
-  .stat-h:hover .spark-bar { opacity: .85; }
 
   /* ═══════ Calendrier mini ═══════ */
   .mini-cal-grid {
@@ -90,7 +82,7 @@
   }
   .av-c-1 { background: linear-gradient(135deg,#10b981,#14b8a6); }
   .av-c-2 { background: linear-gradient(135deg,#3b82f6,#06b6d4); }
-  .av-c-3 { background: linear-gradient(135deg,#f59e0b,#ef4444); }
+  .av-c-3 { background: linear-gradient(135deg,#f59e0b,#3b0101); }
   .av-c-4 { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
   .av-c-5 { background: linear-gradient(135deg,#14b8a6,#0ea5e9); }
   .av-c-6 { background: linear-gradient(135deg,#ef4444,#f59e0b); }
@@ -180,107 +172,74 @@
     line-height: 1;
   }
   .donut-center-lbl { font-size: .65rem; color: var(--text-muted); margin-top: .25rem; font-weight: 600; }
+
+  /* ═══════ Revenus par service ═══════ */
+  .rev-svc { display: flex; flex-direction: column; gap: .8rem; }
+  .rev-svc-row { display: flex; align-items: center; gap: .7rem; }
+  .rev-svc-ico {
+    width: 34px; height: 34px; border-radius: .6rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: .9rem;
+  }
+  .rev-svc-info { flex: 1; min-width: 0; }
+  .rev-svc-top { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+  .rev-svc-name { font-size: .8rem; font-weight: 600; color: var(--text-secondary); }
+  .rev-svc-val {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: .82rem; font-weight: 800; color: var(--text-primary); white-space: nowrap;
+  }
+  .rev-svc-val small { font-size: .6rem; color: var(--text-muted); font-weight: 600; }
+  .rev-svc-bar { height: 6px; border-radius: 999px; background: var(--input-bg); margin-top: .35rem; overflow: hidden; }
+  .rev-svc-bar > span { display: block; height: 100%; border-radius: 999px; transition: width .6s ease; }
+  .rev-svc-total {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 1rem; padding-top: .85rem; border-top: 1px dashed var(--card-border);
+  }
+  .rev-svc-total > span:first-child { font-size: .82rem; font-weight: 700; color: var(--text-secondary); }
+  .rev-svc-total-val {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 1.15rem; font-weight: 800; color: var(--primary); white-space: nowrap;
+  }
+  .rev-svc-total-val small { font-size: .6rem; color: var(--text-muted); font-weight: 600; }
 </style>
 {% endblock %}
 
 {% block content %}
 
 <!-- ═════════════════════════════════════════════════════════
-     STAT CARDS (4 horizontales avec sparkline)
+     STAT CARDS (Patients + Recettes)
 ═════════════════════════════════════════════════════════ -->
 <div class="row g-3 mb-4">
-  <div class="col-6 col-xl-3">
+  <div class="col-12 col-md-6">
     <div class="stat-h" style="animation-delay:.04s">
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-people-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Patients</div>
         <div class="stat-h-val">{{ total_patients|default:0 }}</div>
-        <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>+12% ce mois</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#10b981"></div>
-        <div class="spark-bar" style="height:50%;background:#10b981"></div>
-        <div class="spark-bar" style="height:40%;background:#10b981"></div>
-        <div class="spark-bar" style="height:65%;background:#10b981"></div>
-        <div class="spark-bar" style="height:55%;background:#10b981"></div>
-        <div class="spark-bar" style="height:75%;background:#10b981"></div>
-        <div class="spark-bar" style="height:60%;background:#10b981"></div>
-        <div class="spark-bar" style="height:85%;background:#10b981"></div>
-        <div class="spark-bar" style="height:70%;background:#10b981"></div>
-        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+        <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-person-plus-fill"></i>{{ nouveaux_patients_mois|default:0 }} nouveau{{ nouveaux_patients_mois|pluralize }} ce mois</div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-check-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">RDV aujourd'hui</div>
-        <div class="stat-h-val">{{ rdv_count|default:0 }}</div>
-        <div class="stat-h-trend" style="color:var(--text-muted)">{{ rdv_termines|default:0 }} terminés</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:30%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:45%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:80%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:90%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.20s">
-      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-hospital-fill"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Hospitalisés</div>
-        <div class="stat-h-val">{{ total_hospitalises|default:0 }}</div>
-        <div class="stat-h-trend" style="color:var(--text-muted)">En cours</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:25%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:45%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:35%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:60%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:50%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:70%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:55%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:80%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:65%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:100%;background:#a855f7"></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-xl-3">
+  <div class="col-12 col-md-6">
     <div class="stat-h" style="animation-delay:.28s">
       <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-cash-stack"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Recettes</div>
         <div class="stat-h-val" style="font-size:1.3rem">{{ recettes_mois|default:0 }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
-        <div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>+8% vs mois dernier</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:20%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:40%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:30%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:45%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:75%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
+        <div class="stat-h-trend" style="color:var(--text-muted)">
+          {% if tendance_dir == 'up' %}<i class="bi bi-arrow-up-short" style="color:#10b981"></i>+{{ tendance_pct }}%
+          {% elif tendance_dir == 'down' %}<i class="bi bi-arrow-down-short" style="color:#ef4444"></i>{{ tendance_pct }}%
+          {% elif tendance_dir == 'flat' %}<i class="bi bi-dash"></i>0%
+          {% endif %}
+          mois passé : {{ recettes_mois_precedent|default:0 }} FCFA
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═════════════════════════════════════════════════════════
-     ROW 1 : ACTIVITÉ + PROCHAINS RDV
+     ROW 1 : ACTIVITÉ
 ═════════════════════════════════════════════════════════ -->
 <div class="row g-3 mb-4">
   <!-- Graphique principal -->
@@ -303,37 +262,64 @@
     </div>
   </div>
 
-  <!-- Prochains RDV -->
+  <!-- Revenus par service (facturé) -->
   <div class="col-12 col-xl-4">
     <div class="panel">
       <div class="panel-hdr">
-        <div class="panel-title"><i class="bi bi-clock-history" style="color:var(--primary)"></i> Prochains rendez-vous</div>
-        <a href="{% url 'consultation:rdv_liste' %}" style="font-size:.74rem;font-weight:700;text-decoration:none">Voir tout →</a>
+        <div class="panel-title"><i class="bi bi-wallet2" style="color:var(--primary)"></i> Revenus par service</div>
+        <span style="font-size:.72rem;color:var(--text-muted);font-weight:700;text-transform:capitalize">{{ mois_courant_label }}</span>
       </div>
-      <div class="panel-body" style="padding-top:.5rem;padding-bottom:.5rem">
-        {% for rdv in rdv_aujourd_hui|slice:":5" %}
-          <div class="rdv-row">
-            <div class="av-c av-c-{% cycle '1' '2' '3' '4' '5' '6' %}">
-              {{ rdv.patient.prenom|slice:":1"|upper }}{{ rdv.patient.nom|slice:":1"|upper }}
-            </div>
-            <div class="rdv-row-info">
-              <div class="rdv-row-name text-truncate">{{ rdv.patient.prenom }} {{ rdv.patient.nom }}</div>
-              <div class="rdv-row-sub text-truncate">
-                <i class="bi bi-clock"></i> {{ rdv.date|time:"H:i" }}
-                {% if rdv.medecin %} · Dr. {{ rdv.medecin.nom }}{% endif %}
+      <div class="panel-body">
+        <div class="rev-svc">
+          <div class="rev-svc-row">
+            <div class="rev-svc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+            <div class="rev-svc-info">
+              <div class="rev-svc-top">
+                <span class="rev-svc-name">Consultations</span>
+                <span class="rev-svc-val">{{ rev_consultation|floatformat:0 }} <small>FCFA</small></span>
               </div>
+              <div class="rev-svc-bar"><span style="width:{% widthratio rev_consultation rev_global 100 %}%;background:#10b981"></span></div>
             </div>
-            <span class="rdv-row-pill">{{ rdv.statut|default:"Programmé"|capfirst }}</span>
           </div>
-        {% empty %}
-          <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.82rem">
-            <i class="bi bi-calendar-x" style="font-size:1.8rem;display:block;margin-bottom:.5rem;opacity:.4"></i>
-            Aucun rendez-vous aujourd'hui
+          <div class="rev-svc-row">
+            <div class="rev-svc-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-hospital-fill"></i></div>
+            <div class="rev-svc-info">
+              <div class="rev-svc-top">
+                <span class="rev-svc-name">Hospitalisations</span>
+                <span class="rev-svc-val">{{ rev_hospitalisation|floatformat:0 }} <small>FCFA</small></span>
+              </div>
+              <div class="rev-svc-bar"><span style="width:{% widthratio rev_hospitalisation rev_global 100 %}%;background:#a855f7"></span></div>
+            </div>
           </div>
-        {% endfor %}
+          <div class="rev-svc-row">
+            <div class="rev-svc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-clipboard2-data-fill"></i></div>
+            <div class="rev-svc-info">
+              <div class="rev-svc-top">
+                <span class="rev-svc-name">Examens médicaux</span>
+                <span class="rev-svc-val">{{ rev_examen|floatformat:0 }} <small>FCFA</small></span>
+              </div>
+              <div class="rev-svc-bar"><span style="width:{% widthratio rev_examen rev_global 100 %}%;background:#3b82f6"></span></div>
+            </div>
+          </div>
+          <div class="rev-svc-row">
+            <div class="rev-svc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-capsule"></i></div>
+            <div class="rev-svc-info">
+              <div class="rev-svc-top">
+                <span class="rev-svc-name">Pharmacie</span>
+                <span class="rev-svc-val">{{ rev_pharmacie|floatformat:0 }} <small>FCFA</small></span>
+              </div>
+              <div class="rev-svc-bar"><span style="width:{% widthratio rev_pharmacie rev_global 100 %}%;background:#f59e0b"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="rev-svc-total">
+          <span>Revenu global</span>
+          <span class="rev-svc-total-val">{{ rev_global|floatformat:0 }} <small>FCFA</small></span>
+        </div>
       </div>
     </div>
   </div>
+
 </div>
 
 <!-- ═════════════════════════════════════════════════════════
@@ -353,7 +339,7 @@
             <div class="chart-wrap-mini" style="position:relative">
               <canvas id="paymentChart"></canvas>
               <div class="donut-center">
-                <div class="donut-center-val">{% if pct_especes or pct_orange or pct_moov or pct_carte %}100{% else %}0{% endif %}%</div>
+                <div class="donut-center-val">{% if pct_especes or pct_orange or pct_carte %}100{% else %}0{% endif %}%</div>
                 <div class="donut-center-lbl">Total</div>
               </div>
             </div>
@@ -362,7 +348,6 @@
             <div class="donut-legend">
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#10b981"></div><div class="donut-leg-name">Espèces</div><div class="donut-leg-val">{{ pct_especes|default:0 }}%</div></div>
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#f59e0b"></div><div class="donut-leg-name">Orange Money</div><div class="donut-leg-val">{{ pct_orange|default:0 }}%</div></div>
-              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#3b82f6"></div><div class="donut-leg-name">Moov Money</div><div class="donut-leg-val">{{ pct_moov|default:0 }}%</div></div>
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#8b5cf6"></div><div class="donut-leg-name">Carte</div><div class="donut-leg-val">{{ pct_carte|default:0 }}%</div></div>
             </div>
           </div>
@@ -391,6 +376,10 @@
       </div>
       <div class="panel-body">
         <div class="chart-wrap-mini"><canvas id="revenueChart"></canvas></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--card-border);font-size:.74rem">
+          <span style="color:var(--text-muted);font-weight:700;text-transform:capitalize"><i class="bi bi-calendar-check" style="margin-right:.25rem"></i>Mois passé — {{ mois_precedent_label }}</span>
+          <span style="font-weight:800;color:var(--text-primary)">{{ recettes_mois_precedent|default:0 }} <small style="font-size:.62rem;color:var(--text-muted);font-weight:600">FCFA</small></span>
+        </div>
       </div>
     </div>
   </div>
@@ -413,43 +402,6 @@
 
 </div>
 
-<!-- ═════════════════════════════════════════════════════════
-     ROW 3 : ACTIONS RAPIDES
-═════════════════════════════════════════════════════════ -->
-<div class="panel">
-  <div class="panel-hdr">
-    <div class="panel-title"><i class="bi bi-lightning-charge-fill" style="color:var(--primary)"></i> Actions rapides</div>
-  </div>
-  <div class="panel-body">
-    <div class="qa-bar">
-      <a href="{% url 'patients:ajouter' %}" class="qa-btn">
-        <div class="qa-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-person-plus-fill"></i></div>
-        Nouveau patient
-      </a>
-      <a href="{% url 'consultation:rdv_ajouter' %}" class="qa-btn">
-        <div class="qa-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-plus-fill"></i></div>
-        Nouveau RDV
-      </a>
-      <a href="{% url 'consultation:liste' %}" class="qa-btn">
-        <div class="qa-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-clipboard2-pulse-fill"></i></div>
-        Consultations
-      </a>
-      <a href="{% url 'consultation:examens' %}" class="qa-btn">
-        <div class="qa-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-eyedropper"></i></div>
-        Examens labo
-      </a>
-      <a href="{% url 'facturation:liste' %}" class="qa-btn">
-        <div class="qa-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-receipt-cutoff"></i></div>
-        Facturation
-      </a>
-      <a href="{% url 'facturation:rapports' %}" class="qa-btn">
-        <div class="qa-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-bar-chart-line-fill"></i></div>
-        Rapports
-      </a>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -465,11 +417,11 @@
   const STATS_CONSULTATIONS = JSON.parse(document.getElementById('stats-consultations').textContent);
 
   const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-  const txtMuted = () => isDark() ? '#64748b' : '#94a3b8';
-  const grid     = () => isDark() ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
+  const txtMuted = () => isDark() ? '#a8d8e6' : '#08405a';
+  const grid     = () => isDark() ? 'rgba(255,255,255,.14)' : 'rgba(2,50,75,.15)';
 
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  Chart.defaults.font.size = 11;
+  Chart.defaults.font.size = 12.5;
   Chart.defaults.color = txtMuted();
 
   // ═══════ Activité (line) ═══════
@@ -522,15 +474,15 @@
   // ═══════ Modes paiement (donut) ═══════
   const paymentCtx = document.getElementById('paymentChart');
   if (paymentCtx) {
-    const vals = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_moov|default:0 }}, {{ pct_carte|default:0 }}];
+    const vals = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_carte|default:0 }}];
     const allZero = vals.every(v => v === 0);
     new Chart(paymentCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Espèces','Orange','Moov','Carte'],
+        labels: ['Espèces','Orange','Carte'],
         datasets: [{
-          data: allZero ? [1,1,1,1] : vals,
-          backgroundColor: ['#10b981','#f59e0b','#3b82f6','#8b5cf6'],
+          data: allZero ? [1,1,1] : vals,
+          backgroundColor: ['#10b981','#f59e0b','#8b5cf6'],
           borderWidth: 0,
           borderRadius: 6,
           spacing: 3,

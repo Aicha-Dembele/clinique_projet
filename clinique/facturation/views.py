@@ -275,6 +275,22 @@ def paiement_ajouter(request):
             if montant > facture.montant_restant():
                 raise ValueError(f"Montant dépasse le restant dû ({_fmt(facture.montant_restant())} FCFA).")
 
+            # Carte bancaire → paiement simulé via Stripe Checkout (mode test) :
+            # redirection vers la page de paiement Stripe, l'enregistrement du
+            # Paiement se fait au retour dans paiement_carte_succes.
+            if request.POST['mode_paiement'] == 'carte':
+                return _rediriger_vers_stripe(request, facture, montant,
+                                              request.POST.get('note', ''))
+
+            # Orange Money → page reproduisant la procédure #144# (simulation) :
+            # l'enregistrement du Paiement se fait après validation du code.
+            if request.POST['mode_paiement'] == 'orange_money':
+                request.session['paiement_orange'] = {
+                    'facture_id': facture.pk, 'montant': str(montant),
+                    'note': request.POST.get('note', ''),
+                }
+                return redirect('facturation:paiement_orange_money')
+
             Paiement.objects.create(
                 facture=facture,
                 montant=montant,
@@ -293,6 +309,247 @@ def paiement_ajouter(request):
         'modes':      Paiement.MODE_CHOICES,
         'facture_id': facture_id,
         'action':     'Enregistrer',
+    })
+
+
+# ── Paiement par carte : Stripe Checkout en mode test ────────────
+# (cf. Django 4 By Example, chap. 9 : la carte de test 4242 4242 4242 4242
+#  simule un paiement réussi, aucune somme réelle n'est débitée.)
+
+def _rediriger_vers_stripe(request, facture, montant, note):
+    """Démarre le paiement par carte : page Stripe Checkout si une clé de test
+    est configurée, sinon simulateur local (même principe, aucune clé requise).
+    Le FCFA (XOF) est une devise « sans décimales » chez Stripe :
+    unit_amount = montant en francs, tel quel."""
+    import stripe
+    from django.conf import settings
+    from django.urls import reverse
+
+    if not settings.STRIPE_SECRET_KEY:
+        # Pas de clé Stripe : on passe par la page locale de simulation
+        request.session['paiement_carte'] = {
+            'facture_id': facture.pk, 'montant': str(montant), 'note': note,
+        }
+        return redirect('facturation:paiement_carte_simulation')
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    success_url = (request.build_absolute_uri(reverse('facturation:paiement_carte_succes'))
+                   + '?session_id={CHECKOUT_SESSION_ID}')
+    cancel_url = (request.build_absolute_uri(reverse('facturation:paiement_carte_annule'))
+                  + f'?facture={facture.pk}')
+
+    session = stripe.checkout.Session.create(
+        mode='payment',
+        client_reference_id=str(facture.pk),
+        success_url=success_url,
+        cancel_url=cancel_url,
+        line_items=[{
+            'price_data': {
+                'unit_amount': int(montant),
+                'currency': 'xof',
+                'product_data': {
+                    'name': f'Facture FAC-{facture.pk:04d} — Clinique Nevroglie',
+                    'description': f'Patient : {facture.patient}',
+                },
+            },
+            'quantity': 1,
+        }],
+        metadata={'facture_id': str(facture.pk), 'note': note[:400]},
+    )
+    return redirect(session.url)
+
+
+@role_required('admin', 'receptionniste')
+def paiement_carte_succes(request):
+    """Retour de Stripe après paiement : vérifie la session côté serveur
+    (statut « paid ») puis enregistre le Paiement — une seule fois, même si
+    la page de retour est rechargée."""
+    import stripe
+    from django.conf import settings
+
+    session_id = request.GET.get('session_id', '')
+    if not session_id:
+        messages.error(request, "Retour de paiement invalide (session manquante).")
+        return redirect('facturation:paiements')
+
+    try:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        session = stripe.checkout.Session.retrieve(session_id)
+    except Exception as e:
+        messages.error(request, f'Vérification du paiement impossible : {e}')
+        return redirect('facturation:paiements')
+
+    facture = get_object_or_404(Facture, pk=session.metadata.get('facture_id')
+                                or session.client_reference_id)
+    if session.payment_status != 'paid':
+        messages.error(request, "Le paiement n'a pas été confirmé par Stripe.")
+        return redirect('facturation:detail', pk=facture.pk)
+
+    # Idempotent : la session Stripe est tracée dans la note du paiement
+    ref = f'Stripe {session_id}'
+    if not Paiement.objects.filter(facture=facture, note__contains=session_id).exists():
+        note = (session.metadata.get('note') or '').strip()
+        montant = Decimal(session.amount_total)  # XOF sans décimales : déjà en francs
+        Paiement.objects.create(
+            facture=facture,
+            montant=montant,
+            mode_paiement='carte',
+            note=(f'{note} · {ref}' if note else ref)[:200],
+        )
+        messages.success(
+            request,
+            f'Paiement par carte de {_fmt(montant)} FCFA confirmé par Stripe (mode test).')
+    return redirect('facturation:detail', pk=facture.pk)
+
+
+def _valider_carte_test(numero, expiration, cvc):
+    """Valide une carte de test (mêmes cartes que Stripe). Retourne un message
+    d'erreur, ou None si le paiement simulé est accepté.
+    4242 4242 4242 4242 → succès ; 4000 0000 0000 0002 → refus banque."""
+    import re
+    from datetime import date
+
+    if numero == '4000000000000002':
+        return "Carte refusée par la banque émettrice (carte de test « paiement refusé »)."
+    if numero != '4242424242424242':
+        return "Numéro de carte non reconnu — en mode test, utilisez la carte 4242 4242 4242 4242."
+    m = re.fullmatch(r'(\d{2})\s*/?\s*(\d{2})', expiration)
+    if not m:
+        return "Date d'expiration invalide (format MM/AA, ex. 12/29)."
+    mois, annee = int(m.group(1)), 2000 + int(m.group(2))
+    if not 1 <= mois <= 12:
+        return "Mois d'expiration invalide."
+    auj = date.today()
+    if (annee, mois) < (auj.year, auj.month):
+        return "Carte expirée : choisissez une date d'expiration future."
+    if not re.fullmatch(r'\d{3,4}', cvc):
+        return "CVC invalide (3 chiffres au dos de la carte)."
+    return None
+
+
+@role_required('admin', 'receptionniste')
+def paiement_carte_simulation(request):
+    """Page locale simulant la procédure de paiement par carte bancaire
+    (utilisée quand aucune clé Stripe n'est configurée). Reproduit le
+    comportement des cartes de test Stripe sans appel réseau."""
+    import re
+
+    data = request.session.get('paiement_carte')
+    if not data:
+        messages.error(request, "Aucun paiement par carte en cours — sélectionnez d'abord la facture.")
+        return redirect('facturation:paiement_ajouter')
+
+    facture = get_object_or_404(Facture, pk=data['facture_id'])
+    montant = Decimal(data['montant'])
+
+    erreur = None
+    if request.method == 'POST':
+        numero = re.sub(r'\D', '', request.POST.get('numero', ''))
+        expiration = request.POST.get('expiration', '').strip()
+        cvc = request.POST.get('cvc', '').strip()
+
+        if montant > facture.montant_restant():
+            erreur = (f"Le montant dépasse le restant dû "
+                      f"({_fmt(facture.montant_restant())} FCFA) — la facture a peut-être été réglée entre-temps.")
+        else:
+            erreur = _valider_carte_test(numero, expiration, cvc)
+
+        if erreur is None:
+            note = (data.get('note') or '').strip()
+            ref = f'PayPal (simulation) — carte •••• {numero[-4:]}'
+            Paiement.objects.create(
+                facture=facture,
+                montant=montant,
+                mode_paiement='carte',
+                note=(f'{note} · {ref}' if note else ref)[:200],
+            )
+            request.session.pop('paiement_carte', None)
+            messages.success(
+                request,
+                f'Paiement PayPal de {_fmt(montant)} FCFA accepté (simulation — carte •••• {numero[-4:]}).')
+            return redirect('facturation:detail', pk=facture.pk)
+
+    return render(request, 'facturation/carte_simulation.html', {
+        'facture': facture,
+        'montant': montant,
+        'erreur':  erreur,
+    })
+
+
+@role_required('admin', 'receptionniste')
+def paiement_carte_annule(request):
+    """Retour de Stripe quand l'utilisateur abandonne le paiement."""
+    facture_id = request.GET.get('facture')
+    messages.info(request, "Paiement par carte annulé — aucun montant n'a été débité.")
+    if facture_id:
+        return redirect(f"/facturation/paiements/ajouter/?facture={facture_id}")
+    return redirect('facturation:paiements')
+
+
+# ── Paiement Orange Money : simulation de la procédure mobile money ──────
+# Reproduit le parcours Orange Money (#144#) pour la démonstration :
+# aucune transaction réelle, aucun compte débité.
+ORANGE_MONEY_CODE_DEMO = '1234'
+
+
+def _valider_orange_money(numero, code):
+    """Valide le numéro Orange Money et le code de confirmation (simulation).
+    Retourne un message d'erreur, ou None si tout est correct."""
+    if len(numero) < 8:
+        return "Numéro Orange Money invalide — saisissez un numéro d'au moins 8 chiffres."
+    if not code:
+        return "Saisissez le code de confirmation reçu par SMS."
+    if code != ORANGE_MONEY_CODE_DEMO:
+        return (f"Code de confirmation incorrect. "
+                f"En mode démonstration, saisissez {ORANGE_MONEY_CODE_DEMO}.")
+    return None
+
+
+@role_required('admin', 'receptionniste')
+def paiement_orange_money(request):
+    """Page locale reproduisant la procédure de paiement Orange Money (#144#).
+    Simulation pour la démo : aucun mouvement d'argent réel."""
+    import re
+
+    data = request.session.get('paiement_orange')
+    if not data:
+        messages.error(request, "Aucun paiement Orange Money en cours — sélectionnez d'abord la facture.")
+        return redirect('facturation:paiement_ajouter')
+
+    facture = get_object_or_404(Facture, pk=data['facture_id'])
+    montant = Decimal(data['montant'])
+
+    erreur = None
+    if request.method == 'POST':
+        numero = re.sub(r'\D', '', request.POST.get('numero', ''))
+        code = request.POST.get('code', '').strip()
+
+        if montant > facture.montant_restant():
+            erreur = (f"Le montant dépasse le restant dû "
+                      f"({_fmt(facture.montant_restant())} FCFA) — la facture a peut-être été réglée entre-temps.")
+        else:
+            erreur = _valider_orange_money(numero, code)
+
+        if erreur is None:
+            note = (data.get('note') or '').strip()
+            ref = f'Orange Money (simulation) — {numero[:2]}••••{numero[-2:]}'
+            Paiement.objects.create(
+                facture=facture,
+                montant=montant,
+                mode_paiement='orange_money',
+                note=(f'{note} · {ref}' if note else ref)[:200],
+            )
+            request.session.pop('paiement_orange', None)
+            messages.success(
+                request,
+                f'Paiement Orange Money de {_fmt(montant)} FCFA accepté (simulation).')
+            return redirect('facturation:detail', pk=facture.pk)
+
+    return render(request, 'facturation/orange_money_simulation.html', {
+        'facture':   facture,
+        'montant':   montant,
+        'erreur':    erreur,
+        'code_demo': ORANGE_MONEY_CODE_DEMO,
     })
 
 
@@ -347,21 +604,97 @@ def paiement_recu(request, pk):
 
 @permission_required('rapport.view')
 def rapports(request):
+    from django.db.models import F, DecimalField
+    from django.db.models.functions import TruncMonth
+    _dec = DecimalField(max_digits=16, decimal_places=2)
+
+    MOIS_FR = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+               'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+    # ── Mois disponibles pour le sélecteur (ceux qui ont des paiements) ──
+    mois_options = []
+    for r in (Paiement.objects.annotate(mo=TruncMonth('date'))
+              .values('mo').distinct().order_by('-mo')):
+        d = r['mo']
+        if d:
+            mois_options.append({'value': f'{d.year}-{d.month:02d}',
+                                 'label': f'{MOIS_FR[d.month]} {d.year}'})
+
+    # ── Période sélectionnée : ?mois=YYYY-MM (vide = toutes périodes) ──
+    annee = mois = None
+    mois_param = (request.GET.get('mois') or '').strip()
+    if mois_param:
+        try:
+            y, m = mois_param.split('-')
+            y, m = int(y), int(m)
+            if 1 <= m <= 12:
+                annee, mois = y, m
+        except (ValueError, TypeError):
+            annee = mois = None
+
     paiements = Paiement.objects.all()
     factures  = Facture.objects.all()
+    lignes    = LigneFacture.objects.all()
+
+    if annee and mois:
+        paiements = paiements.filter(date__year=annee, date__month=mois)
+        factures  = factures.filter(date_creation__year=annee, date_creation__month=mois)
+        lignes    = lignes.filter(facture__date_creation__year=annee,
+                                  facture__date_creation__month=mois)
+        periode_label    = f'{MOIS_FR[mois]} {annee}'
+        mois_selectionne = f'{annee}-{mois:02d}'
+    else:
+        periode_label    = 'Toutes périodes'
+        mois_selectionne = ''
+
+    # Total encaissé sur la période (les « revenus » du mois)
+    recettes_periode = paiements.aggregate(t=Sum('montant'))['t'] or 0
+
+    nb_paiements = paiements.count()
 
     def pct(mode):
         count = paiements.filter(mode_paiement=mode).count()
-        return round(count * 100 / paiements.count()) if paiements.count() else 0
+        return round(count * 100 / nb_paiements) if nb_paiements else 0
+
+    # ── Revenus par service (facturé, sur la période) ────────────────
+    # Somme des LigneFacture par type_service, en une seule requête (sans N+1).
+    rev_map = {
+        r['type_service']: (r['total'] or 0)
+        for r in (lignes.values('type_service')
+                  .annotate(total=Sum(F('prix_unitaire') * F('quantite'),
+                                      output_field=_dec)))
+    }
+    rev_c = rev_map.get('consultation', 0)
+    rev_h = rev_map.get('hospitalisation', 0)
+    rev_e = rev_map.get('examen', 0)
+    rev_p = rev_map.get('medicament', 0)       # médicaments dispensés → Pharmacie
+    rev_g = sum(rev_map.values()) or 0
+
+    def pct_rev(v):
+        return round(float(v) * 100 / float(rev_g)) if rev_g else 0
 
     return render(request, 'facturation/rapports.html', {
+        # Sélecteur de période
+        'mois_options':      mois_options,
+        'mois_selectionne':  mois_selectionne,
+        'periode_label':     periode_label,
+        'recettes_periode':  _fmt(recettes_periode),
         'total_factures': factures.count(),
         'total_paye':     factures.filter(statut='payé').count(),
         'total_impaye':   factures.filter(statut='non payé').count(),
         'pct_especes':    pct('cash'),
         'pct_orange':     pct('orange_money'),
-        'pct_moov':       pct('moov_money'),
         'pct_carte':      pct('carte'),
+        # Revenus par service (montants formatés + parts en %)
+        'rev_consultation':    _fmt(rev_c),
+        'rev_hospitalisation': _fmt(rev_h),
+        'rev_examen':          _fmt(rev_e),
+        'rev_pharmacie':       _fmt(rev_p),
+        'rev_global':          _fmt(rev_g),
+        'pct_rev_consultation':    pct_rev(rev_c),
+        'pct_rev_hospitalisation': pct_rev(rev_h),
+        'pct_rev_examen':          pct_rev(rev_e),
+        'pct_rev_pharmacie':       pct_rev(rev_p),
     })
 
 

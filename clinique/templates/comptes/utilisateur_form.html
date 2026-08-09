@@ -25,8 +25,9 @@
       </div>
       {% else %}
       <div class="col-md-6">
-        <label class="form-label">Nom d'utilisateur</label>
-        <input type="text" class="f-input" value="{{ edit_user.username }}" disabled>
+        <label class="form-label">Nom d'utilisateur *</label>
+        <input type="text" name="username" class="f-input" value="{{ edit_user.username }}" required>
+        <small class="text-muted">Sert à la connexion. Doit rester unique.</small>
       </div>
       <div class="col-md-6">
         <label class="form-label">Nouveau mot de passe (laisser vide pour ne pas changer)</label>

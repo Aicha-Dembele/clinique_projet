@@ -1,23 +1,22 @@
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import User
 from personnel.models import Laborantin, Medecin
 from patients.models import Patient
 from facturation.models import Tarif
 
 
-class NonSupprimeManager(models.Manager):
-    """Manager par défaut qui exclut les enregistrements en corbeille
-    (supprime=True). La corbeille reste accessible via `objets_tous`."""
+def get_or_create_dossier(patient, medecin=None):
+    """Récupère (ou crée) le dossier unique d'un patient.
 
-    def get_queryset(self):
-        return super().get_queryset().filter(supprime=False)
-
-
-
-def get_or_create_dossier(patient):
+    Le premier médecin qui agit sur le patient devient le propriétaire du
+    dossier. Un dossier déjà existant mais sans propriétaire (ancien dossier)
+    se voit attribuer ce médecin au passage."""
     from .models import DossierMedical
-    dossier, created = DossierMedical.objects.get_or_create(patient=patient)
+    dossier, created = DossierMedical.objects.get_or_create(
+        patient=patient, defaults={'medecin': medecin})
+    if not created and medecin is not None and dossier.medecin_id is None:
+        dossier.medecin = medecin
+        dossier.save(update_fields=['medecin'])
     return dossier
 
 class Rendez_vous(models.Model):
@@ -45,7 +44,24 @@ class Rendez_vous(models.Model):
 
 class DossierMedical(models.Model):
     patient = models.OneToOneField(Patient, on_delete=models.CASCADE)
+    # Médecin propriétaire : celui qui a ouvert le dossier. Lui seul (et l'admin)
+    # y a accès — sauf s'il le transmet à un confrère via « partage_avec ».
+    medecin = models.ForeignKey(
+        "personnel.Medecin", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="dossiers")
+    # Médecins destinataires d'un partage explicite du dossier.
+    partage_avec = models.ManyToManyField(
+        "personnel.Medecin", blank=True, related_name="dossiers_partages")
     date_creation = models.DateTimeField(auto_now_add=True)
+
+    def est_accessible_par(self, medecin):
+        """Un médecin voit le dossier s'il en est le propriétaire ou s'il fait
+        partie des médecins avec qui il a été partagé. (medecin=None ⇒ utilisateur
+        non-médecin, ex. admin : l'accès est alors géré par la vue.)"""
+        if medecin is None:
+            return True
+        return (self.medecin_id == medecin.pk
+                or self.partage_avec.filter(pk=medecin.pk).exists())
 
     def __str__(self):
         return f"Dossier de {self.patient}"
@@ -71,7 +87,7 @@ class Consultation(models.Model):
     def save(self, *args, **kwargs):
         if not self.dossier_id:
             patient = self.rendez_vous.patient
-            self.dossier, _ = DossierMedical.objects.get_or_create(patient=patient)
+            self.dossier = get_or_create_dossier(patient, self.rendez_vous.medecin)
         super().save(*args, **kwargs)
         if self.rendez_vous and self.rendez_vous.statut != 'termine':
             self.rendez_vous.statut = 'termine'
@@ -112,12 +128,11 @@ class ExamenMedical(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.dossier_id:
-            dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
-            self.dossier = dossier
+            self.dossier = get_or_create_dossier(self.patient, self.medecin)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.type_examen 
+        return self.type_examen
     
 
 class ResultatExamen(models.Model):
@@ -128,45 +143,23 @@ class ResultatExamen(models.Model):
     laborantin = models.ForeignKey("personnel.Laborantin", on_delete=models.SET_NULL, null=True, blank=True)
     resultat = models.TextField()
     observations = models.TextField(blank=True, default='')
+    # Image du résultat (scanner, radiographie, échographie…)
+    image = models.ImageField(upload_to='resultats/', null=True, blank=True)
     transmis = models.BooleanField(default=False)
     date_transmission = models.DateTimeField(null=True, blank=True)
+    # Lecture par le médecin : marqué à l'ouverture du détail par le médecin
+    # concerné (badge « non lus » du menu + marque « Nouveau » dans la liste)
+    lu_par_medecin = models.BooleanField(default=False)
+    date_lecture = models.DateTimeField(null=True, blank=True)
     date_examen = models.DateTimeField(auto_now_add=True)
-
-    # ── Corbeille (soft-delete) ──
-    supprime = models.BooleanField(default=False)
-    date_suppression = models.DateTimeField(null=True, blank=True)
-    supprime_par = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-
-    objects = NonSupprimeManager()   # défaut : exclut la corbeille
-    objets_tous = models.Manager()   # accès complet, corbeille incluse
-
-    class Meta:
-        # _base_manager (cascades, relations) doit voir TOUS les enregistrements.
-        base_manager_name = 'objets_tous'
 
     def save(self, *args, **kwargs):
         if not self.dossier_id:
-            dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
-            self.dossier = dossier
+            self.dossier = get_or_create_dossier(self.patient, self.medecin)
         if self.examen and self.examen.statut != 'termine':
             self.examen.statut = 'termine'
             self.examen.save()
         super().save(*args, **kwargs)
-
-    def soft_delete(self, user=None):
-        """Déplace le résultat vers la corbeille au lieu de l'effacer."""
-        self.supprime = True
-        self.date_suppression = timezone.now()
-        self.supprime_par = user if getattr(user, 'is_authenticated', False) else None
-        self.save(update_fields=['supprime', 'date_suppression', 'supprime_par'])
-
-    def restaurer(self):
-        """Restaure un résultat depuis la corbeille."""
-        self.supprime = False
-        self.date_suppression = None
-        self.supprime_par = None
-        self.save(update_fields=['supprime', 'date_suppression', 'supprime_par'])
 
     def __str__(self):
         return f"{self.patient} - {self.examen}"
@@ -193,7 +186,8 @@ class Traitement(models.Model):
         if not self.dossier and self.consultation:
             self.dossier = self.consultation.dossier
         if not self.dossier and self.patient:
-            self.dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
+            medecin = self.consultation.rendez_vous.medecin if self.consultation else None
+            self.dossier = get_or_create_dossier(self.patient, medecin)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -219,7 +213,8 @@ class AssistanceInfirmier(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.dossier_id and self.patient_id:
-            self.dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
+            # Acte infirmier : pas de médecin propriétaire attribué ici.
+            self.dossier = get_or_create_dossier(self.patient, None)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -311,8 +306,7 @@ class Hospitalisation(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.dossier_id:
-            dossier, _ = DossierMedical.objects.get_or_create(patient=self.patient)
-            self.dossier = dossier
+            self.dossier = get_or_create_dossier(self.patient, self.medecin)
         super().save(*args, **kwargs)
 
     def statut(self):

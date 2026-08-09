@@ -72,7 +72,6 @@ def medecin_ajouter(request):
                 service=request.POST["service"],
                 specialite=request.POST["specialite"],
                 role="medecin",
-                mot_de_passe=request.POST["mot_de_passe"],
                 photo=request.FILES.get("photo"),
             )
             messages.success(request, "Médecin ajouté.")
@@ -123,7 +122,6 @@ def infirmier_ajouter(request):
                 telephone=request.POST["telephone"],
                 service=request.POST["service"],
                 role="infirmier",
-                mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
                 photo=request.FILES.get("photo"),
             )
@@ -174,7 +172,6 @@ def laborantin_ajouter(request):
                 telephone=request.POST["telephone"],
                 specialite=_val_autre(request, "specialite"),
                 role="laborantin",
-                mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
                 service=request.POST.get("service", "Laboratoire"),
                 photo=request.FILES.get("photo"),
@@ -228,7 +225,6 @@ def receptionniste_ajouter(request):
                 prenom=request.POST["prenom"],
                 telephone=request.POST["telephone"],
                 role="receptionniste",
-                mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
                 service="Accueil",
                 photo=request.FILES.get("photo"),
@@ -279,7 +275,6 @@ def pharmacien_ajouter(request):
                 prenom=request.POST["prenom"],
                 telephone=request.POST["telephone"],
                 role="pharmacien",
-                mot_de_passe=request.POST["mot_de_passe"],
                 adresse=request.POST.get("adresse", ""),
                 service=request.POST.get("service", "Pharmacie"),
                 photo=request.FILES.get("photo"),

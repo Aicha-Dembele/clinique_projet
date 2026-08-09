@@ -42,7 +42,7 @@
     border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
     padding: .25em .8em; border-radius: 999px;
   }
-  .perm-toggle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .6rem; }
+  .perm-toggle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: .6rem; }
   .perm-toggle { position: relative; cursor: pointer; display: block; }
   .perm-toggle input { position: absolute; opacity: 0; pointer-events: none; }
   .perm-toggle .box {

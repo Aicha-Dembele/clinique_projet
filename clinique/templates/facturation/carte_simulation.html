@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+{% block title %}Paiement PayPal{% endblock %}
+{% block nav_paiements %}active{% endblock %}
+{% block page_title %}Paiement sécurisé{% endblock %}
+{% block page_heading %}Paiement par carte bancaire{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'facturation:paiements' %}">Paiements</a></li>
+  <li class="breadcrumb-item active">PayPal</li>
+{% endblock %}
+
+{% block extra_css %}<style>
+/* ── Page façon passage en caisse PayPal ── */
+.pp-wrap { max-width: 460px; margin: 0 auto; }
+.pp-card {
+  background: #fff; border: 1px solid #e3e6ea;
+  border-radius: 1rem; overflow: hidden;
+  box-shadow: 0 10px 34px -12px rgba(0,48,135,.25);
+  animation: fadeUp .5s ease both;
+}
+.pp-hdr {
+  background: #fff; padding: 1.3rem 1.6rem .9rem;
+  text-align: center; border-bottom: 1px solid #eef1f4;
+}
+.pp-logo { font-family: Verdana, 'Segoe UI', sans-serif; font-size: 1.7rem; font-weight: 800; font-style: italic; letter-spacing: -.03em; }
+.pp-logo .p1 { color: #003087; }
+.pp-logo .p2 { color: #009cde; }
+.pp-tag { display: inline-block; font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; background: #f1f3f6; border-radius: 999px; padding: .2em .8em; margin-left: .5rem; vertical-align: middle; }
+.pp-body { padding: 1.4rem 1.6rem 1.6rem; }
+.pp-marchand { text-align: center; font-size: .8rem; color: #4a5460; }
+.pp-montant { text-align: center; font-family: Verdana, sans-serif; font-size: 1.9rem; font-weight: 800; color: #001c64; margin: .3rem 0 1.1rem; }
+.pp-sep { display: flex; align-items: center; gap: .8rem; color: #8a93a0; font-size: .72rem; font-weight: 700; margin: .2rem 0 1rem; }
+.pp-sep::before, .pp-sep::after { content: ''; flex: 1; height: 1px; background: #e3e6ea; }
+.pp-label { font-size: .74rem; font-weight: 700; color: #4a5460; margin-bottom: .35rem; display: block; }
+.pp-input {
+  width: 100%; padding: .65rem .85rem; font-size: .9rem;
+  border: 1px solid #9aa4b0; border-radius: .5rem; background: #fff; color: #111;
+}
+.pp-input:focus { outline: none; border-color: #0070ba; box-shadow: 0 0 0 3px rgba(0,112,186,.18); }
+.pp-btn {
+  width: 100%; border: none; cursor: pointer;
+  background: #ffc439; color: #111827;
+  font-weight: 800; font-size: .95rem;
+  padding: .8rem; border-radius: 999px; margin-top: 1.2rem;
+  transition: filter .15s;
+}
+.pp-btn:hover { filter: brightness(.95); }
+.pp-cancel { display: block; text-align: center; margin-top: .9rem; font-size: .78rem; color: #0070ba; text-decoration: none; font-weight: 600; }
+.pp-cancel:hover { text-decoration: underline; color: #003087; }
+.pp-err {
+  background: #fdecec; border: 1.5px solid #f5b5b5; color: #c0392b;
+  border-radius: .6rem; padding: .7rem .9rem; font-size: .78rem; font-weight: 600; margin-bottom: 1rem;
+}
+.pp-secure { text-align: center; font-size: .68rem; color: #8a93a0; margin-top: 1rem; }
+.pp-hint {
+  background: #f6f8fa; border: 1px solid #e3e6ea; border-radius: .6rem;
+  padding: .7rem .9rem; font-size: .7rem; color: #4a5460; margin-top: 1rem;
+}
+</style>{% endblock %}
+
+{% block content %}
+<div class="pp-wrap">
+  <div class="pp-card">
+
+    <div class="pp-hdr">
+      <span class="pp-logo"><span class="p1">Pay</span><span class="p2">Pal</span></span><span class="pp-tag">Simulation</span>
+    </div>
+
+    <div class="pp-body">
+      <div class="pp-marchand">Payer à <strong>Clinique Nevroglie</strong> · Facture FAC-{{ facture.pk|stringformat:"04d" }} · {{ facture.patient }}</div>
+      <div class="pp-montant">{{ montant|floatformat:0 }} FCFA</div>
+
+      <div class="pp-sep">Payer par carte bancaire</div>
+
+      {% if erreur %}
+      <div class="pp-err"><i class="bi bi-x-circle-fill me-1"></i> {{ erreur }}</div>
+      {% endif %}
+
+      <form method="post" autocomplete="off">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="pp-label">Numéro de carte</label>
+            <input type="text" name="numero" id="numero" class="pp-input" placeholder="4242 4242 4242 4242"
+                   inputmode="numeric" maxlength="19" required value="{{ request.POST.numero|default:'' }}">
+          </div>
+          <div class="col-7">
+            <label class="pp-label">Expiration (MM/AA)</label>
+            <input type="text" name="expiration" id="expiration" class="pp-input" placeholder="12/29"
+                   inputmode="numeric" maxlength="5" required value="{{ request.POST.expiration|default:'' }}">
+          </div>
+          <div class="col-5">
+            <label class="pp-label">Crypto (CVC)</label>
+            <input type="text" name="cvc" id="cvc" class="pp-input" placeholder="123"
+                   inputmode="numeric" maxlength="4" required value="">
+          </div>
+          <div class="col-12">
+            <label class="pp-label">Titulaire de la carte</label>
+            <input type="text" name="titulaire" class="pp-input" placeholder="NOM PRÉNOM"
+                   value="{{ request.POST.titulaire|default:facture.patient|upper }}">
+          </div>
+        </div>
+
+        <button type="submit" class="pp-btn">Payer {{ montant|floatformat:0 }} FCFA</button>
+        <a href="{% url 'facturation:paiement_carte_annule' %}?facture={{ facture.pk }}" class="pp-cancel">Annuler et retourner à la Clinique Nevroglie</a>
+      </form>
+
+      <div class="pp-secure"><i class="bi bi-lock-fill"></i> Paiement chiffré — mode test : aucune somme réelle n'est débitée.</div>
+
+      <div class="pp-hint">
+        <strong>Cartes de test :</strong>
+        4242 4242 4242 4242 → paiement accepté ·
+        4000 0000 0000 0002 → refusé par la banque ·
+        CVC : 3 chiffres au choix · expiration : date future (ex. 12/29)
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Mise en forme automatique : numéro par groupes de 4, expiration MM/AA
+document.getElementById('numero').addEventListener('input', e => {
+  const v = e.target.value.replace(/\D/g, '').slice(0, 16);
+  e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
+});
+document.getElementById('expiration').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+  e.target.value = v.length > 2 ? v.slice(0, 2) + '/' + v.slice(2) : v;
+});
+document.getElementById('cvc').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+});
+</script>
+{% endblock %}

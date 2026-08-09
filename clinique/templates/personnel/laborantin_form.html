@@ -44,7 +44,7 @@
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Téléphone <span class="req">*</span></label>
-        <input type="text" name="telephone" class="f-input" required placeholder="+225 00 00 00 00"
+        <input type="text" name="telephone" class="f-input" required placeholder="+223 00 00 00 00"
                value="{% if laborantin %}{{ laborantin.telephone }}{% endif %}">
       </div>
       <div class="col-12 col-md-6">
@@ -81,12 +81,6 @@
         </div>
         {% if laborantin and laborantin.photo %}<div class="form-section-sub" style="margin-top:.35rem">Laissez vide pour conserver la photo actuelle.</div>{% endif %}
       </div>
-      {% if not laborantin %}
-      <div class="col-12 col-md-6">
-        <label class="f-label">Mot de passe <span class="req">*</span></label>
-        <input type="password" name="mot_de_passe" class="f-input" required placeholder="••••••••">
-      </div>
-      {% endif %}
     </div>
   </div>
   <div class="actions-row d-flex gap-2 justify-content-end">

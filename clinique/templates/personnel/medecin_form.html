@@ -48,7 +48,7 @@
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Téléphone <span class="req">*</span></label>
-        <input type="text" name="telephone" class="f-input" required placeholder="+225 00 00 00 00"
+        <input type="text" name="telephone" class="f-input" required placeholder="+223 00 00 00 00"
                value="{% if medecin %}{{ medecin.telephone }}{% endif %}">
       </div>
       <div class="col-12 col-md-6">
@@ -72,7 +72,7 @@
   <!-- Informations médicales -->
   <div class="form-section" style="animation-delay:.06s">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></span>
+      <span class="form-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-clipboard2-pulse-fill"></i></span>
       <div>
         <div class="form-section-title">Informations médicales</div>
         <div class="form-section-sub">Spécialité et service d'affectation</div>
@@ -109,24 +109,7 @@
     </div>
   </div>
 
-  {% if not medecin %}
-  <!-- Mot de passe (création seulement) -->
-  <div class="form-section" style="animation-delay:.12s">
-    <div class="form-section-hdr">
-      <span class="form-section-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-shield-lock-fill"></i></span>
-      <div>
-        <div class="form-section-title">Accès au système</div>
-        <div class="form-section-sub">Mot de passe pour la connexion</div>
-      </div>
-    </div>
-    <div class="row g-3">
-      <div class="col-12 col-md-6">
-        <label class="f-label">Mot de passe <span class="req">*</span></label>
-        <input type="password" name="mot_de_passe" class="f-input" required placeholder="••••••••">
-      </div>
-    </div>
-  </div>
-  {% endif %}
+  
 
   <div class="actions-row d-flex gap-2 justify-content-end">
     <a href="{% url 'personnel:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>

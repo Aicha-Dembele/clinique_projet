@@ -86,7 +86,9 @@ ROLE_PERMISSIONS = {
     ],
     'laborantin': [
         'patient.view',
-        'examen.view', 'examen.realiser', 'examen.change',
+        # Le laborantin consulte l'examen que le médecin lui transmet (examen.view)
+        # et le réalise (examen.realiser) ; il ne peut PAS le modifier.
+        'examen.view', 'examen.realiser',
         'resultat.view', 'resultat.add', 'resultat.transmettre',
     ],
     'infirmier': [

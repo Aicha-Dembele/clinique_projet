@@ -4,180 +4,171 @@
 {% block title %}Dashboard Médecin{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Mon espace médecin{% endblock %}
-{% block page_heading %}Bonjour Dr. {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
-
-{% block page_actions %}
-<a href="{% url 'consultation:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-clipboard2-plus-fill"></i> Nouvelle consultation</a>
-<a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
+{% block page_heading %}Bonjour, Dr. {{ request.user.get_full_name|default:request.user.username }}
+<div style="font-size:.82rem;font-weight:500;color:var(--text-muted);margin-top:.2rem">Voici un aperçu de votre activité à la clinique.</div>
 {% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 
 {% block extra_css %}
 <style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
-.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+/* ── Cartes statistiques (maquette : icône carrée + libellé + valeur + tendance) ── */
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: .85rem 1rem; display: flex; align-items: center; gap: .8rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(20,184,166,.3); }
+.stat-h-ico { width: 44px; height: 44px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
 .stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
-.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
-.stat-h:hover .spark-bar { opacity: .85; }
-.av-c { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; flex-shrink: 0; letter-spacing: .02em; }
-.av-c-1 { background: linear-gradient(135deg,#10b981,#14b8a6); }
+.stat-h-lbl { font-size: .74rem; color: var(--text-muted); font-weight: 600; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.15; margin-top: .12rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .3rem; display: inline-flex; align-items: center; gap: .25rem; }
+
+/* ── Liste des prochains rendez-vous ── */
+.av-c { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; flex-shrink: 0; letter-spacing: .02em; overflow: hidden; }
+.av-c img { width: 100%; height: 100%; object-fit: cover; }
+.av-c-1 { background: linear-gradient(135deg,#14b8a6,#0ea5e9); }
 .av-c-2 { background: linear-gradient(135deg,#3b82f6,#06b6d4); }
 .av-c-3 { background: linear-gradient(135deg,#f59e0b,#ef4444); }
 .av-c-4 { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
-.av-c-5 { background: linear-gradient(135deg,#14b8a6,#0ea5e9); }
+.av-c-5 { background: linear-gradient(135deg,#10b981,#14b8a6); }
 .av-c-6 { background: linear-gradient(135deg,#ef4444,#f59e0b); }
-.rdv-row { display: flex; align-items: center; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid var(--card-border-2); }
+.rdv-row { display: flex; align-items: center; gap: .75rem; padding: .68rem 0; border-bottom: 1px solid var(--card-border-2); }
 .rdv-row:last-child { border-bottom: none; }
 .rdv-row-info { flex: 1; min-width: 0; }
 .rdv-row-name { font-size: .85rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
 .rdv-row-sub { font-size: .7rem; color: var(--text-muted); margin-top: 1px; }
-.rdv-row-pill { font-size: .62rem; font-weight: 800; padding: .22em .55em; border-radius: 999px; background: rgba(16,185,129,.12); color: var(--primary-dark); border: 1px solid rgba(16,185,129,.18); }
-[data-theme="dark"] .rdv-row-pill { color: #6ee7b7; }
-.chart-wrap { position: relative; height: 200px; }
-.chart-wrap-mini { position: relative; height: 180px; }
-.tabs { display: inline-flex; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: .65rem; padding: 3px; }
-.tab-b { padding: .35rem .8rem; border: none; background: transparent; border-radius: .5rem; font-size: .73rem; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all .2s; }
-.tab-b.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.rdv-row-right { text-align: right; }
+.rdv-row-time { font-size: .78rem; font-weight: 800; color: var(--text-primary); }
+.rdv-row-pill { font-size: .6rem; font-weight: 800; padding: .24em .6em; border-radius: 999px; background: rgba(20,184,166,.12); color: #0f766e; border: 1px solid rgba(20,184,166,.22); display: inline-block; margin-top: .15rem; }
+[data-theme="dark"] .rdv-row-pill { color: #5eead4; }
+.rdv-row-pill.ok   { background: rgba(16,185,129,.12); color: #059669; border-color: rgba(16,185,129,.22); }
+.rdv-row-pill.ko   { background: rgba(239,68,68,.12);  color: #dc2626; border-color: rgba(239,68,68,.22); }
+.rdv-row-pill.warn { background: rgba(245,158,11,.12); color: #d97706; border-color: rgba(245,158,11,.22); }
+[data-theme="dark"] .rdv-row-pill.ok   { color: #6ee7b7; }
+[data-theme="dark"] .rdv-row-pill.ko   { color: #fca5a5; }
+[data-theme="dark"] .rdv-row-pill.warn { color: #fcd34d; }
+
+/* ── Donut + légende ── */
+.donut-wrap { position: relative; height: 190px; display: flex; align-items: center; justify-content: center; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.donut-center-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.donut-center-lbl { font-size: .65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-top: .2rem; }
+.legend-row { display: flex; align-items: center; gap: .55rem; padding: .32rem 0; font-size: .76rem; color: var(--text-muted); font-weight: 600; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.legend-val { margin-left: auto; font-weight: 800; color: var(--text-primary); }
+
+/* ── Mini calendrier ── */
+.cal-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
+.cal-mois { font-size: .82rem; font-weight: 800; color: var(--text-primary); text-transform: capitalize; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-dow { font-size: .62rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; padding: .3rem 0; }
+.cal-day { font-size: .74rem; font-weight: 600; color: var(--text-primary); padding: .34rem 0; border-radius: .55rem; }
+.cal-day.off { color: var(--text-muted); opacity: .35; }
+.cal-day.today { background: linear-gradient(135deg,#14b8a6,#0d9488); color: #fff; font-weight: 800; box-shadow: 0 4px 10px rgba(20,184,166,.4); }
+.cal-day.has-rdv { position: relative; }
+.cal-day.has-rdv::after { content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #14b8a6; }
+
+/* ── Actions rapides ── */
+.qa-row { display: flex; flex-wrap: wrap; gap: .7rem; }
+.qa-btn { flex: 1 1 160px; display: flex; align-items: center; justify-content: center; gap: .55rem; padding: .8rem 1rem; border-radius: .85rem; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text-primary); font-size: .8rem; font-weight: 700; text-decoration: none; transition: all .22s; }
+.qa-btn i { font-size: 1rem; color: #0d9488; }
+.qa-btn:hover { background: linear-gradient(135deg,#14b8a6,#0d9488); color: #fff; border-color: transparent; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(20,184,166,.35); }
+.qa-btn:hover i { color: #fff; }
+[data-theme="dark"] .qa-btn i { color: #5eead4; }
+
+/* ── Graphique ── */
+.chart-wrap { position: relative; height: 230px; }
+.periode-chip { font-size: .7rem; font-weight: 700; color: var(--text-muted); background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 999px; padding: .32rem .8rem; }
+.voir-tout { font-size: .74rem; font-weight: 700; color: #0d9488; text-decoration: none; }
+.voir-tout:hover { text-decoration: underline; color: #0f766e; }
+[data-theme="dark"] .voir-tout { color: #5eead4; }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- ── Rangée 1 : cartes statistiques ─────────────────────────── -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-check-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-people-fill"></i></div>
       <div class="stat-h-info">
-        <div class="stat-h-lbl">Mes RDV aujourd'hui</div>
+        <div class="stat-h-lbl">Patients</div>
+        <div class="stat-h-val">{{ mes_patients|default:0 }}</div>
+        <div class="stat-h-trend" style="color:#10b981"><i class="bi bi-arrow-up-short"></i>Patients suivis</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.10s">
+      <div class="stat-h-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-calendar2-check-fill"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Rendez-vous aujourd'hui</div>
         <div class="stat-h-val">{{ mes_rdv_count|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#14b8a6">{{ rdv_termines|default:0 }} terminés</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:85%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
+        <div class="stat-h-trend" style="color:#3b82f6"><i class="bi bi-check2-circle"></i>{{ rdv_termines|default:0 }} terminés</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+    <div class="stat-h" style="animation-delay:.16s">
+      <div class="stat-h-ico" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="bi bi-clipboard2-pulse-fill"></i></div>
       <div class="stat-h-info">
-        <div class="stat-h-lbl">Consultations ce mois</div>
+        <div class="stat-h-lbl">Consultations</div>
         <div class="stat-h-val">{{ mes_consultations|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#10b981"><i class="bi bi-arrow-up"></i> +12% ce mois</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#10b981"></div>
-        <div class="spark-bar" style="height:50%;background:#10b981"></div>
-        <div class="spark-bar" style="height:40%;background:#10b981"></div>
-        <div class="spark-bar" style="height:65%;background:#10b981"></div>
-        <div class="spark-bar" style="height:55%;background:#10b981"></div>
-        <div class="spark-bar" style="height:75%;background:#10b981"></div>
-        <div class="spark-bar" style="height:60%;background:#10b981"></div>
-        <div class="spark-bar" style="height:85%;background:#10b981"></div>
-        <div class="spark-bar" style="height:70%;background:#10b981"></div>
-        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+        <div class="stat-h-trend" style="color:#8b5cf6"><i class="bi bi-activity"></i>Total réalisées</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.20s">
-      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-capsule"></i></div>
-      <div class="stat-h-info">
-        <div class="stat-h-lbl">Ordonnances émises</div>
-        <div class="stat-h-val">{{ mes_ordonnances|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#a855f7">Cette semaine</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:50%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:40%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:65%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:55%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:75%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:60%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:85%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:70%;background:#a855f7"></div>
-        <div class="spark-bar" style="height:100%;background:#a855f7"></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-xl-3">
-    <div class="stat-h" style="animation-delay:.28s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hospital-fill"></i></div>
+    <div class="stat-h" style="animation-delay:.22s">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-hospital-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Hospitalisés</div>
         <div class="stat-h-val">{{ mes_hospitalises|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#f59e0b">Suivi en cours</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:40%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:75%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:85%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:70%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
+        <div class="stat-h-trend" style="color:#10b981"><i class="bi bi-heart-pulse"></i>Suivi en cours</div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ── Rangée 2 : activité + prochains rendez-vous ────────────── -->
 <div class="row g-3 mb-4">
   <div class="col-12 col-xl-8">
     <div class="panel h-100">
       <div class="panel-hdr">
         <div>
-          <div class="panel-title">Activité de mes consultations</div>
-          <div class="text-muted small">Tendance des consultations récentes</div>
+          <div class="panel-title">Activité de la clinique</div>
+          <div class="text-muted small">Mes consultations des 7 derniers jours</div>
         </div>
-        <div class="tabs" aria-label="Période">
-          <button type="button" class="tab-b active">7j</button>
-          <button type="button" class="tab-b">30j</button>
-          <button type="button" class="tab-b">12m</button>
-        </div>
+        <span class="periode-chip">Cette semaine</span>
       </div>
       <div class="panel-body">
-        <div class="chart-wrap"><canvas id="myActivityChart"></canvas></div>
+        <div class="chart-wrap"><canvas id="activiteChart"></canvas></div>
       </div>
     </div>
   </div>
   <div class="col-12 col-xl-4">
     <div class="panel h-100">
       <div class="panel-hdr">
-        <div class="panel-title">Mon planning du jour</div>
-        <span class="rdv-row-pill">{{ mes_rdv_count|default:0 }} RDV</span>
+        <div class="panel-title">Prochains rendez-vous</div>
+        <a href="{% url 'consultation:rdv_liste' %}" class="voir-tout">Voir tout</a>
       </div>
       <div class="panel-body">
       {% for rdv in mes_rdv_aujourd_hui|slice:":5" %}
       <div class="rdv-row">
-        <div class="av-c av-c-{% cycle '1' '2' '3' '4' '5' '6' %}">{{ rdv.patient.prenom|slice:":1"|upper }}{{ rdv.patient.nom|slice:":1"|upper }}</div>
+        <div class="av-c av-c-{% cycle '1' '2' '3' '4' '5' '6' %}">
+          {% if rdv.patient.photo %}<img src="{{ rdv.patient.photo.url }}" alt="">{% else %}{{ rdv.patient.prenom|slice:":1"|upper }}{{ rdv.patient.nom|slice:":1"|upper }}{% endif %}
+        </div>
         <div class="rdv-row-info">
           <div class="rdv-row-name">{{ rdv.patient.prenom }} {{ rdv.patient.nom }}</div>
-          <div class="rdv-row-sub">{{ rdv.date|time:"H:i" }} · {{ rdv.motif|truncatechars:30 }}</div>
+          <div class="rdv-row-sub">{{ rdv.motif|truncatechars:28|default:"Consultation" }}</div>
         </div>
-        {% if rdv.statut == 'termine' %}
-        <span class="rdv-row-pill" style="background:rgba(16,185,129,.12);color:#10b981;border-color:rgba(16,185,129,.22)">Terminé</span>
-        {% elif rdv.statut == 'annule' %}
-        <span class="rdv-row-pill" style="background:rgba(239,68,68,.12);color:#ef4444;border-color:rgba(239,68,68,.22)">Annulé</span>
-        {% else %}
-        <a href="{% url 'consultation:ajouter' %}?rdv={{ rdv.pk }}" class="rdv-row-pill" style="background:rgba(20,184,166,.12);color:#0f766e;border-color:rgba(20,184,166,.22)">Consulter</a>
-        {% endif %}
+        <div class="rdv-row-right">
+          <div class="rdv-row-time">{{ rdv.date|time:"H:i" }}</div>
+          {% if rdv.statut == 'termine' %}
+          <span class="rdv-row-pill ok">Terminé</span>
+          {% elif rdv.statut == 'annule' %}
+          <span class="rdv-row-pill ko">Annulé</span>
+          {% else %}
+          <span class="rdv-row-pill">Aujourd'hui</span>
+          {% endif %}
+        </div>
       </div>
       {% empty %}
       <div class="text-center py-4 text-muted small">Aucun rendez-vous prévu aujourd'hui.</div>
@@ -187,21 +178,42 @@
   </div>
 </div>
 
+<!-- ── Rangée 3 : répartition + hospitalisés + calendrier ─────── -->
 <div class="row g-3 mb-4">
-  <div class="col-12 col-xl-4">
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="panel h-100">
+      <div class="panel-hdr"><div class="panel-title">Répartition des rendez-vous</div></div>
+      <div class="panel-body">
+        <div class="donut-wrap">
+          <canvas id="repartitionChart"></canvas>
+          <div class="donut-center">
+            <div class="donut-center-val">{{ rdv_programmes|add:rdv_termines_total|add:rdv_annules }}</div>
+            <div class="donut-center-lbl">Total</div>
+          </div>
+        </div>
+        <div class="mt-2">
+          <div class="legend-row"><span class="legend-dot" style="background:#14b8a6"></span>Programmés<span class="legend-val">{{ rdv_programmes }}</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#3b82f6"></span>Terminés<span class="legend-val">{{ rdv_termines_total }}</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#f59e0b"></span>Annulés<span class="legend-val">{{ rdv_annules }}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-xl-4">
     <div class="panel h-100">
       <div class="panel-hdr">
         <div class="panel-title">Mes hospitalisés</div>
+        <a href="{% url 'consultation:hospitalisations' %}" class="voir-tout">Voir tout</a>
       </div>
       <div class="panel-body">
       {% for h in mes_hospitalises_list %}
       <div class="rdv-row">
-        <div style="width:38px;height:38px;border-radius:.5rem;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:800;display:flex;align-items:center;justify-content:center">{{ h.numero_chambre }}</div>
+        <div style="width:38px;height:38px;border-radius:.6rem;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ h.numero_chambre }}</div>
         <div class="rdv-row-info">
           <div class="rdv-row-name">{{ h.patient }}</div>
           <div class="rdv-row-sub">{{ h.type_chambre }} · J+{{ h.nombre_jours }}</div>
         </div>
-        <span class="rdv-row-pill" style="background:rgba(245,158,11,.12);color:#f59e0b;border-color:rgba(245,158,11,.22)">En cours</span>
+        <span class="rdv-row-pill warn">En cours</span>
       </div>
       {% empty %}
       <div class="text-center py-4 text-muted small">Aucun patient hospitalisé.</div>
@@ -209,53 +221,33 @@
       </div>
     </div>
   </div>
-  <div class="col-12 col-xl-8">
+  <div class="col-12 col-xl-4">
     <div class="panel h-100">
-      <div class="panel-hdr">
-        <div class="panel-title">Mes dernières consultations</div>
-        <a href="{% url 'consultation:liste' %}" class="small fw-bold" style="color:var(--primary)">Voir tout →</a>
-      </div>
-      <div class="panel-body p-0">
-      <div class="table-responsive">
-        <table class="ctable">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Date</th>
-              <th>Motif</th>
-              <th>Diagnostic</th>
-              <th>Ordonnance</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in mes_consultations_list %}
-            <tr>
-              <td>
-                <div class="fw-bold text-nowrap">{{ c.rendez_vous.patient.prenom }} {{ c.rendez_vous.patient.nom }}</div>
-              </td>
-              <td class="text-nowrap">{{ c.date|date:"d/m/Y" }}</td>
-              <td>{{ c.motif|truncatechars:32 }}</td>
-              <td>{{ c.diagnostic|truncatechars:36 }}</td>
-              <td>
-                {% if c.ordonnance_set.exists %}
-                <span class="rdv-row-pill">Oui</span>
-                {% else %}
-                <span class="text-muted small">Non</span>
-                {% endif %}
-              </td>
-              <td><a href="{% url 'consultation:detail' c.pk %}" class="btn-c btn-sm-c btn-outline-c"><i class="bi bi-eye"></i></a></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6" class="text-center py-4 text-muted">Aucune consultation récente.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      <div class="panel-hdr"><div class="panel-title">Calendrier</div></div>
+      <div class="panel-body">
+        <div class="cal-hdr"><span class="cal-mois" id="calMois"></span></div>
+        <div class="cal-grid" id="calGrid"></div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ── Rangée 4 : actions rapides ─────────────────────────────── -->
+<div class="panel mb-4">
+  <div class="panel-hdr"><div class="panel-title">Actions rapides</div></div>
+  <div class="panel-body">
+    <div class="qa-row">
+      <a href="{% url 'consultation:ajouter' %}" class="qa-btn"><i class="bi bi-clipboard2-plus-fill"></i>Nouvelle consultation</a>
+      <a href="{% url 'consultation:ordonnance_ajouter' %}" class="qa-btn"><i class="bi bi-capsule"></i>Nouvelle ordonnance</a>
+      <a href="{% url 'consultation:examen_ajouter' %}" class="qa-btn"><i class="bi bi-eyedropper"></i>Demander un examen</a>
+      <a href="{% url 'consultation:dossiers' %}" class="qa-btn"><i class="bi bi-folder2-open"></i>Mes dossiers</a>
+      <a href="{% url 'patients:liste' %}" class="qa-btn"><i class="bi bi-people"></i>Mes patients</a>
+    </div>
+  </div>
+</div>
+
+{{ activite_labels|json_script:"act-labels" }}
+{{ activite_valeurs|json_script:"act-valeurs" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -263,26 +255,97 @@
 <script>
 (function(){
   const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-  const txtMuted = () => isDark() ? '#64748b' : '#94a3b8';
-  const grid = () => isDark() ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
+  const txtMuted = () => isDark() ? '#a8d8e6' : '#08405a';
+  const gridCol  = () => isDark() ? 'rgba(255,255,255,.10)' : 'rgba(2,50,75,.07)';
+  const tooltip  = () => ({ backgroundColor: isDark() ? '#0f172a' : '#fff', titleColor: isDark() ? '#e2e8f0' : '#0f172a', bodyColor: isDark() ? '#5eead4' : '#0f766e', borderColor: 'rgba(20,184,166,.35)', borderWidth: 1, padding: 10, displayColors: false, cornerRadius: 8 });
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  Chart.defaults.font.size = 11;
-  Chart.defaults.color = txtMuted();
+  Chart.defaults.font.size = 12;
 
-  const ctx = document.getElementById('myActivityChart');
+  /* ── Courbe d'activité lisse (style maquette) ── */
+  let courbe = null, donut = null;
+  const labels  = JSON.parse(document.getElementById('act-labels').textContent);
+  const valeurs = JSON.parse(document.getElementById('act-valeurs').textContent);
+  const ctx = document.getElementById('activiteChart');
   if (ctx) {
-    new Chart(ctx, {
-      type: 'bar',
-      data: { labels: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], datasets: [{
-        label: 'Consultations', data: [4, 7, 5, 9, 12, 3, 1],
-        backgroundColor: c2 => { const g = c2.chart.ctx.createLinearGradient(0,0,0,280); g.addColorStop(0,'#10b981'); g.addColorStop(1,'#14b8a6'); return g; },
-        borderRadius: 6, borderSkipped: false, barThickness: 18,
+    courbe = new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: [{
+        label: 'Consultations', data: valeurs,
+        borderColor: '#14b8a6', borderWidth: 3,
+        pointRadius: 4, pointHoverRadius: 6,
+        pointBackgroundColor: '#fff', pointBorderColor: '#14b8a6', pointBorderWidth: 2.5,
+        tension: 0.45, fill: true,
+        backgroundColor: c => {
+          const g = c.chart.ctx.createLinearGradient(0, 0, 0, 260);
+          g.addColorStop(0, 'rgba(20,184,166,.28)');
+          g.addColorStop(1, 'rgba(20,184,166,0)');
+          return g;
+        },
       }]},
       options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: {display:false}, tooltip: { backgroundColor: isDark() ? '#0f172a' : '#fff', titleColor: isDark() ? '#e2e8f0' : '#0f172a', bodyColor: '#10b981', borderColor: 'rgba(16,185,129,.3)', borderWidth: 1, padding: 10, displayColors: false, cornerRadius: 8 } },
-        scales: { x: { grid: {display:false}, ticks: {color: txtMuted(), font:{weight:600}} }, y: { display: false } },
+        plugins: { legend: {display:false}, tooltip: tooltip() },
+        scales: {
+          x: { grid: {display:false}, ticks: {color: txtMuted(), font:{weight:600}} },
+          y: { beginAtZero: true, grid: {color: gridCol()}, ticks: {precision:0, color: txtMuted()} },
+        },
       }
     });
+  }
+
+  /* ── Donut de répartition ── */
+  const dctx = document.getElementById('repartitionChart');
+  if (dctx) {
+    donut = new Chart(dctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Programmés', 'Terminés', 'Annulés'],
+        datasets: [{
+          data: [{{ rdv_programmes|default:0 }}, {{ rdv_termines_total|default:0 }}, {{ rdv_annules|default:0 }}],
+          backgroundColor: ['#14b8a6', '#3b82f6', '#f59e0b'],
+          borderWidth: 0, hoverOffset: 6,
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '72%',
+        plugins: { legend: {display:false}, tooltip: tooltip() },
+      }
+    });
+  }
+
+  /* ── Bascule clair/sombre : recolorer les graphiques sans recharger ──
+        Les couleurs Chart.js sont figées à la création ; on écoute le
+        changement de data-theme sur <html> et on les met à jour. */
+  const recolorer = () => {
+    if (courbe) {
+      courbe.options.scales.x.ticks.color = txtMuted();
+      courbe.options.scales.y.ticks.color = txtMuted();
+      courbe.options.scales.y.grid.color  = gridCol();
+      Object.assign(courbe.options.plugins.tooltip, tooltip());
+      courbe.update('none');
+    }
+    if (donut) {
+      Object.assign(donut.options.plugins.tooltip, tooltip());
+      donut.update('none');
+    }
+  };
+  new MutationObserver(recolorer)
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  /* ── Mini calendrier du mois courant ── */
+  const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const DOW  = ['L','M','M','J','V','S','D'];
+  const now  = new Date();
+  document.getElementById('calMois').textContent = MOIS[now.getMonth()] + ' ' + now.getFullYear();
+  const grid = document.getElementById('calGrid');
+  DOW.forEach(d => { const e = document.createElement('div'); e.className = 'cal-dow'; e.textContent = d; grid.appendChild(e); });
+  const premier = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nbJours = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  let decal = premier.getDay() - 1; if (decal < 0) decal = 6;   // semaine qui commence lundi
+  for (let i = 0; i < decal; i++) { const e = document.createElement('div'); e.className = 'cal-day off'; grid.appendChild(e); }
+  for (let j = 1; j <= nbJours; j++) {
+    const e = document.createElement('div');
+    e.className = 'cal-day' + (j === now.getDate() ? ' today' : '');
+    e.textContent = j;
+    grid.appendChild(e);
   }
 })();
 </script>

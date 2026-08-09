@@ -66,8 +66,9 @@ class Profil(models.Model):
         return self.role.code if self.role_id else None
 
     def has_permission(self, code):
-        if self.role.code == 'admin':
-            return True
+        # L'admin est soumis à ses permissions cochées, comme les autres rôles.
+        # (Il conserve l'accès à la gestion des rôles via admin_required, ce qui
+        #  lui permet de se redonner n'importe quelle permission.)
         return self.role.has_permission(code)
 
 

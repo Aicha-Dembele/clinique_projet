@@ -55,7 +55,7 @@
 
   <div class="form-section" style="animation-delay:.06s">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-flask-fill"></i></span>
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-eyedropper"></i></span>
       <div>
         <div class="form-section-title">Détails de l'examen</div>
         <div class="form-section-sub">Type, date, motif et praticien assigné</div>
@@ -86,9 +86,9 @@
         <input type="text" name="motif" class="f-input" value="{% if examen %}{{ examen.motif }}{% endif %}" placeholder="Motif de l'examen...">
       </div>
       <div class="col-12 col-md-6">
-        <label class="f-label">Laborantin</label>
-        <select name="laborantin" class="f-input f-select">
-          <option value="">-- Aucun --</option>
+        <label class="f-label">Laborantin <span style="color:#ef4444">*</span></label>
+        <select name="laborantin" class="f-input f-select" required>
+          <option value="" disabled {% if not examen %}selected{% endif %}>-- Choisir un laborantin --</option>
           {% for l in laborantins %}
           <option value="{{ l.pk }}" {% if examen and examen.laborantin_id == l.pk %}selected{% endif %}>{{ l.nom }} {{ l.prenom }}</option>
           {% endfor %}

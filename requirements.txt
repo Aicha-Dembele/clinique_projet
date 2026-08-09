@@ -13,3 +13,9 @@ reportlab==4.4.10
 
 # Traitement d'images, requis par les ImageField (photos patients, scans)
 Pillow==12.0.0
+
+# Paiement par carte bancaire simulé via Stripe Checkout (mode test)
+stripe==11.4.1
+
+# Pilote MySQL (la base tourne sur MySQL Server 8, plus sur SQLite)
+mysqlclient==2.2.8

@@ -8,7 +8,10 @@ class Personnel(models.Model):
     adresse = models.TextField()
     service = models.CharField(max_length=100)
     role = models.CharField(max_length=50)
-    mot_de_passe = models.CharField(max_length=255)
+    # Pas de mot de passe ici : l'authentification est assurée par le modèle
+    # User de Django (mots de passe hachés), relié à cette fiche via
+    # comptes.Profil. Un champ « mot_de_passe » a existé et stockait la saisie
+    # en clair — il a été supprimé.
     photo = models.ImageField(upload_to='personnel/photos/', null=True, blank=True)
 
     class Meta:

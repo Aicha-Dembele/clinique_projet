@@ -8,7 +8,9 @@
 {% block page_heading %}Traitements{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Traitements</li>{% endblock %}
 {% block page_actions %}
+{% if is_admin or is_medecin %}
 <a href="{% url 'consultation:traitement_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-circle"></i> Nouveau traitement</a>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}<style>
@@ -155,7 +157,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
       <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-capsule-pill"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Total</div>
         <div class="stat-h-val">{{ traitements|length }}</div>
         <div class="stat-h-trend" style="color:#0088aa">Protocoles</div>
@@ -177,7 +179,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.08s">
       <div class="stat-h-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="bi bi-clipboard-plus"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Prescrits</div>
         <div class="stat-h-val">{{ traitements_prescrits_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#3b82f6">À démarrer</div>
@@ -199,7 +201,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.12s">
       <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hourglass-split"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">En cours</div>
         <div class="stat-h-val">{{ traitements_en_cours_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#f59e0b">Suivi actif</div>
@@ -221,7 +223,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.16s">
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-check-circle-fill"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Terminés</div>
         <div class="stat-h-val">{{ traitements_termines_count|default:0 }}</div>
         <div class="stat-h-trend" style="color:#10b981">Clôturés</div>
@@ -284,7 +286,7 @@
       </thead>
       <tbody>
         {% for traitement in traitements %}
-        <tr>
+        <tr{% if traitement.pk == new_pk %} class="row-new"{% endif %}>
           <td><span class="con-num">TRT-{{ traitement.pk|stringformat:"04d" }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-2">

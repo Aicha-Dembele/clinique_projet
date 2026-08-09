@@ -95,6 +95,16 @@
       <div class="result-box">{{ resultat.observations }}</div>
     </div>
     {% endif %}
+    {% if resultat.image %}
+    <div style="border-top:1px solid var(--card-border);padding-top:1rem;margin-top:1rem">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem"><i class="bi bi-image me-1"></i>Image du résultat (scanner, radio, échographie…)</div>
+      <a href="{{ resultat.image.url }}" target="_blank" title="Cliquer pour agrandir">
+        <img src="{{ resultat.image.url }}" alt="Image du résultat d'examen"
+             style="max-width:100%;max-height:520px;border-radius:.8rem;border:1px solid var(--card-border);box-shadow:var(--shadow-md)">
+      </a>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.35rem" class="no-print">Cliquer sur l'image pour l'ouvrir en taille réelle.</div>
+    </div>
+    {% endif %}
     <div class="d-flex gap-2 justify-content-end mt-3 no-print">
       <a href="{% url 'consultation:resultat_pdf' resultat.pk %}" target="_blank" class="btn-c btn-primary-c"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer le résultat (PDF)</a>
     </div>

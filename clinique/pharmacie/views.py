@@ -89,6 +89,39 @@ def _facture_pour_dispensation(patient_id, ordonnance_id):
     return facture
 
 
+def _verifier_ordonnance_vente(patient_id, ordonnance_id):
+    """Règle de la clinique : pas de vente de médicaments sans ordonnance.
+
+    Toute sortie destinée à un patient (donc facturée) doit être liée à une
+    ordonnance appartenant bien à CE patient. Les sorties internes (péremption,
+    soin infirmier, ajustement) — sans patient ni ordonnance — restent permises.
+    Lève ValueError avec un message clair si la règle n'est pas respectée.
+    """
+    if not patient_id and not ordonnance_id:
+        return  # sortie interne : pas une vente
+    if not ordonnance_id:
+        raise ValueError(
+            "Vente sans ordonnance interdite : sélectionnez l'ordonnance du patient "
+            "(le médecin doit d'abord la créer si elle n'existe pas).")
+    if not patient_id:
+        raise ValueError(
+            "Sélectionnez le patient de l'ordonnance : une dispensation est toujours "
+            "facturée au patient.")
+    ordo = (Ordonnance.objects
+            .select_related('consultation__rendez_vous')
+            .filter(pk=ordonnance_id).first())
+    try:
+        ordo_patient_id = ordo.consultation.rendez_vous.patient_id
+    except AttributeError:
+        ordo_patient_id = None
+    try:
+        patient_id = int(patient_id)
+    except (TypeError, ValueError):
+        patient_id = None
+    if ordo_patient_id is None or patient_id is None or ordo_patient_id != patient_id:
+        raise ValueError("Ordonnance introuvable ou n'appartenant pas à ce patient.")
+
+
 # ── Ordonnance → stock (analyse pour la dispensation) ────────────
 
 def _norm_nom(s):
@@ -183,9 +216,23 @@ def _dispenser_groupe(request):
     if not patient_id:
         messages.error(request, "Sélectionnez d'abord le patient pour dispenser son ordonnance.")
         return None
+    try:
+        _verifier_ordonnance_vente(patient_id, ordonnance_id)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return None
 
     facture = _facture_pour_dispensation(patient_id, ordonnance_id)
-    faits, erreurs = [], []
+    faits, erreurs, ignores = [], [], []
+    # Garde-fou anti-doublon : un médicament déjà dispensé pour CETTE ordonnance
+    # n'est pas re-servi (sinon la facture et le stock se regonflent à chaque
+    # passage — double-clic, retour-arrière, re-dispensation). Dédoublonnage par
+    # couple (ordonnance, médicament) : les autres médicaments restent servables.
+    deja = set()
+    if ordonnance_id:
+        deja = set(MouvementStock.objects
+                   .filter(type_mouvement='sortie', ordonnance_id=ordonnance_id)
+                   .values_list('medicament_id', flat=True))
     for mid, q in zip(request.POST.getlist('ligne_med'), request.POST.getlist('ligne_qte')):
         med = Medicament.objects.filter(pk=mid).first()
         if not med:
@@ -195,6 +242,9 @@ def _dispenser_groupe(request):
         except ValueError:
             qte = 0
         if qte <= 0:
+            continue
+        if ordonnance_id and med.pk in deja:
+            ignores.append(med.nom)
             continue
         if qte > med.quantite_stock:
             erreurs.append(f"{med.nom} (stock : {med.quantite_stock} {med.unite})")
@@ -206,6 +256,7 @@ def _dispenser_groupe(request):
             patient_id=patient_id, ordonnance_id=ordonnance_id,
             utilisateur=request.user, facture=facture,
         )
+        deja.add(med.pk)   # bloque aussi un doublon dans la même soumission
         faits.append(f"{med.nom} ×{qte}")
 
     if facture is not None and faits:
@@ -219,7 +270,9 @@ def _dispenser_groupe(request):
         messages.success(request, msg)
     if erreurs:
         messages.error(request, "Stock insuffisant, non dispensé(s) : " + ', '.join(erreurs) + '.')
-    if not faits and not erreurs:
+    if ignores:
+        messages.warning(request, "Déjà dispensé(s) pour cette ordonnance — ignoré(s) pour éviter un doublon : " + ', '.join(ignores) + '.')
+    if not faits and not erreurs and not ignores:
         messages.info(request, "Aucun médicament sélectionné à dispenser.")
         return None
     return redirect('pharmacie:medicaments')
@@ -400,6 +453,9 @@ def sortie_stock(request):
             prix = Decimal(prix) if prix else (medicament.prix_unitaire or Decimal('0'))
             patient_id = request.POST.get('patient') or None
             ordonnance_id = request.POST.get('ordonnance') or None
+
+            # Règle clinique : pas de vente à un patient sans son ordonnance
+            _verifier_ordonnance_vente(patient_id, ordonnance_id)
 
             # Dispensation à un patient → portée automatiquement sur sa facture
             facture = _facture_pour_dispensation(patient_id, ordonnance_id) if patient_id else None

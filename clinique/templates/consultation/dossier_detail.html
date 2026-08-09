@@ -9,7 +9,10 @@
   <li class="breadcrumb-item active">{{ dossier.patient }}</li>
 {% endblock %}
 {% block page_actions %}
-<a href="{% url 'consultation:dossier_pdf' dossier.pk %}" target="_blank" class="btn-c btn-primary-c no-print"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer le dossier (PDF)</a>
+{% if peut_partager %}
+<a href="{% url 'consultation:dossier_partager' dossier.pk %}" class="btn-c btn-primary-c no-print"><i class="bi bi-folder-symlink-fill"></i> Transmettre à un médecin</a>
+{% endif %}
+<a href="{% url 'consultation:dossier_pdf' dossier.pk %}" target="_blank" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer le dossier (PDF)</a>
 <a href="{% url 'consultation:dossiers' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}
@@ -120,7 +123,18 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
       <div class="dm-name">{{ dossier.patient.nom }} {{ dossier.patient.prenom }}</div>
       <div class="dm-tag">
         <i class="bi bi-folder2-open me-1"></i> Dossier #{{ dossier.pk }} ouvert le {{ dossier.date_creation|date:'d/m/Y' }}
+        {% if dossier.medecin %}
+        <span class="me-1 ms-2"><i class="bi bi-person-badge me-1"></i>Médecin référent : <strong>Dr. {{ dossier.medecin.nom }} {{ dossier.medecin.prenom }}</strong></span>
+        {% endif %}
       </div>
+      {% with partages=dossier.partage_avec.all %}
+      {% if partages %}
+      <div class="dm-tag" style="margin-top:.35rem">
+        <i class="bi bi-folder-symlink me-1" style="color:#10b981"></i> Transmis à :
+        {% for m in partages %}<span class="pill pill-success" style="font-size:.68rem;margin-right:.25rem">Dr. {{ m.nom }} {{ m.prenom }}</span>{% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
     </div>
   </div>
   <div class="dm-meta-grid">
@@ -160,7 +174,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
 <div class="row g-3 mb-3">
   <div class="col-6 col-md-3">
     <div class="stat-h">
-      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></div>
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-clipboard2-pulse-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Consultations</div>
         <div class="stat-h-val">{{ dossier.consultations.count }}</div>
@@ -169,7 +183,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.06s">
-      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-eyedropper"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Examens</div>
         <div class="stat-h-val">{{ dossier.examens.count }}</div>
@@ -199,7 +213,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
 <!-- ── Consultations ───────────────────────────── -->
 <div class="dm-section">
   <div class="dm-section-hdr">
-    <span class="dm-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></span>
+    <span class="dm-section-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-clipboard2-pulse-fill"></i></span>
     <div class="dm-section-title">Consultations</div>
     <span class="dm-section-count">{{ dossier.consultations.count }}</span>
   </div>
@@ -208,7 +222,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
     <div class="timeline">
       {% for c in dossier.consultations.all %}
       <div class="tl-item">
-        <div class="tl-bullet" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-stethoscope"></i></div>
+        <div class="tl-bullet" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-clipboard2-pulse-fill"></i></div>
         <div class="tl-content">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div class="tl-title">Consultation Dr. {{ c.rendez_vous.medecin.nom }} {{ c.rendez_vous.medecin.prenom }}</div>
@@ -226,7 +240,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
       {% endfor %}
     </div>
     {% else %}
-    <div class="dm-empty"><i class="bi bi-stethoscope"></i>Aucune consultation enregistrée.</div>
+    <div class="dm-empty"><i class="bi bi-clipboard2-pulse-fill"></i>Aucune consultation enregistrée.</div>
     {% endif %}
   </div>
 </div>
@@ -234,7 +248,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
 <!-- ── Examens & résultats ─────────────────────── -->
 <div class="dm-section">
   <div class="dm-section-hdr">
-    <span class="dm-section-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></span>
+    <span class="dm-section-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-eyedropper"></i></span>
     <div class="dm-section-title">Examens & résultats</div>
     <span class="dm-section-count">{{ dossier.examens.count }}</span>
   </div>
@@ -243,7 +257,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
     <div class="timeline">
       {% for e in dossier.examens.all %}
       <div class="tl-item">
-        <div class="tl-bullet" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></div>
+        <div class="tl-bullet" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-eyedropper"></i></div>
         <div class="tl-content">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div class="tl-title">{{ e.type_examen }}</div>
@@ -270,7 +284,7 @@ body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
       {% endfor %}
     </div>
     {% else %}
-    <div class="dm-empty"><i class="bi bi-flask"></i>Aucun examen prescrit.</div>
+    <div class="dm-empty"><i class="bi bi-eyedropper"></i>Aucun examen prescrit.</div>
     {% endif %}
   </div>
 </div>

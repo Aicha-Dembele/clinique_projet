@@ -92,6 +92,16 @@
       </label>
       {% endfor %}
     </div>
+    <div id="carte-hint" style="display:none;margin-top:.9rem;padding:.75rem 1rem;border-radius:.75rem;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.25);font-size:.78rem;color:var(--text-secondary)">
+      <i class="bi bi-shield-lock-fill me-1" style="color:#a855f7"></i>
+      Vous serez redirigé vers la page de paiement sécurisée <strong>PayPal</strong> (simulation — aucune somme réelle n'est débitée).
+      Carte de test : <strong>4242 4242 4242 4242</strong> — CVC : 3 chiffres au choix — expiration : une date future.
+    </div>
+    <div id="orange-hint" style="display:none;margin-top:.9rem;padding:.75rem 1rem;border-radius:.75rem;background:rgba(255,121,0,.08);border:1px solid rgba(255,121,0,.3);font-size:.78rem;color:var(--text-secondary)">
+      <i class="bi bi-phone-fill me-1" style="color:#ff7900"></i>
+      Vous serez redirigé vers la <strong>procédure Orange Money</strong> (#144#, simulation — aucune somme réelle n'est débitée).
+      Code de confirmation de démonstration : <strong>1234</strong>.
+    </div>
   </div>
 
   <div class="d-flex justify-content-between flex-wrap gap-2 mt-4">
@@ -132,12 +142,22 @@
     sel.addEventListener('change', () => syncFacture(true));
     if (sel.value) syncFacture(mont && !mont.value);   // init : ne pas écraser un montant déjà saisi
   }
+  const carteHint = document.getElementById('carte-hint');
+  const orangeHint = document.getElementById('orange-hint');
+  function majHints(){
+    const checked = document.querySelector('.mode-card input:checked');
+    const v = checked ? checked.value : '';
+    if (carteHint) carteHint.style.display = (v === 'carte') ? 'block' : 'none';
+    if (orangeHint) orangeHint.style.display = (v === 'orange_money') ? 'block' : 'none';
+  }
   document.querySelectorAll('.mode-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
+      majHints();
     });
   });
+  majHints();
 })();
 </script>
 {% endblock %}

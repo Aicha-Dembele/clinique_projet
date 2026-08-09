@@ -6,7 +6,9 @@
 {% block page_heading %}Liste des patients{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Patients</li>{% endblock %}
 {% block page_actions %}
+{% if is_receptionniste %}
 <a href="{% url 'patients:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
+{% endif %}
 <a href="{% url 'patients:export' %}?{{ request.GET.urlencode }}" class="btn-c btn-outline-c no-print"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter (CSV/Excel)</a>
 {% endblock %}
 {% block extra_css %}
@@ -34,8 +36,9 @@
 .search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
 .search-bar i.bi-search { color: #0088aa !important; }
 /* Tableau translucide comme les autres listes (modern-table) */
-body.page-patients-bg .ctable th { background: rgba(255,255,255,.06) !important; }
-body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.15) !important; }
+body.page-patients-bg .ctable th { background: rgba(0,90,130,.08) !important; }
+/* Survol cyan identique aux autres listes (consultations, utilisateurs…) */
+body.page-patients-bg .ctable tbody tr:hover td { background: rgba(0,150,199,.30) !important; }
 
 /* ── Boutons d'action (Voir=cyan / Modifier=orange / Supprimer=rouge), comme consultation ── */
 .act-btn {
@@ -168,7 +171,7 @@ body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.
       </thead>
       <tbody>
         {% for p in patients %}
-        <tr>
+        <tr{% if p.pk == new_pk %} class="row-new"{% endif %}>
           <td style="font-family:'Sora',sans-serif;font-weight:800;color:var(--text-muted)">P-{{ p.pk|stringformat:"04d" }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
@@ -193,8 +196,11 @@ body.page-patients-bg .ctable tbody tr:hover td { background: rgba(255,255,255,.
           <td>
             <div class="d-flex gap-1">
               <a href="{% url 'patients:detail' p.pk %}" class="act-btn" title="Voir"><i class="bi bi-eye"></i></a>
+              {# Fiches patient : réservées à la réception, l'admin est en lecture seule #}
+              {% if is_receptionniste %}
               <a href="{% url 'patients:modifier' p.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
               <a href="{% url 'patients:supprimer' p.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
+              {% endif %}
             </div>
           </td>
         </tr>

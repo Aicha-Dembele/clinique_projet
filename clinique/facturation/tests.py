@@ -19,6 +19,81 @@ def creer_patient(**kw):
     return Patient.objects.create(**defaults)
 
 
+class CarteTestValidationTests(TestCase):
+    """Validation des cartes de test du simulateur de paiement (mode test)."""
+
+    def test_carte_4242_acceptee(self):
+        from facturation.views import _valider_carte_test
+        self.assertIsNone(_valider_carte_test('4242424242424242', '12/29', '123'))
+
+    def test_carte_refus_banque(self):
+        from facturation.views import _valider_carte_test
+        self.assertIn('refusée', _valider_carte_test('4000000000000002', '12/29', '123'))
+
+    def test_carte_inconnue(self):
+        from facturation.views import _valider_carte_test
+        self.assertIn('non reconnu', _valider_carte_test('1111222233334444', '12/29', '123'))
+
+    def test_carte_expiree(self):
+        from facturation.views import _valider_carte_test
+        self.assertIn('expirée', _valider_carte_test('4242424242424242', '01/20', '123'))
+
+    def test_cvc_invalide(self):
+        from facturation.views import _valider_carte_test
+        self.assertIn('CVC', _valider_carte_test('4242424242424242', '12/29', 'ab'))
+
+    def test_format_expiration_invalide(self):
+        from facturation.views import _valider_carte_test
+        self.assertIn('expiration', _valider_carte_test('4242424242424242', '2029', '123'))
+
+
+class PaiementCarteSimulationFluxTests(TestCase):
+    """Parcours complet du paiement par carte simulé (sans clé Stripe) :
+    choix du mode carte → page de paiement locale → enregistrement du Paiement."""
+
+    def setUp(self):
+        self.client.force_login(
+            User.objects.create_superuser('admin_test', 'a@test.ml', 'x'))
+        self.facture = Facture.objects.create(patient=creer_patient())
+        # generer_lignes() remet montant_total à 0 sans lignes : on force la valeur.
+        Facture.objects.filter(pk=self.facture.pk).update(
+            montant_total=Decimal('5000'), statut='non payé')
+        self.facture.refresh_from_db()
+
+    @override_settings(STRIPE_SECRET_KEY='')
+    def test_mode_carte_affiche_la_page_puis_enregistre_le_paiement(self):
+        r = self.client.post('/facturation/paiements/ajouter/', {
+            'facture': self.facture.pk, 'montant': '5000',
+            'mode_paiement': 'carte', 'note': 'Essai',
+        })
+        self.assertRedirects(r, '/facturation/paiements/carte/simulation/')
+
+        r = self.client.get('/facturation/paiements/carte/simulation/')
+        self.assertContains(r, '4242')          # la procédure de paiement s'affiche
+
+        self.client.post('/facturation/paiements/carte/simulation/', {
+            'numero': '4242 4242 4242 4242', 'titulaire': 'TEST',
+            'expiration': '12/29', 'cvc': '123',
+        })
+        p = Paiement.objects.get(facture=self.facture)
+        self.assertEqual(p.mode_paiement, 'carte')
+        self.assertEqual(p.montant, Decimal('5000'))
+        self.facture.refresh_from_db()
+        self.assertEqual(self.facture.statut, 'payé')
+
+    @override_settings(STRIPE_SECRET_KEY='')
+    def test_carte_refusee_ne_cree_pas_de_paiement(self):
+        self.client.post('/facturation/paiements/ajouter/', {
+            'facture': self.facture.pk, 'montant': '5000', 'mode_paiement': 'carte',
+        })
+        r = self.client.post('/facturation/paiements/carte/simulation/', {
+            'numero': '4000 0000 0000 0002', 'titulaire': 'TEST',
+            'expiration': '12/29', 'cvc': '123',
+        })
+        self.assertContains(r, 'refusée')
+        self.assertFalse(Paiement.objects.exists())
+
+
 class RepartitionAssuranceTests(TestCase):
     """part_assurance / part_patient sont des calculs purs sur montant_total + taux."""
 

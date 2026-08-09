@@ -55,7 +55,7 @@
 <div class="row g-3 mb-4">
   <div class="col-12 col-md-4">
     <div class="stat-h">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-stethoscope"></i></div>
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-clipboard2-pulse-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Tarifs consultation</div>
         <div class="stat-h-val">{{ nb_consultation }}</div>
@@ -65,7 +65,7 @@
   </div>
   <div class="col-12 col-md-4">
     <div class="stat-h" style="animation-delay:.06s">
-      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-flask-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-eyedropper"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Tarifs examen</div>
         <div class="stat-h-val">{{ nb_examen }}</div>
@@ -88,8 +88,8 @@
 <!-- ── FILTRES PAR TYPE ── -->
 <div class="tabs-nav" id="tarifTabs" style="margin-bottom:.75rem">
   <a class="tab-link active" data-filter="all"><i class="bi bi-grid"></i> Tous</a>
-  <a class="tab-link" data-filter="consultation"><i class="bi bi-stethoscope"></i> Consultation</a>
-  <a class="tab-link" data-filter="examen"><i class="bi bi-flask"></i> Examen</a>
+  <a class="tab-link" data-filter="consultation"><i class="bi bi-clipboard2-pulse-fill"></i> Consultation</a>
+  <a class="tab-link" data-filter="examen"><i class="bi bi-eyedropper"></i> Examen</a>
   <a class="tab-link" data-filter="hospitalisation"><i class="bi bi-hospital"></i> Hospitalisation</a>
 </div>
 
@@ -127,9 +127,9 @@
           <td style="font-weight:700">{{ t.nom }}</td>
           <td>
             {% if t.type_service == 'consultation' %}
-              <span class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;border:1px solid rgba(0,136,170,.2)"><i class="bi bi-stethoscope"></i> Consultation</span>
+              <span class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;border:1px solid rgba(0,136,170,.2)"><i class="bi bi-clipboard2-pulse-fill"></i> Consultation</span>
             {% elif t.type_service == 'examen' %}
-              <span class="pill" style="background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.2)"><i class="bi bi-flask"></i> Examen</span>
+              <span class="pill" style="background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.2)"><i class="bi bi-eyedropper"></i> Examen</span>
             {% elif t.type_service == 'hospitalisation' %}
               <span class="pill" style="background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.2)"><i class="bi bi-hospital"></i> Hospitalisation</span>
             {% endif %}

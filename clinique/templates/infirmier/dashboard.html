@@ -8,23 +8,19 @@
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 
 {% block extra_css %}<style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: .85rem 1rem; display: flex; align-items: center; gap: .8rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
 .stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
-.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-ico { width: 44px; height: 44px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15rem; }
 .stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
-.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
-.stat-h:hover .spark-bar { opacity: .85; }
-.chart-wrap-mini { position: relative; height: 200px; }
+.stat-h-lbl { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.55rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .2rem; display: inline-flex; align-items: center; gap: .2rem; }
 .chamber-badge { width:38px;height:38px;border-radius:.5rem;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0; background:rgba(245,158,11,.12); color:#f59e0b; }
 </style>{% endblock %}
 
 {% block content %}
 <div class="row g-3 mb-4">
-  <div class="col-6 col-xl-3">
+  <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.04s">
       <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hospital-fill"></i></div>
       <div class="stat-h-info">
@@ -32,90 +28,42 @@
         <div class="stat-h-val">{{ total_hospitalises|default:0 }}</div>
         <div class="stat-h-trend text-muted">Sous surveillance</div>
       </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:40%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:75%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:85%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:70%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
-      </div>
     </div>
   </div>
-  <div class="col-6 col-xl-3">
+  <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.12s">
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-bandaid-fill"></i></div>
       <div class="stat-h-info">
-        <div class="stat-h-lbl">Soins à effectuer</div>
-        <div class="stat-h-val">{{ soins_count|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#ef4444"><i class="bi bi-clock-fill"></i> {{ soins_urgents|default:0 }} urgents</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#10b981"></div>
-        <div class="spark-bar" style="height:50%;background:#10b981"></div>
-        <div class="spark-bar" style="height:40%;background:#10b981"></div>
-        <div class="spark-bar" style="height:65%;background:#10b981"></div>
-        <div class="spark-bar" style="height:55%;background:#10b981"></div>
-        <div class="spark-bar" style="height:75%;background:#10b981"></div>
-        <div class="spark-bar" style="height:60%;background:#10b981"></div>
-        <div class="spark-bar" style="height:85%;background:#10b981"></div>
-        <div class="spark-bar" style="height:70%;background:#10b981"></div>
-        <div class="spark-bar" style="height:100%;background:#10b981"></div>
+        <div class="stat-h-lbl">Traitements à administrer</div>
+        <div class="stat-h-val">{{ traitements_actifs|default:0 }}</div>
+        <div class="stat-h-trend" style="color:var(--primary)">Prescrits / en cours</div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-xl-3">
+  <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.20s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-capsule"></i></div>
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-check2-circle"></i></div>
       <div class="stat-h-info">
-        <div class="stat-h-lbl">Médicaments à distribuer</div>
-        <div class="stat-h-val">{{ medicaments_count|default:0 }}</div>
-        <div class="stat-h-trend text-muted">Ce matin</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:85%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
+        <div class="stat-h-lbl">Traitements terminés</div>
+        <div class="stat-h-val">{{ traitements_termines|default:0 }}</div>
+        <div class="stat-h-trend text-muted">Clôturés</div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-xl-3">
+  <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.28s">
       <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-exclamation-circle-fill"></i></div>
       <div class="stat-h-info">
-        <div class="stat-h-lbl">Alertes patients</div>
-        <div class="stat-h-val">{{ alertes_count|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#ef4444">À vérifier</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:50%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:40%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:65%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:55%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:75%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:60%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:85%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:70%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:100%;background:#ef4444"></div>
+        <div class="stat-h-lbl">Séjours &gt; 5 jours</div>
+        <div class="stat-h-val">{{ sejours_longs|default:0 }}</div>
+        <div class="stat-h-trend" style="color:#ef4444">Durée à surveiller</div>
       </div>
     </div>
   </div>
 </div>
 
 <div class="row mb-4 g-3">
-  <div class="col-12 col-xl-8">
+  <div class="col-12">
     <div class="panel">
       <div class="panel-hdr">
         <div class="panel-title"><i class="bi bi-hospital" style="color:#f59e0b"></i> Patients hospitalisés — Suivi infirmier</div>
@@ -153,16 +101,6 @@
       </div>
     </div>
   </div>
-  <div class="col-12 col-xl-4">
-    <div class="panel">
-      <div class="panel-hdr">
-        <div class="panel-title"><i class="bi bi-bar-chart-fill" style="color:var(--primary)"></i> Activité hebdomadaire</div>
-      </div>
-      <div class="panel-body">
-        <div class="chart-wrap-mini"><canvas id="weekChart"></canvas></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <div class="panel">
@@ -174,20 +112,20 @@
       <thead>
         <tr>
           <th>Patient</th>
-          <th>Médicament</th>
-          <th>Posologie</th>
-          <th>Heure</th>
-          <th>Administré</th>
+          <th>Traitement</th>
+          <th>Durée</th>
+          <th>Prescrit le</th>
+          <th>Statut</th>
         </tr>
       </thead>
       <tbody>
         {% for t in traitements %}
         <tr>
-          <td><div style="font-weight:700">{{ t.dossier_medical.patient }}</div></td>
-          <td>{{ t.medicament }}</td>
-          <td>{{ t.posologie }}</td>
-          <td>{{ t.debut_traitement|date:"H:i" }}</td>
-          <td><input type="checkbox" class="form-check-input" style="width:18px;height:18px;border-color:var(--primary);cursor:pointer"></td>
+          <td><div style="font-weight:700">{{ t.patient }}</div></td>
+          <td>{{ t.description|truncatechars:50 }}</td>
+          <td>{{ t.duree }} j</td>
+          <td>{{ t.date_creation|date:"d/m/Y" }}</td>
+          <td>{% if t.statut == 'termine' %}<span class="pill pill-success">Terminé</span>{% elif t.statut == 'en_cours' %}<span class="pill pill-info">En cours</span>{% else %}<span class="pill pill-warn">Prescrit</span>{% endif %}</td>
         </tr>
         {% empty %}
         <tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)">Aucun traitement planifié</td></tr>
@@ -198,30 +136,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-  const txtMuted = () => isDark() ? '#64748b' : '#94a3b8';
-  const grid = () => isDark() ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  Chart.defaults.font.size = 11;
-  Chart.defaults.color = txtMuted();
-
-  const ctx = document.getElementById('weekChart');
-  if (ctx) {
-    new Chart(ctx, {
-      type: 'bar',
-      data: { labels: ['L','M','M','J','V','S','D'], datasets: [{
-        data: [18, 22, 19, 25, 28, 14, 8],
-        backgroundColor: ctx => { const g = ctx.chart.ctx.createLinearGradient(0,0,0,200); g.addColorStop(0,'#10b981'); g.addColorStop(1,'#14b8a6'); return g; },
-        borderRadius: 6, borderSkipped: false, barThickness: 18,
-      }]},
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend:{display:false}, tooltip:{ backgroundColor: isDark()?'#0f172a':'#fff', titleColor: isDark()?'#e2e8f0':'#0f172a', bodyColor:'#10b981', borderColor:'rgba(16,185,129,.3)', borderWidth:1, padding:10, displayColors:false, cornerRadius:8 } },
-        scales: { x:{grid:{display:false},ticks:{color:txtMuted(),font:{weight:700,size:10}}}, y:{display:false} }
-      }
-    });
-  }
-})();
-</script>{% endblock %}
+{% block extra_js %}{% endblock %}

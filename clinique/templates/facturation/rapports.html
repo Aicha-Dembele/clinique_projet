@@ -49,6 +49,26 @@
   </div>
 </div>
 
+<!-- ── SÉLECTEUR DE PÉRIODE + TOTAL ENCAISSÉ ── -->
+<form method="get" class="panel" style="animation: fadeUp .5s ease both; margin-bottom:1rem;">
+  <div class="panel-body" style="display:flex;flex-wrap:wrap;align-items:center;gap:.9rem">
+    <span style="font-weight:800;color:var(--text-primary);font-size:.92rem;white-space:nowrap"><i class="bi bi-calendar3 me-1" style="color:var(--primary)"></i> Période</span>
+    <select name="mois" onchange="this.form.submit()" class="f-input f-select" style="max-width:230px">
+      <option value="">Toutes périodes</option>
+      {% for opt in mois_options %}
+      <option value="{{ opt.value }}" {% if opt.value == mois_selectionne %}selected{% endif %}>{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+    {% if mois_selectionne %}
+    <a href="{% url 'facturation:rapports' %}" class="btn-c btn-outline-c" style="padding:.45rem .8rem" title="Revenir à toutes les périodes"><i class="bi bi-x-lg"></i> Réinitialiser</a>
+    {% endif %}
+    <div style="margin-left:auto;text-align:right">
+      <div style="font-size:.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em"><i class="bi bi-cash-coin me-1"></i>Total encaissé — <span style="text-transform:capitalize">{{ periode_label }}</span></div>
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.45rem;color:var(--primary);letter-spacing:-.02em">{{ recettes_periode }} <small style="font-size:.7rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
+    </div>
+  </div>
+</form>
+
 <div class="row g-3 mb-4">
   <div class="col-12 col-md-4">
     <div class="stat-h">
@@ -56,7 +76,7 @@
       <div class="stat-h-info">
         <div class="stat-h-lbl">Total factures</div>
         <div class="stat-h-val">{{ total_factures }}</div>
-        <div class="stat-h-trend" style="color:#3b82f6">Toutes périodes</div>
+        <div class="stat-h-trend" style="color:#3b82f6;text-transform:capitalize">{{ periode_label }}</div>
       </div>
     </div>
   </div>
@@ -94,7 +114,7 @@
             <div class="chart-wrap-mini" style="position:relative">
               <canvas id="paymentChart"></canvas>
               <div class="donut-center">
-                <div class="donut-center-val">{% if pct_especes or pct_orange or pct_moov or pct_carte %}100{% else %}0{% endif %}%</div>
+                <div class="donut-center-val">{% if pct_especes or pct_orange or pct_carte %}100{% else %}0{% endif %}%</div>
                 <div class="donut-center-lbl">Total</div>
               </div>
             </div>
@@ -103,7 +123,6 @@
             <div class="donut-legend">
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#0088aa"></div><div class="donut-leg-name">Espèces</div><div class="donut-leg-val">{{ pct_especes|default:0 }}%</div></div>
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#f97316"></div><div class="donut-leg-name">Orange Money</div><div class="donut-leg-val">{{ pct_orange|default:0 }}%</div></div>
-              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#3b82f6"></div><div class="donut-leg-name">Moov Money</div><div class="donut-leg-val">{{ pct_moov|default:0 }}%</div></div>
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#a855f7"></div><div class="donut-leg-name">Carte bancaire</div><div class="donut-leg-val">{{ pct_carte|default:0 }}%</div></div>
             </div>
           </div>
@@ -129,14 +148,47 @@
           <span class="bar-val">{{ pct_orange|default:0 }}%</span>
         </div>
         <div class="bar-row">
-          <span class="bar-name"><i class="bi bi-phone-fill me-1" style="color:#3b82f6"></i> Moov Money</span>
-          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_moov|default:0 }}%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
-          <span class="bar-val">{{ pct_moov|default:0 }}%</span>
-        </div>
-        <div class="bar-row">
           <span class="bar-name"><i class="bi bi-credit-card-fill me-1" style="color:#a855f7"></i> Carte bancaire</span>
           <div class="bar-track"><div class="bar-fill" style="width:{{ pct_carte|default:0 }}%;background:linear-gradient(90deg,#a855f7,#c084fc)"></div></div>
           <span class="bar-val">{{ pct_carte|default:0 }}%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── REVENUS PAR SERVICE ── -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="panel" style="animation: fadeUp .5s .25s ease both;">
+      <div class="panel-hdr">
+        <span class="panel-title"><i class="bi bi-wallet2 me-2" style="color:var(--accent)"></i>Revenus par service</span>
+        <span style="font-size:.74rem;color:var(--text-muted);font-weight:700;text-transform:capitalize">Facturé · {{ periode_label }}</span>
+      </div>
+      <div class="panel-body">
+        <div class="bar-row">
+          <span class="bar-name" style="width:155px"><i class="bi bi-clipboard2-pulse-fill me-1" style="color:#10b981"></i> Consultations</span>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_rev_consultation }}%;background:linear-gradient(90deg,#10b981,#34d399)"></div></div>
+          <span class="bar-val" style="min-width:130px">{{ rev_consultation }} FCFA</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name" style="width:155px"><i class="bi bi-hospital-fill me-1" style="color:#a855f7"></i> Hospitalisations</span>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_rev_hospitalisation }}%;background:linear-gradient(90deg,#a855f7,#c084fc)"></div></div>
+          <span class="bar-val" style="min-width:130px">{{ rev_hospitalisation }} FCFA</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name" style="width:155px"><i class="bi bi-clipboard2-data-fill me-1" style="color:#3b82f6"></i> Examens médicaux</span>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_rev_examen }}%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+          <span class="bar-val" style="min-width:130px">{{ rev_examen }} FCFA</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name" style="width:155px"><i class="bi bi-capsule me-1" style="color:#f59e0b"></i> Pharmacie</span>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_rev_pharmacie }}%;background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div>
+          <span class="bar-val" style="min-width:130px">{{ rev_pharmacie }} FCFA</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.9rem;padding-top:.85rem;border-top:1px dashed var(--card-border)">
+          <span style="font-weight:800;color:var(--text-primary);font-size:.92rem"><i class="bi bi-cash-coin me-1" style="color:var(--primary)"></i> Revenu global</span>
+          <span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.15rem;color:var(--primary)">{{ rev_global }} FCFA</span>
         </div>
       </div>
     </div>
@@ -153,17 +205,17 @@
 <script>
 (function(){
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const data = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_moov|default:0 }}, {{ pct_carte|default:0 }}];
+  const data = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_carte|default:0 }}];
   const total = data.reduce((a,b) => a+b, 0);
   const ctx = document.getElementById('paymentChart');
   if (ctx) {
     new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Espèces','Orange Money','Moov Money','Carte'],
+        labels: ['Espèces','Orange Money','Carte'],
         datasets: [{
-          data: total > 0 ? data : [1,1,1,1],
-          backgroundColor: ['#0088aa','#f97316','#3b82f6','#a855f7'],
+          data: total > 0 ? data : [1,1,1],
+          backgroundColor: ['#0088aa','#f97316','#a855f7'],
           borderWidth: 0,
           hoverOffset: 8
         }]

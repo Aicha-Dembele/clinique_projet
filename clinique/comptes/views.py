@@ -15,6 +15,8 @@ from personnel.models import Medecin, Infirmier, Laborantin, Receptionniste, Pha
 
 # Durée de session quand « Se souvenir de moi » est coché (30 jours).
 REMEMBER_ME_AGE = 60 * 60 * 24 * 30
+# Cookie qui mémorise le nom d'utilisateur pour le pré-remplir au prochain login.
+REMEMBER_COOKIE = 'nevroglie_remembered_user'
 
 
 class ConnexionView(auth_views.LoginView):
@@ -22,14 +24,23 @@ class ConnexionView(auth_views.LoginView):
     template_name = 'login.html'
     redirect_authenticated_user = True
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Nom d'utilisateur mémorisé lors d'une précédente connexion « Se souvenir de moi ».
+        context['remembered_username'] = self.request.COOKIES.get(REMEMBER_COOKIE, '')
+        return context
+
     def form_valid(self, form):
         response = super().form_valid(form)
         if self.request.POST.get('remember'):
-            # Session conservée 30 jours, même après fermeture du navigateur.
-            self.request.session.set_expiry(REMEMBER_ME_AGE)
+            # Mémorise le nom d'utilisateur (jamais le mot de passe) pour le
+            # pré-remplir la prochaine fois que la page de connexion s'affiche.
+            response.set_cookie(
+                REMEMBER_COOKIE, form.get_user().get_username(),
+                max_age=REMEMBER_ME_AGE, samesite='Lax', httponly=True)
         else:
-            # Session expirée à la fermeture du navigateur.
-            self.request.session.set_expiry(0)
+            # L'utilisateur ne veut plus être mémorisé : on efface le cookie.
+            response.delete_cookie(REMEMBER_COOKIE)
         return response
 
 
@@ -125,6 +136,14 @@ def utilisateur_modifier(request, pk):
     user = profil.user
     roles = Role.objects.all()
     if request.method == 'POST':
+        # Nom d'utilisateur : modifiable, mais doit rester unique et non vide
+        nouveau_username = request.POST.get('username', '').strip()
+        if nouveau_username and nouveau_username != user.username:
+            if User.objects.filter(username=nouveau_username).exclude(pk=user.pk).exists():
+                messages.error(request, "Ce nom d'utilisateur existe déjà.")
+                return redirect('comptes:utilisateur_modifier', pk=profil.pk)
+            user.username = nouveau_username
+
         user.first_name = request.POST.get('first_name', '').strip()
         user.last_name = request.POST.get('last_name', '').strip()
         user.email = request.POST.get('email', '').strip()

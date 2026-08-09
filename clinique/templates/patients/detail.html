@@ -9,8 +9,12 @@
   <li class="breadcrumb-item active">{{ patient.nom }} {{ patient.prenom }}</li>
 {% endblock %}
 {% block page_actions %}
+  {% if is_receptionniste %}
   <a href="{% url 'patients:modifier' patient.pk %}" class="btn-c btn-outline-c"><i class="bi bi-pencil"></i> Modifier</a>
+  {% endif %}
+  {% if is_admin or is_receptionniste %}
   <a href="{% url 'consultation:rdv_ajouter' %}?patient={{ patient.pk }}" class="btn-c btn-primary-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
+  {% endif %}
 {% endblock %}
 
 {% block extra_css %}<style>
@@ -108,8 +112,11 @@ body.page-patients-bg .hero-meta-item { color: #033a50 !important; }
   <div class="tabs-wrap">
     <button class="tab-btn" :class="{ 'active': tab === 'rdv' }" @click="tab = 'rdv'"><i class="bi bi-calendar-check"></i> Rendez-vous <span class="tab-count">{{ rdvs|length }}</span></button>
     <button class="tab-btn" :class="{ 'active': tab === 'cons' }" @click="tab = 'cons'"><i class="bi bi-clipboard2-pulse"></i> Consultations <span class="tab-count">{{ consultations|length }}</span></button>
-    <button class="tab-btn" :class="{ 'active': tab === 'exam' }" @click="tab = 'exam'"><i class="bi bi-flask"></i> Examens <span class="tab-count">{{ examens|length }}</span></button>
+    <button class="tab-btn" :class="{ 'active': tab === 'exam' }" @click="tab = 'exam'"><i class="bi bi-eyedropper"></i> Examens <span class="tab-count">{{ examens|length }}</span></button>
+    <button class="tab-btn" :class="{ 'active': tab === 'hosp' }" @click="tab = 'hosp'"><i class="bi bi-hospital"></i> Hospitalisations <span class="tab-count">{{ hospitalisations|length }}</span></button>
+    {% if not is_medecin %}
     <button class="tab-btn" :class="{ 'active': tab === 'fact' }" @click="tab = 'fact'"><i class="bi bi-receipt"></i> Factures <span class="tab-count">{{ factures|length }}</span></button>
+    {% endif %}
     <button class="tab-btn" :class="{ 'active': tab === 'doss' }" @click="tab = 'doss'"><i class="bi bi-folder2-open"></i> Dossier médical</button>
   </div>
 
@@ -129,7 +136,7 @@ body.page-patients-bg .hero-meta-item { color: #033a50 !important; }
               {% elif rdv.statut == 'annule' %}<span class="pill pill-danger"><i class="bi bi-x-circle-fill"></i> Annulé</span>
               {% else %}<span class="pill pill-info"><i class="bi bi-calendar-event"></i> Programmé</span>{% endif %}
             </td>
-            <td><a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a></td>
+            <td>{% if is_admin or is_receptionniste %}<a href="{% url 'consultation:rdv_modifier' rdv.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>{% else %}—{% endif %}</td>
           </tr>
           {% empty %}
           <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-calendar-x" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun rendez-vous</td></tr>
@@ -163,7 +170,7 @@ body.page-patients-bg .hero-meta-item { color: #033a50 !important; }
 
   <!-- Examens -->
   <div x-show="tab === 'exam'" x-transition class="panel" style="display:none">
-    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-flask me-2" style="color:#a855f7"></i>Examens médicaux</span></div>
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-eyedropper me-2" style="color:#a855f7"></i>Examens médicaux</span></div>
     <div class="panel-body p-0">
       <table class="ctable">
         <thead><tr><th>Type</th><th>Statut</th><th>Résultat</th></tr></thead>
@@ -179,14 +186,42 @@ body.page-patients-bg .hero-meta-item { color: #033a50 !important; }
             <td>{{ ex.resultat|default:'—'|truncatechars:60 }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="3" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-flask" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun examen</td></tr>
+          <tr><td colspan="3" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-eyedropper" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucun examen</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Factures -->
+  <!-- Hospitalisations -->
+  <div x-show="tab === 'hosp'" x-transition class="panel" style="display:none">
+    <div class="panel-hdr"><span class="panel-title"><i class="bi bi-hospital me-2" style="color:#2563eb"></i>Séjours hospitaliers</span></div>
+    <div class="panel-body p-0">
+      <table class="ctable">
+        <thead><tr><th>Chambre</th><th>Médecin</th><th>Entrée</th><th>Sortie</th><th>État</th></tr></thead>
+        <tbody>
+          {% for h in hospitalisations %}
+          <tr>
+            <td><strong>{{ h.numero_chambre }}</strong> <small style="color:var(--text-muted)">{{ h.type_chambre|capfirst }}</small></td>
+            <td>Dr. {{ h.medecin.nom }}</td>
+            <td>{{ h.date_entree|date:"d/m/Y" }}</td>
+            <td>{{ h.date_sortie_prevue|date:"d/m/Y"|default:"—" }}</td>
+            <td>
+              {% if h.etat.code == 'critique' %}<span class="pill pill-danger"><i class="bi bi-exclamation-triangle-fill"></i> {{ h.etat.label }}</span>
+              {% elif h.etat.code == 'stable' %}<span class="pill pill-success"><i class="bi bi-heart-pulse-fill"></i> {{ h.etat.label }}</span>
+              {% else %}<span class="pill pill-info"><i class="bi bi-box-arrow-right"></i> {{ h.etat.label }}</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)"><i class="bi bi-hospital" style="font-size:2rem;display:block;margin-bottom:.5rem;opacity:.4"></i>Aucune hospitalisation</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Factures — jamais pour le médecin -->
+  {% if not is_medecin %}
   <div x-show="tab === 'fact'" x-transition class="panel" style="display:none">
     <div class="panel-hdr"><span class="panel-title"><i class="bi bi-receipt-cutoff me-2" style="color:var(--primary)"></i>Factures récentes</span></div>
     <div class="panel-body p-0">
@@ -210,6 +245,7 @@ body.page-patients-bg .hero-meta-item { color: #033a50 !important; }
       </table>
     </div>
   </div>
+  {% endif %}
 
   <!-- Dossier médical -->
   <div x-show="tab === 'doss'" x-transition class="panel" style="display:none">

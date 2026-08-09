@@ -7,29 +7,29 @@
 {% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 {% block page_actions %}
+
+{% if is_receptionniste %}
 <a href="{% url 'patients:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
+{% endif %}
 <a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: .85rem 1rem; display: flex; align-items: center; gap: .8rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; position: relative; overflow: hidden; }
 .stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(16,185,129,.25); }
-.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-ico { width: 44px; height: 44px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15rem; }
 .stat-h-info { flex: 1; min-width: 0; }
-.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
-.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; display: inline-flex; align-items: center; gap: .2rem; }
-.stat-h-spark { width: 64px; height: 32px; flex-shrink: 0; display: flex; align-items: flex-end; gap: 3px; }
-.spark-bar { flex: 1; border-radius: 2px 2px 0 0; transition: opacity .2s; }
-.stat-h:hover .spark-bar { opacity: .85; }
+.stat-h-lbl { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Outfit', system-ui, sans-serif; font-size: 1.55rem; font-weight: 700; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .2rem; display: inline-flex; align-items: center; gap: .2rem; }
 .av-c { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; flex-shrink: 0; letter-spacing: .02em; }
 .av-c-1 { background: linear-gradient(135deg,#10b981,#14b8a6); }
 .av-c-2 { background: linear-gradient(135deg,#3b82f6,#06b6d4); }
 .av-c-3 { background: linear-gradient(135deg,#f59e0b,#ef4444); }
 .av-c-4 { background: linear-gradient(135deg,#8b5cf6,#ec4899); }
 .av-c-5 { background: linear-gradient(135deg,#14b8a6,#0ea5e9); }
-.av-c-6 { background: linear-gradient(135deg,#ef4444,#f59e0b); }
+.av-c-6 { background: linear-gradient(135deg,#7744ef,#f59e0b); }
 .rdv-row { display: flex; align-items: center; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid var(--card-border-2); }
 .rdv-row:last-child { border-bottom: none; }
 .rdv-row-info { flex: 1; min-width: 0; }
@@ -43,23 +43,11 @@
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(239,68,68,.12)"><i class="bi bi-calendar3" style="color:#ef4444"></i></div>
+      <div class="stat-h-ico" style="background:rgba(16, 185, 129,.12)"><i class="bi bi-calendar3" style="color:#51e691"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">RDV du jour</div>
         <div class="stat-h-val">{{ rdv_count|default:0 }}</div>
         <div class="stat-h-trend text-muted">{{ rdv_restants|default:0 }} restants</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:50%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:40%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:65%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:55%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:75%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:60%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:85%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:70%;background:#ef4444"></div>
-        <div class="spark-bar" style="height:100%;background:#ef4444"></div>
       </div>
     </div>
   </div>
@@ -71,39 +59,15 @@
         <div class="stat-h-val">{{ nouveaux_patients|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--primary)">Aujourd'hui</div>
       </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#10b981"></div>
-        <div class="spark-bar" style="height:50%;background:#10b981"></div>
-        <div class="spark-bar" style="height:40%;background:#10b981"></div>
-        <div class="spark-bar" style="height:65%;background:#10b981"></div>
-        <div class="spark-bar" style="height:55%;background:#10b981"></div>
-        <div class="spark-bar" style="height:75%;background:#10b981"></div>
-        <div class="spark-bar" style="height:60%;background:#10b981"></div>
-        <div class="spark-bar" style="height:85%;background:#10b981"></div>
-        <div class="spark-bar" style="height:70%;background:#10b981"></div>
-        <div class="spark-bar" style="height:100%;background:#10b981"></div>
-      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.20s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12)"><i class="bi bi-clock-history" style="color:#f59e0b"></i></div>
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12)"><i class="bi bi-check-circle-fill" style="color:#10b981"></i></div>
       <div class="stat-h-info">
-        <div class="stat-h-lbl">En salle d'attente</div>
-        <div class="stat-h-val">{{ en_attente_salle|default:0 }}</div>
-        <div class="stat-h-trend" style="color:#f59e0b">Maintenant</div>
-      </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:50%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:40%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:65%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:55%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:75%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:60%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:85%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:70%;background:#f59e0b"></div>
-        <div class="spark-bar" style="height:100%;background:#f59e0b"></div>
+        <div class="stat-h-lbl">RDV honorés</div>
+        <div class="stat-h-val">{{ rdv_honores|default:0 }}</div>
+        <div class="stat-h-trend" style="color:#10b981">Aujourd'hui</div>
       </div>
     </div>
   </div>
@@ -115,18 +79,6 @@
         <div class="stat-h-val">{{ rdv_annules|default:0 }}</div>
         <div class="stat-h-trend text-muted">Aujourd'hui</div>
       </div>
-      <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:50%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:40%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:65%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:55%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:75%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:60%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:85%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:70%;background:#14b8a6"></div>
-        <div class="spark-bar" style="height:100%;background:#14b8a6"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -135,7 +87,7 @@
   <div class="col-12 col-xl-7">
     <div class="panel h-100">
       <div class="panel-hdr">
-        <div class="panel-title"><i class="bi bi-calendar3" style="color:#ef4444"></i> Planning du jour</div>
+        <div class="panel-title"><i class="bi bi-calendar3" style="color:#14de40"></i> Planning du jour</div>
         <a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-sm-c btn-primary-c"><i class="bi bi-plus-lg"></i> Ajouter</a>
       </div>
       <div class="panel-body">
@@ -164,6 +116,7 @@
       </div>
     </div>
   </div>
+  {% if is_receptionniste %}
   <div class="col-12 col-xl-5">
     <div class="panel h-100">
       <div class="panel-hdr">
@@ -199,6 +152,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
 {% endblock %}
 

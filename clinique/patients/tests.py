@@ -25,10 +25,10 @@ class MedecinVoitSesPatientsTests(TestCase):
 
         self.med_a = Medecin.objects.create(
             nom='Alpha', prenom='A', telephone='1', service='Cardio',
-            specialite='Cardiologie', role='medecin', mot_de_passe='x')
+            specialite='Cardiologie', role='medecin')
         self.med_b = Medecin.objects.create(
             nom='Beta', prenom='B', telephone='2', service='Derma',
-            specialite='Dermatologie', role='medecin', mot_de_passe='x')
+            specialite='Dermatologie', role='medecin')
 
         self.user_a = User.objects.create_user('doca', password='x')
         Profil.objects.create(user=self.user_a, role=role, medecin=self.med_a)

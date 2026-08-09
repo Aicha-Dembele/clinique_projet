@@ -7,7 +7,9 @@
 {% block page_heading %}Examens médicaux{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Examens médicaux</li>{% endblock %}
 {% block page_actions %}
+{% if 'examen.demander' in user_permissions %}
 <a href="{% url 'consultation:examen_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-circle"></i> Nouvel examen</a>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}<style>
@@ -142,7 +144,7 @@
   <div class="hero-banner-overlay"></div>
   <div class="hero-banner-content">
     <div style="background:rgba(110, 109, 112, 0.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
-      <i class="bi bi-flask-fill" style="font-size:1.6rem;color:#fff"></i>
+      <i class="bi bi-eyedropper" style="font-size:1.6rem;color:#fff"></i>
     </div>
     <div>
       <div class="hero-title">Liste des examens médicaux</div>
@@ -156,7 +158,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
       <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-clipboard2-pulse-fill"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Total</div>
         <div class="stat-h-val">{{ examens|length }}</div>
         <div class="stat-h-trend" style="color:#0088aa">Consultations</div>
@@ -178,7 +180,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.08s">
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-calendar-check-fill"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Cette semaine</div>
         <div class="stat-h-val">{{ examens_termines|default:0 }}</div>
         <div class="stat-h-trend" style="color:#10b981">Activité récente</div>
@@ -200,7 +202,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.12s">
       <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-hourglass-split"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">En cours</div>
         <div class="stat-h-val">{{ examens_encours|default:0 }}</div>
         <div class="stat-h-trend" style="color:#f59e0b">En attente de résultat</div>
@@ -222,7 +224,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.16s">
       <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-person-lines-fill"></i></div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Patients distincts</div>
         <div class="stat-h-val">{{ examens|length }}</div>
         <div class="stat-h-trend" style="color:#f59e0b">Suivis actifs</div>
@@ -284,7 +286,7 @@
       </thead>
       <tbody>
         {% for e in examens %}
-        <tr>
+        <tr{% if e.pk == new_pk %} class="row-new"{% endif %}>
           <td><span class="con-num">EXM-{{ e.pk|stringformat:"04d" }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-2">
@@ -320,11 +322,17 @@
             <div class="d-flex gap-1">
               {% if e.resultats.all %}
               <a href="{% url 'consultation:resultats' %}?examen={{ e.pk }}" class="act-btn" title="Voir le résultat"><i class="bi bi-eye"></i></a>
-              {% else %}
+              {% elif is_admin or is_laborantin %}
               <a href="{% url 'consultation:resultat_ajouter' %}?examen={{ e.pk }}" class="act-btn" title="Saisir le résultat" style="border-color:rgba(16,185,129,.4);color:#10b981"><i class="bi bi-clipboard2-plus"></i></a>
               {% endif %}
+              {% if is_admin or is_medecin %}
               <a href="{% url 'consultation:examen_modifier' e.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
+              {% elif is_laborantin %}
+              <a href="{% url 'consultation:examen_detail' e.pk %}" class="act-btn" title="Voir l'examen à réaliser"><i class="bi bi-file-earmark-medical"></i></a>
+              {% endif %}
+              {% if is_admin %}
               <a href="{% url 'consultation:examen_supprimer' e.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash-fill"></i></a>
+              {% endif %}
             </div>
           </td>
         </tr>

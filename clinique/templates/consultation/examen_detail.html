@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block body_class %}page-examen-bg{% endblock %}
+
+{% block title %}Examen médical{% endblock %}
+{% block nav_examens %}active{% endblock %}
+{% block page_title %}Examens médicaux{% endblock %}
+{% block page_heading %}Détail de l'examen{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:examens' %}">Examens médicaux</a></li>
+  <li class="breadcrumb-item active">Détail</li>
+{% endblock %}
+
+{% block page_actions %}
+  {% if examen.resultats.all %}
+  <a href="{% url 'consultation:resultats' %}?examen={{ examen.pk }}" class="btn-c btn-primary-c"><i class="bi bi-eye"></i> Voir le résultat</a>
+  {% elif is_admin or is_laborantin %}
+  <a href="{% url 'consultation:resultat_ajouter' %}?examen={{ examen.pk }}" class="btn-c btn-primary-c"><i class="bi bi-clipboard2-plus"></i> Saisir le résultat</a>
+  {% endif %}
+  <a href="{% url 'consultation:examens' %}" class="btn-c btn-outline-c"><i class="bi bi-arrow-left"></i> Retour</a>
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-hdr">
+    <span class="panel-title"><i class="bi bi-file-earmark-medical me-2" style="color:var(--accent)"></i>Examen à réaliser</span>
+    {% if examen.resultats.all %}
+      <span class="pill pill-success"><i class="bi bi-check-circle-fill me-1"></i>Terminé</span>
+    {% else %}
+      <span class="pill pill-warning"><i class="bi bi-hourglass-split me-1"></i>En cours</span>
+    {% endif %}
+  </div>
+  <div class="panel-body">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Référence</div>
+        <div style="font-weight:800;margin-top:.2rem">EXM-{{ examen.pk|stringformat:"04d" }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Patient</div>
+        <div style="font-weight:800;margin-top:.2rem">{{ examen.consultation.rendez_vous.patient.nom }} {{ examen.consultation.rendez_vous.patient.prenom }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Type d'examen</div>
+        <div style="font-weight:800;margin-top:.2rem">{{ examen.type_examen|default:"—" }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Date prévue</div>
+        <div style="font-weight:800;margin-top:.2rem">{{ examen.date|date:"d/m/Y"|default:"—" }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Médecin prescripteur</div>
+        <div style="font-weight:800;margin-top:.2rem">Dr. {{ examen.consultation.rendez_vous.medecin.nom|default:"—" }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Laborantin assigné</div>
+        <div style="font-weight:800;margin-top:.2rem">{{ examen.laborantin|default:"—" }}</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--card-border);padding-top:1rem;margin-top:1.25rem">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem"><i class="bi bi-chat-left-text me-1"></i>Motif / consigne du médecin</div>
+      <div style="font-size:.9rem;color:var(--text-secondary)">{{ examen.motif|default:"Aucune consigne particulière." }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
