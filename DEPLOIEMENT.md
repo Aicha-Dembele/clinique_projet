@@ -2,7 +2,28 @@
 
 Guide pas à pas pour mettre en ligne la Clinique Nevroglie **sans perdre aucune donnée**.
 
-Remplace partout `TONUSER` par ton nom d'utilisateur PythonAnywhere.
+Compte PythonAnywhere : **GGROUPE3** (nom en majuscules, domaine en minuscules) — site final : https://ggroupe3.pythonanywhere.com
+
+> ## ✅ Déploiement réalisé le 9 août 2026
+>
+> Le site est en ligne : **https://ggroupe3.pythonanywhere.com**
+>
+> Contrôle d'intégrité après transfert — base identique à l'octet près
+> (753 664 octets), et `migrate` a répondu « No migrations to apply » :
+>
+> | Table | PC | Serveur |
+> |---|---|---|
+> | Comptes utilisateurs | 12 | 12 |
+> | Patients | 4 | 4 |
+> | Consultations | 2 | 2 |
+> | Factures | 5 | 5 |
+> | Médicaments | 41 | 41 |
+>
+> `python manage.py check --deploy` : **0 problème, 0 avertissement.**
+>
+> ⚠️ **À faire avant la soutenance** : onglet *Web* → bouton
+> **« Run until 1 month from today] »**. Sans ce clic, le site est
+> désactivé le **9 septembre 2026**.
 
 ---
 
@@ -12,7 +33,7 @@ Remplace partout `TONUSER` par ton nom d'utilisateur PythonAnywhere.
 |---|---|
 | Base de données | On garde **SQLite** (le fichier `db.sqlite3` est copié tel quel → 0 perte). MySQL n'est plus dans l'offre gratuite depuis janvier 2026. |
 | Python | Choisir **3.13** (Django 6.0.5 exige 3.12 minimum). |
-| Adresse du site | `https://TONUSER.pythonanywhere.com` — HTTPS gratuit inclus. |
+| Adresse du site | `https://ggroupe3.pythonanywhere.com` — HTTPS gratuit inclus. |
 | Expiration | L'app gratuite **expire après 1 mois** sans activité. Un bouton « Run until… » sur l'onglet *Web* la réactive. **À cliquer la veille de la soutenance.** |
 | Emails | L'offre gratuite bloque le SMTP, **sauf Gmail** — la réinitialisation de mot de passe devrait donc marcher, mais peut être capricieuse. |
 | Stripe | Les appels vers `api.stripe.com` peuvent être bloqués par le pare-feu gratuit. À tester ; si bloqué, demander l'ajout à la liste blanche sur le forum PythonAnywhere. |
@@ -81,28 +102,45 @@ Onglet **Web** → **Add a new web app** → **Manual configuration** (surtout *
 Section *Virtualenv*, saisir :
 
 ```
-/home/TONUSER/.virtualenvs/clinique-venv
+/home/GGROUPE3/.virtualenvs/clinique-venv
 ```
 
 ### 5b. Fichier WSGI
 
-Section *Code* → cliquer sur le lien `/var/www/TONUSER_pythonanywhere_com_wsgi.py`.
-**Effacer tout** le contenu et le remplacer par :
+**Méthode utilisée** (plus fiable que l'éditeur web) : le fichier est versionné
+dans le dépôt sous `deploy/wsgi_pythonanywhere.py`, puis copié en place depuis
+la console Bash :
+
+```bash
+cd ~/clinique_projet && git pull
+python -c "from django.core.management.utils import get_random_secret_key as g; open('/home/GGROUPE3/.django_secret_key','w').write(g())"
+chmod 600 ~/.django_secret_key
+cp deploy/wsgi_pythonanywhere.py /var/www/ggroupe3_pythonanywhere_com_wsgi.py
+```
+
+La clé secrète est générée **sur le serveur** et stockée dans
+`~/.django_secret_key` (hors dépôt, permissions 600) ; le fichier WSGI la lit
+au démarrage. Elle n'a donc jamais transité par GitHub.
+
+Pour mémoire, voici son contenu (équivalent à l'édition manuelle via
+*Code* → `/var/www/ggroupe3_pythonanywhere_com_wsgi.py`) :
 
 ```python
 import os
 import sys
 
-# Dossier qui contient manage.py
-path = '/home/TONUSER/clinique_projet/clinique'
+# Dossier qui contient manage.py.
+# expanduser('~') = /home/GGROUPE3 (nom en MAJUSCULES, contrairement
+# au domaine qui est en minuscules) — evite toute erreur de casse.
+path = os.path.expanduser('~/clinique_projet/clinique')
 if path not in sys.path:
     sys.path.insert(0, path)
 
 # Réglages de production
 os.environ['DJANGO_SECRET_KEY'] = 'COLLER_ICI_LA_CLE_DE_L_ETAPE_4'
 os.environ['DJANGO_DEBUG'] = 'False'
-os.environ['DJANGO_ALLOWED_HOSTS'] = 'TONUSER.pythonanywhere.com'
-os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://TONUSER.pythonanywhere.com'
+os.environ['DJANGO_ALLOWED_HOSTS'] = 'ggroupe3.pythonanywhere.com'
+os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://ggroupe3.pythonanywhere.com'
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'clinique.settings'
 
@@ -118,8 +156,8 @@ Section *Static files*, ajouter **deux** lignes :
 
 | URL | Directory |
 |---|---|
-| `/static/` | `/home/TONUSER/clinique_projet/clinique/staticfiles` |
-| `/media/` | `/home/TONUSER/clinique_projet/clinique/media` |
+| `/static/` | `/home/GGROUPE3/clinique_projet/clinique/staticfiles` |
+| `/media/` | `/home/GGROUPE3/clinique_projet/clinique/media` |
 
 ---
 
@@ -128,10 +166,10 @@ Section *Static files*, ajouter **deux** lignes :
 Onglet **Files**, naviguer dans `clinique_projet/clinique/`, puis **Upload a file** :
 
 1. `db.sqlite3` — depuis `C:\Users\User\clinique_project\clinique\db.sqlite3` (≈ 750 Ko)
-   → à déposer dans `/home/TONUSER/clinique_projet/clinique/`
+   → à déposer dans `/home/GGROUPE3/clinique_projet/clinique/`
 2. Le dossier `media/` — créer `media/patients/photos/` via *New directory*, puis y téléverser les photos.
 3. `local_settings.py` — depuis `C:\Users\User\clinique_project\clinique\clinique\`
-   → à déposer dans `/home/TONUSER/clinique_projet/clinique/clinique/`
+   → à déposer dans `/home/GGROUPE3/clinique_projet/clinique/clinique/`
    (c'est lui qui contient le mot de passe d'application Gmail)
 
 > **Ordre important :** téléverser `db.sqlite3` **avant** toute commande `migrate` ou `createsuperuser`, sinon tu risques d'écraser tes données par une base vide.
@@ -158,7 +196,7 @@ python manage.py check --deploy
 
 Onglet **Web** → gros bouton vert **Reload**.
 
-Ouvrir `https://TONUSER.pythonanywhere.com` et se connecter avec tes identifiants habituels (ils sont dans la base transférée).
+Ouvrir `https://ggroupe3.pythonanywhere.com` et se connecter avec tes identifiants habituels (ils sont dans la base transférée).
 
 ---
 
