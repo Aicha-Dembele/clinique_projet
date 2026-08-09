@@ -760,7 +760,7 @@ def _specialite_from_post(request):
     return spec or None
 
 
-@role_required('admin')
+@permission_required('tarif.add', 'tarif.manage')
 def tarif_ajouter(request):
     if request.method == 'POST':
         try:
@@ -781,7 +781,7 @@ def tarif_ajouter(request):
     })
 
 
-@role_required('admin')
+@permission_required('tarif.manage')
 def tarif_modifier(request, pk):
     tarif = get_object_or_404(Tarif, pk=pk)
     if request.method == 'POST':
@@ -803,7 +803,7 @@ def tarif_modifier(request, pk):
     })
 
 
-@role_required('admin')
+@permission_required('tarif.manage')
 def tarif_supprimer(request, pk):
     tarif = get_object_or_404(Tarif, pk=pk)
     if request.method == 'POST':

@@ -57,7 +57,8 @@ PERMISSIONS = [
     ('paiement.delete', 'Supprimer un paiement'),
 
     ('tarif.view', 'Consulter les tarifs'),
-    ('tarif.manage', 'Gerer les tarifs'),
+    ('tarif.add', 'Ajouter un tarif'),
+    ('tarif.manage', 'Gerer les tarifs (modifier, supprimer)'),
 
     ('pharmacie.view', 'Consulter la pharmacie et le stock'),
     ('medicament.manage', 'Gerer les medicaments (catalogue)'),
@@ -104,7 +105,7 @@ ROLE_PERMISSIONS = {
         'hospitalisation.view', 'hospitalisation.add', 'hospitalisation.change',
         'facture.view', 'facture.add', 'facture.change',
         'paiement.view', 'paiement.add', 'paiement.change',
-        'tarif.view',
+        'tarif.view', 'tarif.add',
         'pharmacie.view', 'medicament.manage', 'stock.entree', 'stock.sortie',
     ],
     'pharmacien': [
