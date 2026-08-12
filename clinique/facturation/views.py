@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from decimal import Decimal
 
 from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
@@ -18,6 +18,26 @@ def _fmt(val):
         return f"{int(val):,}".replace(',', ' ')
     except Exception:
         return '0'
+
+
+def _patients_facturables(inclure_pk=None):
+    """Patients qui ont réellement quelque chose à facturer.
+
+    Une facture se rattache toujours à une consultation ou à une
+    hospitalisation : ce sont elles qui produisent les lignes et le montant.
+    Proposer dans la liste déroulante un patient qui n'a ni l'une ni l'autre
+    ne mène qu'à une facture vide à 0 FCFA — la réception perdait du temps à
+    faire défiler des noms non facturables.
+
+    `inclure_pk` garde le patient déjà enregistré sur une facture existante,
+    pour que le formulaire de modification ne perde jamais sa valeur.
+    """
+    condition = (Q(rendez_vous__consultation__isnull=False) |
+                 Q(hospitalisation__isnull=False))
+    if inclure_pk:
+        condition |= Q(pk=inclure_pk)
+    return (Patient.objects.filter(condition)
+            .select_related('assurance').distinct().order_by('nom'))
 
 
 # ── Factures ─────────────────────────────────────────────────────
@@ -151,7 +171,7 @@ def facture_ajouter(request):
     hospitalisations = Hospitalisation.objects.select_related('patient').order_by('-date_entree')
 
     return render(request, 'facturation/form.html', {
-        'patients':         Patient.objects.select_related('assurance').order_by('nom'),
+        'patients':         _patients_facturables(),
         'consultations':    consultations,
         'hospitalisations': hospitalisations,
         'consult_facturees': set(Facture.objects.filter(consultation__isnull=False).values_list('consultation_id', flat=True)),
@@ -206,7 +226,7 @@ def facture_modifier(request, pk):
 
     return render(request, 'facturation/form.html', {
         'facture':          facture,
-        'patients':         Patient.objects.select_related('assurance').order_by('nom'),
+        'patients':         _patients_facturables(inclure_pk=facture.patient_id),
         'consultations':    consultations_qs,
         'hospitalisations': Hospitalisation.objects.select_related('patient').order_by('-date_entree'),
         'consult_facturees': set(Facture.objects.filter(consultation__isnull=False).exclude(pk=facture.pk).values_list('consultation_id', flat=True)),
