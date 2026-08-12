@@ -32,6 +32,52 @@ def _get_personnel(user, attr):
         return None
 
 
+def _patients_du_medecin_courant(request, inclure_pk=None):
+    """Patients qu'un médecin a le droit de choisir dans un formulaire.
+
+    Un médecin ne prescrit que pour SES patients, c'est-à-dire ceux avec qui il
+    a déjà un lien de soin : un rendez-vous, une hospitalisation ou un examen.
+    Sans ce filtre, les listes déroulantes des formulaires (hospitalisation,
+    examen, traitement) proposent tous les patients de la clinique, y compris
+    ceux d'un confrère — ce qui contredit le cloisonnement des dossiers.
+
+    Les autres rôles (admin, réception, infirmier…) continuent de voir tout le
+    monde. `inclure_pk` force la présence d'un patient déjà enregistré, pour
+    qu'un formulaire de modification ne perde jamais sa valeur courante.
+    (Filtre jumeau de `_restreindre_au_medecin` dans patients/views.py.)
+    """
+    qs = Patient.objects.all()
+    if get_role(request.user) != 'medecin':
+        return qs
+    medecin = _get_personnel(request.user, 'medecin')
+    if not medecin:
+        return qs.none()
+    condition = (models.Q(rendez_vous__medecin=medecin) |
+                 models.Q(hospitalisation__medecin=medecin) |
+                 models.Q(examenmedical__medecin=medecin))
+    if inclure_pk:
+        condition |= models.Q(pk=inclure_pk)
+    return qs.filter(condition).distinct()
+
+
+def _consultations_du_medecin_courant(request, inclure_pk=None):
+    """Consultations qu'un médecin a le droit de rattacher à une prescription.
+
+    Même principe que `_patients_du_medecin_courant` : un médecin ne rattache
+    un examen, un traitement ou une ordonnance qu'à SES propres consultations.
+    """
+    qs = Consultation.objects.all()
+    if get_role(request.user) != 'medecin':
+        return qs
+    medecin = _get_personnel(request.user, 'medecin')
+    if not medecin:
+        return qs.none()
+    condition = models.Q(rendez_vous__medecin=medecin)
+    if inclure_pk:
+        condition |= models.Q(pk=inclure_pk)
+    return qs.filter(condition).distinct()
+
+
 # Rendez-vous
 
 @permission_required('rdv.view')
@@ -566,8 +612,8 @@ def examen_ajouter(request):
             messages.error(request, f'Erreur : {e}')
 
     return render(request, 'consultation/examen_form.html', {
-        'patients': Patient.objects.all(),
-        'consultations': Consultation.objects.all().order_by('-date'),
+        'patients': _patients_du_medecin_courant(request),
+        'consultations': _consultations_du_medecin_courant(request).order_by('-date'),
         'laborantins': Laborantin.objects.all(),
         'medecins': Medecin.objects.all(),
         'examen_types': EXAMEN_TYPES,
@@ -613,8 +659,9 @@ def examen_modifier(request, pk):
 
     return render(request, 'consultation/examen_form.html', {
         'examen': examen,
-        'patients': Patient.objects.all(),
-        'consultations': Consultation.objects.all().order_by('-date'),
+        'patients': _patients_du_medecin_courant(request, inclure_pk=examen.patient_id),
+        'consultations': _consultations_du_medecin_courant(
+            request, inclure_pk=examen.consultation_id).order_by('-date'),
         'laborantins': Laborantin.objects.all(),
         'medecins': Medecin.objects.all(),
         'examen_types': EXAMEN_TYPES,
@@ -841,8 +888,10 @@ def ordonnance_ajouter(request):
     from pharmacie.specialites import code_specialite, SPECIALITES_DICT
 
     consultation_id = request.GET.get('consultation')
-    consultations = list(Consultation.objects.select_related(
-        'rendez_vous__patient', 'rendez_vous__medecin').order_by('-date'))
+    # Un médecin ne prescrit que sur ses propres consultations.
+    consultations = list(_consultations_du_medecin_courant(request, inclure_pk=consultation_id)
+                         .select_related('rendez_vous__patient', 'rendez_vous__medecin')
+                         .order_by('-date'))
     for c in consultations:
         c.code_spec = code_specialite(c.rendez_vous.medecin.specialite) or ''
 
@@ -1033,9 +1082,11 @@ def _chambres_context(exclure_pk=None):
     return chambres
 
 
-def _form_context(action, hospit=None, form_data=None, exclure_pk=None):
+def _form_context(request, action, hospit=None, form_data=None, exclure_pk=None):
     ctx = {
-        'patients': Patient.objects.all(),
+        # Un médecin ne peut hospitaliser que ses propres patients.
+        'patients': _patients_du_medecin_courant(
+            request, inclure_pk=hospit.patient_id if hospit else None),
         'medecins': Medecin.objects.all(),
         'action': action,
         'chambres': _chambres_context(exclure_pk=exclure_pk),
@@ -1059,7 +1110,7 @@ def hospit_ajouter(request):
         if erreur:
             messages.error(request, erreur)
             return render(request, 'consultation/hospit_form.html',
-                          _form_context('Ajouter', form_data=request.POST))
+                          _form_context(request, 'Ajouter', form_data=request.POST))
         try:
             h = Hospitalisation.objects.create(
                 patient_id=request.POST['patient'],
@@ -1076,7 +1127,7 @@ def hospit_ajouter(request):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    return render(request, 'consultation/hospit_form.html', _form_context('Ajouter'))
+    return render(request, 'consultation/hospit_form.html', _form_context(request, 'Ajouter'))
 
 
 @permission_required('hospitalisation.change')
@@ -1092,7 +1143,7 @@ def hospit_modifier(request, pk):
         if erreur:
             messages.error(request, erreur)
             return render(request, 'consultation/hospit_form.html',
-                          _form_context('Modifier', hospit=hospit, exclure_pk=hospit.pk))
+                          _form_context(request, 'Modifier', hospit=hospit, exclure_pk=hospit.pk))
         hospit.type_chambre = type_chambre
         hospit.numero_chambre = numero
         hospit.etat_clinique = request.POST.get('etat_clinique') or 'stable'
@@ -1103,7 +1154,7 @@ def hospit_modifier(request, pk):
         return redirect('consultation:hospitalisations')
 
     return render(request, 'consultation/hospit_form.html',
-                  _form_context('Modifier', hospit=hospit, exclure_pk=hospit.pk))
+                  _form_context(request, 'Modifier', hospit=hospit, exclure_pk=hospit.pk))
 
 
 @permission_required('hospitalisation.change')
@@ -1216,8 +1267,8 @@ def traitement_ajouter(request):
             messages.error(request, f'Erreur : {e}')
 
     return render(request, 'consultation/traitement_form.html', {
-        'patients': Patient.objects.all(),
-        'consultations': Consultation.objects.all().order_by('-date'),
+        'patients': _patients_du_medecin_courant(request),
+        'consultations': _consultations_du_medecin_courant(request).order_by('-date'),
         'infirmiers': Infirmier.objects.all(),
         'action': 'Ajouter',
     })
