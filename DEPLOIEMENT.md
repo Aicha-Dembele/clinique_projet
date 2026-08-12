@@ -168,11 +168,50 @@ Onglet **Files**, naviguer dans `clinique_projet/clinique/`, puis **Upload a fil
 1. `db.sqlite3` — depuis `C:\Users\User\clinique_project\clinique\db.sqlite3` (≈ 750 Ko)
    → à déposer dans `/home/GGROUPE3/clinique_projet/clinique/`
 2. Le dossier `media/` — créer `media/patients/photos/` via *New directory*, puis y téléverser les photos.
-3. `local_settings.py` — depuis `C:\Users\User\clinique_project\clinique\clinique\`
-   → à déposer dans `/home/GGROUPE3/clinique_projet/clinique/clinique/`
-   (c'est lui qui contient le mot de passe d'application Gmail)
+3. `local_settings.py` — **à créer sur place, surtout pas à téléverser** (voir ci-dessous).
 
 > **Ordre important :** téléverser `db.sqlite3` **avant** toute commande `migrate` ou `createsuperuser`, sinon tu risques d'écraser tes données par une base vide.
+
+### 6b. Créer `local_settings.py` sur le serveur (envoi des emails)
+
+⚠️ **Ne jamais téléverser le `local_settings.py` du PC.** Celui-ci contient le bloc
+de configuration MySQL (`127.0.0.1:3307`), qui n'existe pas sur PythonAnywhere :
+le site tomberait en panne au premier accès à la base. Sur le serveur, ce fichier
+ne doit contenir **que** les réglages email.
+
+Onglet **Files** → naviguer dans `clinique_projet/clinique/clinique/` (le dossier
+qui contient `settings.py`) → champ *Enter new file name* : `local_settings.py`
+→ bouton **New file**. Y coller uniquement :
+
+> Si le bouton répond « **Cannot create file: Already exists** », le fichier est
+> déjà là : cliquer sur son nom pour l'ouvrir, et vérifier qu'il contient bien les
+> trois lignes ci-dessous. Un fichier présent mais sans `EMAIL_HOST_PASSWORD`
+> produit exactement la même panne qu'un fichier absent.
+
+```python
+EMAIL_HOST_USER = "aichadembele524@gmail.com"
+DEFAULT_FROM_EMAIL = "Clinique Nevroglie <aichadembele524@gmail.com>"
+EMAIL_HOST_PASSWORD = "les16caracteres"
+```
+
+Les 16 caractères sont le **mot de passe d'application Gmail** ; ils se recopient
+depuis le `local_settings.py` du PC. Puis **Save**, et **Reload** sur l'onglet *Web*.
+
+> Sans ce fichier, `settings.py` retombe sur ses valeurs par défaut : expéditeur
+> `nanadiawra15@gmail.com` et mot de passe vide. Gmail refuse alors l'envoi avec
+> `SMTPSenderRefused: 530 5.7.0 Authentication Required` — et la fonction
+> « mot de passe oublié » échoue **en silence** : la page affiche bien sa
+> confirmation, mais aucun email ne part jamais.
+
+Vérification (console **Bash**) — la commande ne doit rien afficher et l'email
+doit arriver :
+
+```bash
+cd ~/clinique_projet/clinique && workon clinique-venv && python manage.py sendtestemail TON_ADRESSE@gmail.com
+```
+
+> Le fichier est dans `.gitignore` : il ne partira jamais sur GitHub, ce qui est
+> indispensable puisque le dépôt est **public**.
 
 ---
 
@@ -210,6 +249,8 @@ Ouvrir `https://ggroupe3.pythonanywhere.com` et se connecter avec tes identifian
 | Photos patients cassées | Dossier `media/` non téléversé | Refaire l'étape 6.2 |
 | Boucle de redirection infinie | HTTPS mal détecté | Vérifier que `SECURE_PROXY_SSL_HEADER` est bien dans `settings.py` (il y est déjà) |
 | `CSRF verification failed` à la connexion | `DJANGO_CSRF_TRUSTED_ORIGINS` oublié ou sans `https://` | Corriger le fichier WSGI puis **Reload** |
+| « Mot de passe oublié » : la page confirme l'envoi mais aucun email n'arrive | `local_settings.py` absent sur le serveur → Gmail refuse (`530 Authentication Required`) | Faire l'**étape 6b**, puis **Reload** |
+| Toujours aucun email alors que `sendtestemail` fonctionne | Le compte visé n'a pas d'adresse email en base | *Utilisateurs* → **Modifier** → remplir le champ **Email**. Django n'envoie qu'aux comptes **actifs** dont l'adresse correspond exactement, sinon il affiche quand même sa page de confirmation (protection anti-énumération) |
 
 ---
 
