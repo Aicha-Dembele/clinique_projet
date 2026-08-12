@@ -92,15 +92,34 @@
 
     <div class="row g-3">
 
+      <!-- Rien à facturer : on prévient AVANT que la réception ne remplisse le formulaire -->
+      {% if not facture and total_restants == 0 %}
+      <div class="col-12">
+        <div class="helper" style="background:rgba(245,158,11,.10);border:1.5px solid rgba(245,158,11,.35);border-radius:.8rem;padding:.85rem 1.1rem;color:var(--text-primary)">
+          <i class="bi bi-exclamation-triangle-fill me-1" style="color:#f59e0b"></i>
+          <strong>Il n'y a plus rien à facturer.</strong>
+          Toutes les consultations, tous les examens et toutes les hospitalisations
+          enregistrés ont déjà leur facture. Pour en créer une nouvelle, il faut
+          d'abord qu'un nouvel acte soit enregistré (une consultation, un examen,
+          une hospitalisation ou une dispensation de médicaments).
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Type de service -->
       <div class="col-12 col-md-5">
         <label class="f-label"><i class="bi bi-list-check" style="color:#14b8a6"></i> Type de service <span class="req-mark">*</span></label>
         <select name="service" id="sel-service" class="f-input f-select" required>
           <option value="">-- Choisir le type de service --</option>
-          {% for code, libelle in services %}
-          <option value="{{ code }}" {% if pre_service == code %}selected{% endif %}>{{ libelle }}</option>
+          {% for s in services %}
+          <option value="{{ s.code }}"
+            {% if s.restants == 0 and not facture %}disabled{% endif %}
+            {% if pre_service == s.code %}selected{% endif %}>
+            {{ s.libelle }}{% if not facture %} — {% if s.restants %}{{ s.restants }} à facturer{% else %}rien à facturer{% endif %}{% endif %}
+          </option>
           {% endfor %}
         </select>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i> Le nombre indique les actes qui n'ont pas encore de facture.</div>
       </div>
 
       <!-- Consultation -->

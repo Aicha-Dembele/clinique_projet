@@ -128,7 +128,12 @@ def _enregistrer_service(request, facture):
 
     objet_id = request.POST.get(service) or None
     if not objet_id:
-        raise ValueError(f"Choisissez l'acte à facturer ({libelles[service]}).")
+        # Cas fréquent : tous les actes de ce service sont déjà facturés, la liste
+        # ne contient donc que des lignes grisées et rien n'a pu être sélectionné.
+        raise ValueError(
+            f"Aucun acte sélectionné pour « {libelles[service]} ». "
+            f"Si toutes les lignes de la liste sont grisées, c'est qu'elles sont "
+            f"déjà facturées : il n'y a plus rien à facturer pour ce service.")
 
     # Un même acte ne peut pas être facturé deux fois.
     deja = (Facture.objects
@@ -171,20 +176,48 @@ def _contexte_form(request, facture=None):
             (mv.montant() for mv in o.dispensations.filter(type_mouvement='sortie')),
             Decimal('0'))
 
+    consultations    = Consultation.objects.select_related(
+                           'rendez_vous__patient', 'rendez_vous__medecin').order_by('-date')
+    examens          = ExamenMedical.objects.select_related('patient', 'medecin').order_by('-id')
+    hospitalisations = Hospitalisation.objects.select_related('patient').order_by('-date_entree')
+
+    faits = {
+        'consultation':    deja_factures('consultation'),
+        'examen':          deja_factures('examen'),
+        'hospitalisation': deja_factures('hospitalisation'),
+        'ordonnance':      deja_factures('ordonnance'),
+    }
+    actes = {
+        'consultation':    consultations,
+        'examen':          examens,
+        'hospitalisation': hospitalisations,
+        'ordonnance':      ordonnances,
+    }
+
+    # Combien d'actes restent à facturer par service. Sans ce compte, la réception
+    # choisissait un type de service dont TOUS les actes étaient déjà facturés,
+    # se retrouvait devant une liste entièrement grisée, et ne comprenait pas
+    # pourquoi l'enregistrement était refusé.
+    services = []
+    total_restants = 0
+    for code, libelle in Facture.SERVICES:
+        restants = sum(1 for a in actes[code] if a.pk not in faits[code])
+        total_restants += restants
+        services.append({'code': code, 'libelle': libelle, 'restants': restants})
+
     return {
         'patients':         _patients_facturables(
                                 inclure_pk=facture.patient_id if facture else None),
-        'consultations':    Consultation.objects.select_related(
-                                'rendez_vous__patient', 'rendez_vous__medecin').order_by('-date'),
-        'examens':          ExamenMedical.objects.select_related(
-                                'patient', 'medecin').order_by('-id'),
-        'hospitalisations': Hospitalisation.objects.select_related('patient').order_by('-date_entree'),
+        'consultations':    consultations,
+        'examens':          examens,
+        'hospitalisations': hospitalisations,
         'ordonnances':      ordonnances,
-        'consult_facturees': deja_factures('consultation'),
-        'examen_factures':   deja_factures('examen'),
-        'hospit_facturees':  deja_factures('hospitalisation'),
-        'ordo_facturees':    deja_factures('ordonnance'),
-        'services':         Facture.SERVICES,
+        'consult_facturees': faits['consultation'],
+        'examen_factures':   faits['examen'],
+        'hospit_facturees':  faits['hospitalisation'],
+        'ordo_facturees':    faits['ordonnance'],
+        'services':         services,
+        'total_restants':   total_restants,
         'assurances':       Assurance.objects.filter(actif=True),
         'tarifs':           Tarif.objects.all().order_by('type_service', 'nom'),
     }
