@@ -1,0 +1,18 @@
+{% comment %}
+Bouton d'action sur le recouvrement d'UNE facture.
+
+Un formulaire POST plutôt qu'un lien : changer un statut modifie la base, ça ne
+doit pas pouvoir se déclencher par un simple rechargement de page ou une visite
+de robot. Le jeton CSRF est donc obligatoire.
+
+Paramètres attendus : facture, action, titre, icone, couleur.
+{% endcomment %}
+<form method="post" action="{% url 'facturation:creances_marquer' %}" style="display:inline">
+  {% csrf_token %}
+  <input type="hidden" name="facture" value="{{ facture.pk }}">
+  <input type="hidden" name="action" value="{{ action }}">
+  <input type="hidden" name="retour" value="{{ retour_qs }}">
+  <button type="submit" class="act-btn" title="{{ titre }}" style="color:{{ couleur }}">
+    <i class="bi {{ icone }}"></i>
+  </button>
+</form>

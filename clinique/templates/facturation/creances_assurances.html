@@ -50,6 +50,10 @@
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .badge-service { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 700; padding: .25em .7em; border-radius: 999px; background: rgba(0,136,170,.12); color: #0088aa; white-space: nowrap; }
+.badge-etat { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 700; padding: .25em .75em; border-radius: 999px; white-space: nowrap; }
+.pastille { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .3rem; vertical-align: middle; }
+.act-btn { width: 30px; height: 30px; border-radius: .45rem; display: inline-flex; align-items: center; justify-content: center; font-size: .82rem; transition: all .15s; border: 1px solid var(--card-border); background: transparent; cursor: pointer; padding: 0; }
+.act-btn:hover { background: var(--input-bg); border-color: currentColor; }
 .av-sm { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; background: rgba(168,85,247,.12); color: #a855f7; }
 .con-num { font-size: .72rem; font-weight: 800; color: var(--text-muted); font-family: 'Outfit', monospace; background: var(--input-bg); padding: .2em .55em; border-radius: .35rem; border: 1px solid var(--card-border); }
 
@@ -72,58 +76,65 @@
   </div>
 </div>
 
-<!-- ── TOTAUX ── -->
+<!-- ── TOTAUX : le cycle de recouvrement, de gauche à droite ── -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-cash-stack"></i></div>
+      <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-hourglass-split"></i></div>
       <div style="flex:1;min-width:0">
-        <div class="stat-h-lbl">Total à réclamer</div>
-        <div class="stat-h-val">{{ total_a_reclamer|floatformat:0 }}</div>
-        <div class="stat-h-trend" style="color:#a855f7">FCFA, toutes assurances</div>
+        <div class="stat-h-lbl">Reste à réclamer</div>
+        <div class="stat-h-val">{{ montant_a_reclamer|floatformat:0 }}</div>
+        <div class="stat-h-trend" style="color:#ef4444">FCFA, demande non envoyée</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.08s">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-receipt"></i></div>
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-send-fill"></i></div>
       <div style="flex:1;min-width:0">
-        <div class="stat-h-lbl">Montant facturé</div>
-        <div class="stat-h-val">{{ total_facture|floatformat:0 }}</div>
-        <div class="stat-h-trend" style="color:#0088aa">FCFA au total</div>
+        <div class="stat-h-lbl">Réclamé, en attente</div>
+        <div class="stat-h-val">{{ montant_reclame|floatformat:0 }}</div>
+        <div class="stat-h-trend" style="color:#f59e0b">FCFA demandés, non reçus</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.12s">
-      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-check2-circle"></i></div>
       <div style="flex:1;min-width:0">
-        <div class="stat-h-lbl">Patients concernés</div>
-        <div class="stat-h-val">{{ nb_patients }}</div>
-        <div class="stat-h-trend" style="color:#14b8a6">{{ nb_factures }} facture{{ nb_factures|pluralize }}</div>
+        <div class="stat-h-lbl">Remboursé</div>
+        <div class="stat-h-val">{{ montant_rembourse|floatformat:0 }}</div>
+        <div class="stat-h-trend" style="color:#10b981">FCFA encaissés</div>
       </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.16s">
-      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-building"></i></div>
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-cash-stack"></i></div>
       <div style="flex:1;min-width:0">
-        <div class="stat-h-lbl">Assureurs à relancer</div>
-        <div class="stat-h-val">{{ groupes|length }}</div>
-        <div class="stat-h-trend" style="color:#f59e0b">Un dossier par assureur</div>
+        <div class="stat-h-lbl">Total pris en charge</div>
+        <div class="stat-h-val">{{ total_a_reclamer|floatformat:0 }}</div>
+        <div class="stat-h-trend" style="color:#a855f7">{{ nb_factures }} facture{{ nb_factures|pluralize }} · {{ nb_patients }} patient{{ nb_patients|pluralize }}</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── PÉRIODE ── -->
+<!-- ── PÉRIODE + STADE ── -->
 <div class="periode-bar">
   <form method="get" class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
     <label class="f-label mb-0" style="white-space:nowrap"><i class="bi bi-calendar3" style="color:#a855f7"></i> Période</label>
-    <select name="mois" class="f-input f-select" style="max-width:260px" onchange="this.form.submit()">
+    <select name="mois" class="f-input f-select" style="max-width:220px" onchange="this.form.submit()">
       <option value="">Toutes périodes</option>
       {% for m in mois_options %}
       <option value="{{ m.value }}" {% if m.value == mois_selectionne %}selected{% endif %}>{{ m.label }}</option>
+      {% endfor %}
+    </select>
+    <label class="f-label mb-0" style="white-space:nowrap"><i class="bi bi-funnel" style="color:#a855f7"></i> Stade</label>
+    <select name="statut" class="f-input f-select" style="max-width:200px" onchange="this.form.submit()">
+      <option value="">Tous les stades</option>
+      {% for code, libelle in statuts %}
+      <option value="{{ code }}" {% if code == statut_selectionne %}selected{% endif %}>{{ libelle }}</option>
       {% endfor %}
     </select>
     <noscript><button type="submit" class="btn-c btn-primary-c">Afficher</button></noscript>
@@ -144,13 +155,48 @@
       </div>
     </div>
     <div class="assureur-montant">
-      <div class="assureur-montant-lbl">À réclamer</div>
+      <div class="assureur-montant-lbl">Pris en charge</div>
       <div class="assureur-montant-val">{{ g.a_reclamer|floatformat:0 }} FCFA</div>
-      <a href="{% url 'facturation:creances_export' %}?assurance={{ g.assurance.pk }}{% if mois_selectionne %}&mois={{ mois_selectionne }}{% endif %}"
-         class="btn-c btn-outline-c" style="margin-top:.4rem">
-        <i class="bi bi-download"></i> Dossier {{ g.assurance.nom }}
-      </a>
+      <div class="d-flex gap-1 flex-wrap justify-content-end" style="margin-top:.5rem">
+        <a href="{% url 'facturation:creances_export' %}?assurance={{ g.assurance.pk }}{% if mois_selectionne %}&mois={{ mois_selectionne }}{% endif %}"
+           class="btn-c btn-outline-c">
+          <i class="bi bi-download"></i> Dossier
+        </a>
+        {% if g.nb_a_reclamer %}
+        <form method="post" action="{% url 'facturation:creances_marquer' %}" style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="assurance" value="{{ g.assurance.pk }}">
+          <input type="hidden" name="mois" value="{{ mois_selectionne }}">
+          <input type="hidden" name="action" value="reclame">
+          <input type="hidden" name="retour" value="{{ retour_qs }}">
+          <button type="submit" class="btn-c" style="background:#f59e0b;color:#fff;border-color:#f59e0b"
+                  title="Marquer les {{ g.nb_a_reclamer }} facture(s) non encore réclamée(s) comme réclamées">
+            <i class="bi bi-send-fill"></i> Réclamer ({{ g.nb_a_reclamer }})
+          </button>
+        </form>
+        {% endif %}
+        {% if g.nb_reclame or g.nb_a_reclamer %}
+        <form method="post" action="{% url 'facturation:creances_marquer' %}" style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="assurance" value="{{ g.assurance.pk }}">
+          <input type="hidden" name="mois" value="{{ mois_selectionne }}">
+          <input type="hidden" name="action" value="rembourse">
+          <input type="hidden" name="retour" value="{{ retour_qs }}">
+          <button type="submit" class="btn-c" style="background:#10b981;color:#fff;border-color:#10b981"
+                  title="Marquer comme remboursé par l'assureur">
+            <i class="bi bi-check2-circle"></i> Remboursé
+          </button>
+        </form>
+        {% endif %}
+      </div>
     </div>
+  </div>
+
+  <!-- Avancement du dossier -->
+  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:.7rem 1.3rem;border-bottom:1px solid var(--card-border);font-size:.76rem">
+    <span><span class="pastille" style="background:#ef4444"></span> À réclamer : <strong>{{ g.montant_a_reclamer|floatformat:0 }} FCFA</strong> ({{ g.nb_a_reclamer }})</span>
+    <span><span class="pastille" style="background:#f59e0b"></span> Réclamé : <strong>{{ g.montant_reclame|floatformat:0 }} FCFA</strong> ({{ g.nb_reclame }})</span>
+    <span><span class="pastille" style="background:#10b981"></span> Remboursé : <strong>{{ g.montant_rembourse|floatformat:0 }} FCFA</strong> ({{ g.nb_rembourse }})</span>
   </div>
 
   <div style="overflow-x:auto">
@@ -165,6 +211,8 @@
           <th class="num">Montant</th>
           <th class="num">Taux</th>
           <th class="num">À réclamer</th>
+          <th>Recouvrement</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -183,6 +231,35 @@
           <td class="num">{{ f.montant_total|floatformat:0 }}</td>
           <td class="num">{{ f.taux_prise_en_charge|floatformat:0 }} %</td>
           <td class="num" style="font-weight:800;color:#a855f7">{{ f.part_assurance|floatformat:0 }}</td>
+          <td>
+            {% if f.statut_assurance == 'rembourse' %}
+              <span class="badge-etat" style="background:rgba(16,185,129,.12);color:#10b981">
+                <i class="bi bi-check2-circle"></i> Remboursé
+              </span>
+              <div style="font-size:.68rem;color:var(--text-muted);margin-top:.2rem">le {{ f.date_remboursement|date:'d/m/Y' }}</div>
+            {% elif f.statut_assurance == 'reclame' %}
+              <span class="badge-etat" style="background:rgba(245,158,11,.14);color:#f59e0b">
+                <i class="bi bi-send-fill"></i> Réclamé
+              </span>
+              <div style="font-size:.68rem;color:var(--text-muted);margin-top:.2rem">le {{ f.date_reclamation|date:'d/m/Y' }}</div>
+            {% else %}
+              <span class="badge-etat" style="background:rgba(239,68,68,.12);color:#ef4444">
+                <i class="bi bi-hourglass-split"></i> À réclamer
+              </span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if f.statut_assurance == 'a_reclamer' %}
+                {% include 'facturation/_bouton_creance.html' with facture=f action='reclame' titre='Marquer cette facture comme réclamée' icone='bi-send' couleur='#f59e0b' %}
+              {% elif f.statut_assurance == 'reclame' %}
+                {% include 'facturation/_bouton_creance.html' with facture=f action='rembourse' titre='Marquer cette facture comme remboursée' icone='bi-check2' couleur='#10b981' %}
+                {% include 'facturation/_bouton_creance.html' with facture=f action='a_reclamer' titre='Annuler : revenir à « à réclamer »' icone='bi-arrow-counterclockwise' couleur='#6b7280' %}
+              {% else %}
+                {% include 'facturation/_bouton_creance.html' with facture=f action='reclame' titre='Annuler le remboursement : revenir à « réclamé »' icone='bi-arrow-counterclockwise' couleur='#6b7280' %}
+              {% endif %}
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -192,6 +269,7 @@
           <td class="num">{{ g.total_facture|floatformat:0 }}</td>
           <td></td>
           <td class="num" style="color:#a855f7">{{ g.a_reclamer|floatformat:0 }}</td>
+          <td colspan="2"></td>
         </tr>
       </tfoot>
     </table>

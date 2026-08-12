@@ -1,7 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Sum, Q
+from django.utils.http import urlencode
 from decimal import Decimal
 
 from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
@@ -797,8 +799,12 @@ def _periode(request):
     return None, None, 'Toutes périodes', ''
 
 
-def _factures_prises_en_charge(request):
-    """Factures dont une part revient à une assurance, sur la période choisie."""
+def _factures_prises_en_charge(request, avec_filtre_statut=True):
+    """Factures dont une part revient à une assurance, sur la période choisie.
+
+    `?statut=a_reclamer|reclame|rembourse` restreint au stade de recouvrement
+    voulu — c'est ainsi qu'on isole « ce qui reste à réclamer ce mois-ci ».
+    """
     annee, mois, libelle, valeur = _periode(request)
     qs = (Facture.objects
           .filter(assurance__isnull=False, taux_prise_en_charge__gt=0)
@@ -807,6 +813,10 @@ def _factures_prises_en_charge(request):
           .order_by('assurance__nom', 'patient__nom', 'pk'))
     if annee and mois:
         qs = qs.filter(date_creation__year=annee, date_creation__month=mois)
+    if avec_filtre_statut:
+        statut = (request.GET.get('statut') or '').strip()
+        if statut in dict(Facture.STATUT_ASSURANCE_CHOICES):
+            qs = qs.filter(statut_assurance=statut)
     return qs, libelle, valeur
 
 
@@ -842,28 +852,110 @@ def creances_assurances(request):
             'assurance': f.assurance, 'factures': [],
             'total_facture': Decimal('0'), 'a_reclamer': Decimal('0'),
             'part_patient': Decimal('0'),
+            # Montants par stade de recouvrement, pour les boutons d'action
+            'montant_a_reclamer': Decimal('0'), 'montant_reclame': Decimal('0'),
+            'montant_rembourse': Decimal('0'),
+            'nb_a_reclamer': 0, 'nb_reclame': 0, 'nb_rembourse': 0,
         })
+        part = f.part_assurance()
         g['factures'].append(f)
         g['total_facture'] += f.montant_total
-        g['a_reclamer'] += f.part_assurance()
+        g['a_reclamer'] += part
         g['part_patient'] += f.part_patient()
+        if f.statut_assurance == 'rembourse':
+            g['montant_rembourse'] += part; g['nb_rembourse'] += 1
+        elif f.statut_assurance == 'reclame':
+            g['montant_reclame'] += part;   g['nb_reclame'] += 1
+        else:
+            g['montant_a_reclamer'] += part; g['nb_a_reclamer'] += 1
 
     groupes = sorted(groupes.values(), key=lambda g: g['a_reclamer'], reverse=True)
 
-    total_a_reclamer = sum((g['a_reclamer'] for g in groupes), Decimal('0'))
-    total_facture    = sum((g['total_facture'] for g in groupes), Decimal('0'))
-    nb_patients      = len({f.patient_id for f in factures})
+    total_facture = sum((g['total_facture'] for g in groupes), Decimal('0'))
+    totaux = {
+        cle: sum((g[cle] for g in groupes), Decimal('0'))
+        for cle in ('a_reclamer', 'montant_a_reclamer', 'montant_reclame', 'montant_rembourse')
+    }
+    nb_patients = len({f.patient_id for f in factures})
 
     return render(request, 'facturation/creances_assurances.html', {
-        'groupes':           groupes,
-        'total_a_reclamer':  total_a_reclamer,
-        'total_facture':     total_facture,
-        'nb_factures':       len(factures),
-        'nb_patients':       nb_patients,
-        'periode_label':     periode_label,
-        'mois_selectionne':  mois_selectionne,
-        'mois_options':      mois_options,
+        'groupes':            groupes,
+        'total_a_reclamer':   totaux['a_reclamer'],
+        'montant_a_reclamer': totaux['montant_a_reclamer'],
+        'montant_reclame':    totaux['montant_reclame'],
+        'montant_rembourse':  totaux['montant_rembourse'],
+        'total_facture':      total_facture,
+        'nb_factures':        len(factures),
+        'nb_patients':        nb_patients,
+        'periode_label':      periode_label,
+        'mois_selectionne':   mois_selectionne,
+        'mois_options':       mois_options,
+        'statuts':            Facture.STATUT_ASSURANCE_CHOICES,
+        'statut_selectionne': (request.GET.get('statut') or '').strip(),
+        # Filtres courants, pour revenir sur le même écran après un marquage
+        'retour_qs':          urlencode({k: v for k, v in (
+                                  ('mois', mois_selectionne),
+                                  ('statut', (request.GET.get('statut') or '').strip()),
+                              ) if v}),
     })
+
+
+@permission_required('facture.change', 'rapport.view')
+def creances_marquer(request):
+    """Fait avancer le recouvrement : réclamé, remboursé, ou retour en arrière.
+
+    Deux portées possibles :
+      • `facture=<id>`   → une seule facture ;
+      • `assurance=<id>` → tout le dossier de cet assureur sur la période
+        affichée, ce qui correspond au geste réel : on envoie une demande
+        groupée par assureur et par mois, puis on encaisse en une fois.
+    """
+    if request.method != 'POST':
+        return redirect('facturation:creances')
+
+    action = (request.POST.get('action') or '').strip()
+    libelles = dict(Facture.STATUT_ASSURANCE_CHOICES)
+    retour = f"{reverse('facturation:creances')}?{request.POST.get('retour', '')}"
+
+    if action not in libelles:
+        messages.error(request, "Action de recouvrement inconnue.")
+        return redirect(retour)
+
+    facture_id = (request.POST.get('facture') or '').strip()
+    if facture_id:
+        cibles = Facture.objects.filter(pk=facture_id, assurance__isnull=False)
+    else:
+        # Portée « dossier » : on rejoue exactement le filtre de l'écran, mais
+        # sans le filtre de statut — sinon marquer « réclamé » ne toucherait que
+        # ce qui est déjà visible et laisserait des factures en arrière.
+        cibles, _, _ = _factures_prises_en_charge(request, avec_filtre_statut=False)
+        assurance_id = (request.POST.get('assurance') or '').strip()
+        if not assurance_id:
+            messages.error(request, "Aucune facture ni assurance indiquée.")
+            return redirect(retour)
+        cibles = cibles.filter(assurance_id=assurance_id)
+        # On ne fait avancer que ce qui est au stade precedent : re-cliquer sur
+        # « réclamé » ne doit pas faire reculer un dossier déjà remboursé.
+        if action == 'reclame':
+            cibles = cibles.filter(statut_assurance='a_reclamer')
+        elif action == 'rembourse':
+            cibles = cibles.filter(statut_assurance__in=['a_reclamer', 'reclame'])
+
+    cibles = list(cibles)
+    if not cibles:
+        messages.info(request, "Aucune facture à mettre à jour pour cette action.")
+        return redirect(retour)
+
+    montant = Decimal('0')
+    for f in cibles:
+        f.marquer_assurance(action)
+        montant += f.part_assurance()
+
+    messages.success(
+        request,
+        f"{len(cibles)} facture{'s' if len(cibles) > 1 else ''} — "
+        f"{libelles[action].lower()} — {_fmt(montant)} FCFA.")
+    return redirect(retour)
 
 
 @permission_required('facture.view', 'rapport.view')
@@ -889,7 +981,8 @@ def creances_export(request):
             nom = slugify(premiere.assurance.nom) or 'assurance'
 
     headers = ['Assurance', 'Taux (%)', 'Facture', 'Patient', 'Numero assure',
-               'Service', 'Date', 'Montant total', 'A reclamer', 'Part patient']
+               'Service', 'Date', 'Montant total', 'A reclamer', 'Part patient',
+               'Recouvrement', 'Reclame le', 'Rembourse le']
     rows = [[
         f.assurance.nom,
         f'{f.taux_prise_en_charge:.0f}',
@@ -899,6 +992,9 @@ def creances_export(request):
         f.service_libelle(),
         f.date_creation.strftime('%d/%m/%Y') if f.date_creation else '',
         int(f.montant_total), int(f.part_assurance()), int(f.part_patient()),
+        f.get_statut_assurance_display(),
+        f.date_reclamation.strftime('%d/%m/%Y') if f.date_reclamation else '',
+        f.date_remboursement.strftime('%d/%m/%Y') if f.date_remboursement else '',
     ] for f in factures]
 
     return csv_response(f'creances_{nom}_{slugify(periode_label)}.csv', headers, rows)

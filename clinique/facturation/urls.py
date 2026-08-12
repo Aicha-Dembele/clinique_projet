@@ -27,6 +27,7 @@ urlpatterns = [
     # Ce que la clinique doit reclamer aux assureurs
     path('creances/',                     views.creances_assurances, name='creances'),
     path('creances/export/',              views.creances_export,     name='creances_export'),
+    path('creances/marquer/',             views.creances_marquer,    name='creances_marquer'),
     path('tarifs/',                       views.tarif_liste,        name='tarifs'),
     path('tarifs/ajouter/',               views.tarif_ajouter,      name='tarif_ajouter'),
     path('tarifs/<int:pk>/modifier/',     views.tarif_modifier,     name='tarif_modifier'),

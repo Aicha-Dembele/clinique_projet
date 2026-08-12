@@ -109,6 +109,57 @@ class Facture(models.Model):
         help_text="Taux de prise en charge appliqué à cette facture (%)."
     )
 
+    # ── Recouvrement auprès de l'assureur ─────────────────────────
+    # La part prise en charge n'est pas encaissée auprès du patient : c'est une
+    # créance sur l'assurance. Ces trois champs suivent son recouvrement, de la
+    # demande de remboursement jusqu'au paiement effectif par l'assureur.
+    # `statut` (au-dessus) concerne le PATIENT, celui-ci concerne l'ASSUREUR :
+    # une facture peut être « payé » côté patient et encore « à réclamer » ici.
+    STATUT_ASSURANCE_CHOICES = [
+        ('a_reclamer', 'À réclamer'),
+        ('reclame',    'Réclamé'),
+        ('rembourse',  'Remboursé'),
+    ]
+    statut_assurance   = models.CharField(
+        max_length=20, choices=STATUT_ASSURANCE_CHOICES, default='a_reclamer',
+        help_text="Où en est le remboursement par l'assurance.")
+    date_reclamation   = models.DateField(
+        null=True, blank=True,
+        help_text="Date d'envoi de la demande de remboursement à l'assureur.")
+    date_remboursement = models.DateField(
+        null=True, blank=True,
+        help_text="Date à laquelle l'assureur a effectivement remboursé.")
+
+    def marquer_assurance(self, nouveau_statut, quand=None):
+        """Fait avancer (ou revenir) le recouvrement, en tenant les dates à jour.
+
+        Revenir en arrière efface les dates devenues fausses : un dossier
+        repassé « à réclamer » ne doit pas garder une date de remboursement.
+        """
+        from django.utils import timezone
+        if nouveau_statut not in dict(self.STATUT_ASSURANCE_CHOICES):
+            raise ValueError("Statut de recouvrement inconnu.")
+        quand = quand or timezone.localdate()
+
+        self.statut_assurance = nouveau_statut
+        if nouveau_statut == 'a_reclamer':
+            self.date_reclamation = None
+            self.date_remboursement = None
+        elif nouveau_statut == 'reclame':
+            self.date_reclamation = self.date_reclamation or quand
+            self.date_remboursement = None
+        else:  # rembourse
+            self.date_reclamation = self.date_reclamation or quand
+            self.date_remboursement = quand
+
+        # update() cible les seuls champs de recouvrement : pas de save() complet,
+        # qui régénérerait les lignes et recalculerait le total sans raison.
+        Facture.objects.filter(pk=self.pk).update(
+            statut_assurance=self.statut_assurance,
+            date_reclamation=self.date_reclamation,
+            date_remboursement=self.date_remboursement,
+        )
+
     # ── Identification du service facturé ─────────────────────────
     SERVICES = [
         ('consultation',    'Consultation'),
