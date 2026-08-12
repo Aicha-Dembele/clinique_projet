@@ -1866,6 +1866,10 @@
       <i class="bi bi-calendar-check-fill"></i> Rendez-vous
       {% if rdv_count %}<span class="sb-badge">{{ rdv_count }}</span>{% endif %}
     </a>
+    <a href="{% url 'consultation:suivi' %}" class="sb-link {% block nav_suivi %}{% endblock %}">
+      <i class="bi bi-clipboard2-check"></i> Suivi des consultations
+      {% if consultations_en_retard %}<span class="sb-badge sb-badge-danger" title="Consultations fixées dont l'heure est dépassée">{{ consultations_en_retard }}</span>{% endif %}
+    </a>
     {% endif %}
     {% if 'dossier.view' in user_permissions %}
     <a href="{% url 'consultation:dossiers' %}" class="sb-link {% block nav_dossiers %}{% endblock %}">

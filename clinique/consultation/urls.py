@@ -10,6 +10,9 @@ urlpatterns = [
     path('rdv/<int:pk>/modifier/', views.rdv_modifier, name='rdv_modifier'),
     path('rdv/<int:pk>/supprimer/', views.rdv_supprimer, name='rdv_supprimer'),
 
+    # Suivi des consultations (reception) : fixees non faites / deja passees
+    path('suivi/', views.suivi_consultations, name='suivi'),
+
     # Dossiers médicaux
     path('dossiers/', views.dossiers, name='dossiers'),
     path('dossiers/<int:pk>/', views.dossier_detail, name='dossier_detail'),

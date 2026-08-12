@@ -80,6 +80,29 @@ def _examens_a_faire(request, role):
         return 0
 
 
+def _consultations_en_retard(request, role, codes):
+    """Nombre de consultations fixées dont l'heure est dépassée et qui n'ont
+    toujours pas été faites (badge du menu « Suivi des consultations »).
+    Calculé uniquement pour ceux qui ont le droit de voir les rendez-vous ;
+    un médecin ne compte que les siens."""
+    if 'rdv.view' not in codes:
+        return 0
+    try:
+        from django.utils import timezone
+        from consultation.models import Rendez_vous
+        qs = Rendez_vous.objects.filter(
+            statut='programme', consultation__isnull=True,
+            date__lt=timezone.now())
+        if role == 'medecin':
+            medecin = getattr(request.user.profil, 'medecin', None)
+            if not medecin:
+                return 0
+            qs = qs.filter(medecin=medecin)
+        return qs.count()
+    except Exception:
+        return 0
+
+
 def _notifications(request):
     """(nombre_non_lues, 8 dernières) pour la cloche de la barre du haut."""
     if not request.user.is_authenticated:
@@ -109,6 +132,7 @@ def role_context(request):
         'stock_alertes': _stock_alertes(role),
         'resultats_non_lus': _resultats_non_lus(request, role),
         'examens_a_faire': _examens_a_faire(request, role),
+        'consultations_en_retard': _consultations_en_retard(request, role, codes),
         'notifications_non_lues': notif_count,
         'notifications_recentes': notif_list,
     }

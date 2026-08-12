@@ -174,6 +174,75 @@ def rdv_supprimer(request, pk):
     })
 
 
+@permission_required('rdv.view', 'consultation.view')
+def suivi_consultations(request):
+    """Suivi des consultations, pensé pour la réception.
+
+    Deux listes complémentaires :
+      • « À faire »  : rendez-vous fixés dont la consultation n'a pas encore
+        été réalisée (aucun compte rendu enregistré et statut « programmé »).
+        Ceux dont l'heure est déjà dépassée sont signalés « en retard ».
+      • « Passées »  : rendez-vous honorés, c'est-à-dire ceux qui ont donné
+        lieu à une consultation (ou marqués « terminé » à la main).
+
+    La réception a le droit `rdv.view` mais pas `consultation.view` : elle voit
+    donc le suivi administratif (qui, quand, avec quel médecin) sans accéder au
+    contenu médical (motif, diagnostic), qui reste réservé au médecin.
+    """
+    maintenant = timezone.now()
+
+    base = Rendez_vous.objects.select_related('patient', 'medecin')
+
+    # Cloisonnement : un médecin ne suit que ses propres rendez-vous.
+    if get_role(request.user) == 'medecin':
+        medecin = _get_personnel(request.user, 'medecin')
+        base = base.filter(medecin=medecin) if medecin else base.none()
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        base = base.filter(
+            termes_q(q, 'patient__nom', 'patient__prenom', 'patient__telephone',
+                     'medecin__nom', 'medecin__prenom', 'medecin__specialite')
+        )
+
+    # Fixées mais pas encore faites (les annulées ne sont plus « à faire »).
+    a_faire_qs = base.filter(statut='programme', consultation__isnull=True)
+    en_retard = list(a_faire_qs.filter(date__lt=maintenant).order_by('date'))
+    a_venir = list(a_faire_qs.filter(date__gte=maintenant).order_by('date'))
+    # Les retards d'abord : ce sont eux qui demandent une action de la réception.
+    a_faire = en_retard + a_venir
+
+    # Déjà passées : une consultation existe, ou le RDV a été clôturé à la main.
+    passees_qs = (base
+                  .filter(models.Q(consultation__isnull=False) |
+                          models.Q(statut='termine'))
+                  .select_related('consultation')
+                  .order_by('-date')
+                  .distinct())
+
+    annulees_count = base.filter(statut='annule').count()
+
+    onglet = request.GET.get('onglet', 'a_faire')
+    if onglet not in ('a_faire', 'passees'):
+        onglet = 'a_faire'
+
+    paginator = Paginator(passees_qs, 25)
+    passees = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'consultation/suivi_consultations.html', {
+        'onglet':          onglet,
+        'q':               q,
+        'a_faire':         a_faire,
+        'a_faire_count':   len(a_faire),
+        'en_retard_count': len(en_retard),
+        'a_venir_count':   len(a_venir),
+        'passees':         passees,
+        'passees_count':   paginator.count,
+        'annulees_count':  annulees_count,
+        'maintenant':      maintenant,
+    })
+
+
 # Dossiers medicaux
 
 def _dossiers_visibles(request):
