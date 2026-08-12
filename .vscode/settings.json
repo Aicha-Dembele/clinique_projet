@@ -1,3 +1,25 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+
+    // ─────────────────────────────────────────────────────────────
+    // Correctif : « Restarting the terminal because the connection
+    // to the shell process was lost ». Sous Windows, le terminal de
+    // VS Code perd parfois sa connexion a PowerShell (bug ConPTY),
+    // ce qui tue le serveur Django en cours d'execution.
+    // ─────────────────────────────────────────────────────────────
+
+    // Utilise l'ancienne API console, plus stable sous Windows.
+    "terminal.integrated.windowsEnableConpty": false,
+
+    // Desactive l'instrumentation du shell, autre cause de deconnexion.
+    "terminal.integrated.shellIntegration.enabled": false,
+
+    // Si le terminal meurt malgre tout, garde-le ouvert pour qu'on
+    // puisse LIRE le message d'erreur au lieu de le voir disparaitre.
+    "terminal.integrated.showExitAlert": true,
+
+    // Interprete Python du projet (le venv), pour que VS Code
+    // n'utilise pas le Python global.
+    "python.defaultInterpreterPath": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+    "python.terminal.activateEnvironment": true
 }
