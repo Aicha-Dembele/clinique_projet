@@ -80,27 +80,36 @@
     </div>
   </div>
 
-  <!-- ══ SECTION 2 : SERVICES ══ -->
+  <!-- ══ SECTION 2 : LE SERVICE FACTURÉ ══ -->
   <div class="form-section" style="animation-delay:.06s">
     <div class="form-section-hdr">
       <span class="form-section-ico" style="color:#14b8a6;background:rgba(20,184,166,.12)"><i class="bi bi-receipt-cutoff"></i></span>
       <div>
-        <div class="form-section-title">Services à facturer</div>
-        <div class="form-section-sub">Sélectionnez une consultation et/ou une hospitalisation. Les examens liés à la consultation sont inclus automatiquement.</div>
+        <div class="form-section-title">Service à facturer</div>
+        <div class="form-section-sub">Une facture = un seul service. La consultation, chaque examen, l'hospitalisation et les médicaments d'une ordonnance sont facturés séparément, chacun avec sa propre prise en charge par l'assurance.</div>
       </div>
     </div>
 
     <div class="row g-3">
 
+      <!-- Type de service -->
+      <div class="col-12 col-md-5">
+        <label class="f-label"><i class="bi bi-list-check" style="color:#14b8a6"></i> Type de service <span class="req-mark">*</span></label>
+        <select name="service" id="sel-service" class="f-input f-select" required>
+          <option value="">-- Choisir le type de service --</option>
+          {% for code, libelle in services %}
+          <option value="{{ code }}" {% if pre_service == code %}selected{% endif %}>{{ libelle }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
       <!-- Consultation -->
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-7 bloc-service" id="bloc-consultation" style="display:none">
         <label class="f-label"><i class="bi bi-clipboard2-pulse-fill" style="color:#0088aa"></i> Consultation</label>
         <select name="consultation" id="sel-consultation" class="f-input f-select">
-          <option value="">-- Aucune --</option>
+          <option value="">-- Choisir la consultation --</option>
           {% for c in consultations %}
           <option value="{{ c.pk }}"
-            data-prix="{{ c.get_tarif.prix|default:0 }}"
-            data-label="{{ c.rendez_vous.medecin.specialite|default:'Générale' }}"
             {% if c.pk in consult_facturees %}disabled{% endif %}
             {% if facture and facture.consultation_id == c.pk %}selected{% endif %}
             {% if pre_consultation == c.pk|stringformat:"s" %}selected{% endif %}>
@@ -111,25 +120,33 @@
           </option>
           {% endfor %}
         </select>
-        <!-- Examens liés affichés dynamiquement -->
-        <div id="examens-lies" style="margin-top:.6rem">
-          <div class="helper"><i class="bi bi-eyedropper me-1" style="color:#8b5cf6"></i> Examens inclus automatiquement :</div>
-          <div class="exam-tags" id="exam-tags-container">
-            <span class="exam-tag-none">Sélectionnez une consultation</span>
-          </div>
-        </div>
+      </div>
+
+      <!-- Examen médical -->
+      <div class="col-12 col-md-7 bloc-service" id="bloc-examen" style="display:none">
+        <label class="f-label"><i class="bi bi-eyedropper" style="color:#8b5cf6"></i> Examen médical</label>
+        <select name="examen" id="sel-examen" class="f-input f-select">
+          <option value="">-- Choisir l'examen --</option>
+          {% for e in examens %}
+          <option value="{{ e.pk }}"
+            {% if e.pk in examen_factures %}disabled{% endif %}
+            {% if facture and facture.examen_id == e.pk %}selected{% endif %}
+            {% if pre_examen == e.pk|stringformat:"s" %}selected{% endif %}>
+            {{ e.patient.nom }} {{ e.patient.prenom }}
+            — {{ e.type_examen }}
+            {% if e.date %}— {{ e.date|date:'d/m/Y' }}{% endif %}{% if e.pk in examen_factures %} — ✓ déjà facturé{% endif %}
+          </option>
+          {% endfor %}
+        </select>
       </div>
 
       <!-- Hospitalisation -->
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-7 bloc-service" id="bloc-hospitalisation" style="display:none">
         <label class="f-label"><i class="bi bi-hospital-fill" style="color:#3b82f6"></i> Hospitalisation</label>
         <select name="hospitalisation" id="sel-hospit" class="f-input f-select">
-          <option value="">-- Aucune --</option>
+          <option value="">-- Choisir l'hospitalisation --</option>
           {% for h in hospitalisations %}
           <option value="{{ h.pk }}"
-            data-prix="{{ h.get_prix_nuit|default:0 }}"
-            data-jours="{{ h.nombre_jours }}"
-            data-type="{{ h.type_chambre }}"
             {% if h.pk in hospit_facturees %}disabled{% endif %}
             {% if facture and facture.hospitalisation_id == h.pk %}selected{% endif %}
             {% if pre_hospit == h.pk|stringformat:"s" %}selected{% endif %}>
@@ -149,8 +166,30 @@
         </div>
       </div>
 
+      <!-- Pharmacie / ordonnance -->
+      <div class="col-12 col-md-7 bloc-service" id="bloc-ordonnance" style="display:none">
+        <label class="f-label"><i class="bi bi-capsule" style="color:#14b8a6"></i> Ordonnance dispensée</label>
+        <select name="ordonnance" id="sel-ordonnance" class="f-input f-select">
+          <option value="">-- Choisir l'ordonnance --</option>
+          {% for o in ordonnances %}
+          <option value="{{ o.pk }}"
+            {% if o.pk in ordo_facturees %}disabled{% endif %}
+            {% if facture and facture.ordonnance_id == o.pk %}selected{% endif %}
+            {% if pre_ordonnance == o.pk|stringformat:"s" %}selected{% endif %}>
+            {{ o.consultation.rendez_vous.patient.nom }} {{ o.consultation.rendez_vous.patient.prenom }}
+            — ORD-{{ o.pk|stringformat:"04d" }}
+            — {{ o.date|date:'d/m/Y' }}{% if o.pk in ordo_facturees %} — ✓ déjà facturée{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <div class="helper" style="margin-top:.5rem">
+          <i class="bi bi-info-circle me-1"></i>
+          Seules les ordonnances dont les médicaments ont été dispensés apparaissent ici.
+        </div>
+      </div>
+
       <div class="col-12">
-        <div class="helper"><i class="bi bi-info-circle me-1"></i> Au moins un service doit être sélectionné pour générer un montant.</div>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i> Pour facturer plusieurs prestations d'un même patient, créez une facture par prestation.</div>
       </div>
     </div>
 
@@ -255,14 +294,21 @@
 {% block extra_js %}
 <!-- Données tarifs & examens en JSON pour le JS -->
 <script>
+// Un service = une facture : chaque type a son propre bareme.
 const TARIFS_CONSULTATION = {
   {% for c in consultations %}
   "{{ c.pk }}": {
     prix: {{ c.get_tarif.prix|default:0 }},
-    label: "Consultation {{ c.rendez_vous.medecin.specialite|default:'Générale' }}",
-    examens: [{% for e in c.examenmedical_set.all %}"{{ e.type_examen }}"{% if not forloop.last %},{% endif %}{% endfor %}],
-    examens_prix: [{% for e in c.examenmedical_set.all %}{{ e.get_tarif.prix|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
-    examens_labels: [{% for e in c.examenmedical_set.all %}"{{ e.get_tarif.nom|default:e.type_examen }}"{% if not forloop.last %},{% endif %}{% endfor %}]
+    label: "Consultation {{ c.rendez_vous.medecin.specialite|default:'Générale' }}"
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+const TARIFS_EXAMEN = {
+  {% for e in examens %}
+  "{{ e.pk }}": {
+    prix: {{ e.get_tarif.prix|default:0 }},
+    label: "{{ e.get_tarif.nom|default:e.type_examen }} ({{ e.type_examen }})"
   }{% if not forloop.last %},{% endif %}
   {% endfor %}
 };
@@ -279,62 +325,65 @@ const TARIFS_HOSPIT = {
   {% endfor %}
 };
 
+const TARIFS_ORDONNANCE = {
+  {% for o in ordonnances %}
+  "{{ o.pk }}": {
+    prix: {{ o.montant_dispense|floatformat:0 }},
+    label: "Médicaments dispensés — ORD-{{ o.pk|stringformat:'04d' }}"
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
 function fmt(n) {
   return parseInt(n).toLocaleString('fr-FR') + ' FCFA';
 }
 
+// Affiche le seul menu correspondant au type de service choisi, et vide les autres
+// pour qu'aucun acte fantome ne parte dans le formulaire.
+function majBlocsService() {
+  const service = document.getElementById('sel-service').value;
+  document.querySelectorAll('.bloc-service').forEach(bloc => {
+    const actif = bloc.id === 'bloc-' + service;
+    bloc.style.display = actif ? '' : 'none';
+    if (!actif) {
+      const sel = bloc.querySelector('select');
+      if (sel) sel.value = '';
+    }
+  });
+}
+
 function updatePreview() {
-  const cid = document.getElementById('sel-consultation').value;
-  const hid = document.getElementById('sel-hospit').value;
+  const service = document.getElementById('sel-service').value;
   const preview = document.getElementById('montant-preview');
   const lignesEl = document.getElementById('preview-lignes');
   const totalEl = document.getElementById('preview-total');
-  const tagsEl = document.getElementById('exam-tags-container');
   const hospitDetail = document.getElementById('hospit-detail');
   const hospitDetailText = document.getElementById('hospit-detail-text');
 
   let lignes = [];
   let total = 0;
+  hospitDetail.style.display = 'none';
 
-  // Consultation + examens
-  if (cid && TARIFS_CONSULTATION[cid]) {
-    const t = TARIFS_CONSULTATION[cid];
+  if (service === 'consultation') {
+    const t = TARIFS_CONSULTATION[document.getElementById('sel-consultation').value];
+    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; }
 
-    // Consultation
-    lignes.push({ label: t.label, prix: t.prix, qte: 1 });
-    total += t.prix;
+  } else if (service === 'examen') {
+    const t = TARIFS_EXAMEN[document.getElementById('sel-examen').value];
+    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; }
 
-    // Examens liés
-    tagsEl.innerHTML = '';
-    if (t.examens.length > 0) {
-      t.examens.forEach((ex, i) => {
-        const tag = document.createElement('span');
-        tag.className = 'exam-tag';
-        tag.textContent = ex;
-        tagsEl.appendChild(tag);
-        const prixEx = t.examens_prix[i] || 0;
-        const labelEx = t.examens_labels[i] || ex;
-        lignes.push({ label: labelEx + ' (' + ex + ')', prix: prixEx, qte: 1 });
-        total += prixEx;
-      });
-    } else {
-      tagsEl.innerHTML = '<span class="exam-tag-none">Aucun examen lié à cette consultation</span>';
+  } else if (service === 'hospitalisation') {
+    const h = TARIFS_HOSPIT[document.getElementById('sel-hospit').value];
+    if (h) {
+      total = h.prix_nuit * h.jours;
+      lignes.push({ label: h.label, prix: h.prix_nuit, qte: h.jours, unite: 'nuit' });
+      hospitDetailText.textContent = h.type + ' · ' + h.jours + ' nuit' + (h.jours > 1 ? 's' : '') + ' × ' + fmt(h.prix_nuit) + ' = ' + fmt(total);
+      hospitDetail.style.display = 'block';
     }
-  } else {
-    tagsEl.innerHTML = '<span class="exam-tag-none">Sélectionnez une consultation</span>';
-  }
 
-  // Hospitalisation
-  if (hid && TARIFS_HOSPIT[hid]) {
-    const h = TARIFS_HOSPIT[hid];
-    const sousTotal = h.prix_nuit * h.jours;
-    lignes.push({ label: h.label, prix: h.prix_nuit, qte: h.jours, unite: 'nuit' });
-    total += sousTotal;
-
-    hospitDetailText.textContent = h.type + ' · ' + h.jours + ' nuit' + (h.jours > 1 ? 's' : '') + ' × ' + fmt(h.prix_nuit) + ' = ' + fmt(sousTotal);
-    hospitDetail.style.display = 'block';
-  } else {
-    hospitDetail.style.display = 'none';
+  } else if (service === 'ordonnance') {
+    const t = TARIFS_ORDONNANCE[document.getElementById('sel-ordonnance').value];
+    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; }
   }
 
   // Affiche/cache l'aperçu
@@ -398,10 +447,18 @@ selAssurance.addEventListener('change', () => {
 });
 
 inpTaux.addEventListener('input', updatePreview);
-document.getElementById('sel-consultation').addEventListener('change', updatePreview);
-document.getElementById('sel-hospit').addEventListener('change', updatePreview);
 
-// Init au chargement (mode modification)
-document.addEventListener('DOMContentLoaded', updatePreview);
+document.getElementById('sel-service').addEventListener('change', () => {
+  majBlocsService();
+  updatePreview();
+});
+['sel-consultation', 'sel-examen', 'sel-hospit', 'sel-ordonnance'].forEach(id => {
+  document.getElementById(id).addEventListener('change', updatePreview);
+});
+
+// Init au chargement (mode modification / pré-sélection depuis l'URL)
+majBlocsService();
+updatePreview();
+document.addEventListener('DOMContentLoaded', () => { majBlocsService(); updatePreview(); });
 </script>
 {% endblock %}

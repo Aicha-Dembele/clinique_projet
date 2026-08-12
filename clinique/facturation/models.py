@@ -83,9 +83,17 @@ class Facture(models.Model):
         ('payé',     'Payé'),
     ]
 
+    # ── Un service = une facture ──────────────────────────────────
+    # Chaque prestation est facturée SÉPARÉMENT : la consultation, chaque examen,
+    # l'hospitalisation et les médicaments d'une ordonnance ont chacun leur propre
+    # facture, avec leur propre prise en charge par l'assurance. Un et un seul de
+    # ces quatre liens est renseigné par facture (voir `service()`).
     patient         = models.ForeignKey(Patient, on_delete=models.CASCADE)
     consultation    = models.ForeignKey("consultation.Consultation",  on_delete=models.SET_NULL, null=True, blank=True)
+    examen          = models.ForeignKey("consultation.ExamenMedical", on_delete=models.SET_NULL, null=True, blank=True)
     hospitalisation = models.ForeignKey("consultation.Hospitalisation", on_delete=models.SET_NULL, null=True, blank=True)
+    ordonnance      = models.ForeignKey("consultation.Ordonnance", on_delete=models.SET_NULL, null=True, blank=True,
+                                        help_text="Facture des médicaments dispensés pour cette ordonnance.")
     montant_total   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     statut          = models.CharField(max_length=20, choices=STATUT_CHOICES, default='non payé')
     date_creation   = models.DateTimeField(auto_now_add=True, null=True)
@@ -100,6 +108,35 @@ class Facture(models.Model):
         max_digits=5, decimal_places=2, default=0,
         help_text="Taux de prise en charge appliqué à cette facture (%)."
     )
+
+    # ── Identification du service facturé ─────────────────────────
+    SERVICES = [
+        ('consultation',    'Consultation'),
+        ('examen',          'Examen médical'),
+        ('hospitalisation', 'Hospitalisation'),
+        ('ordonnance',      'Pharmacie (ordonnance)'),
+    ]
+
+    def service(self):
+        """Code du service facturé, ou None si la facture n'est rattachée à rien.
+
+        Une facture ne porte qu'un seul service : on renvoie le premier lien
+        renseigné, dans l'ordre du parcours de soin.
+        """
+        if self.consultation_id:
+            return 'consultation'
+        if self.examen_id:
+            return 'examen'
+        if self.hospitalisation_id:
+            return 'hospitalisation'
+        if self.ordonnance_id:
+            return 'ordonnance'
+        return None
+
+    def service_libelle(self):
+        """Nom lisible du service facturé, pour l'affichage et les PDF."""
+        code = self.service()
+        return dict(self.SERVICES).get(code, 'Prestation')
 
     # ── Calcul principal ──────────────────────────────────────────
     def calculer_total(self):
@@ -123,9 +160,14 @@ class Facture(models.Model):
 
     def generer_lignes(self):
         """
-        Supprime les anciennes lignes et recrée tout depuis les objets liés.
-        Appelée lors du save(). Tous les tarifs sont préchargés une seule fois :
-        le calcul reste correct quel que soit le nombre d'examens, sans N+1.
+        Supprime les anciennes lignes et recrée celles du SEUL service facturé.
+
+        Chaque prestation est facturée à part : une facture de consultation ne
+        contient que la consultation, une facture d'examen que cet examen, etc.
+        L'assurance s'applique ensuite indépendamment sur chacune (part_assurance
+        travaille sur le montant de cette facture uniquement).
+
+        Appelée lors du save(). Les tarifs sont préchargés en une seule requête.
         """
         self.lignes.all().delete()
         index, defaults = self._index_tarifs()
@@ -136,7 +178,9 @@ class Facture(models.Model):
 
         lignes = []
 
-        # ── 1. CONSULTATION ──────────────────────────────────────
+        # ── CONSULTATION ─────────────────────────────────────────
+        # Uniquement l'acte de consultation : les examens prescrits pendant
+        # celle-ci sont factures separement, sur leur propre facture.
         if self.consultation:
             specialite = ''
             try:
@@ -155,21 +199,22 @@ class Facture(models.Model):
                 quantite=1,
             ))
 
-            # ── 1b. EXAMENS liés à cette consultation ────────────
-            for examen in self.consultation.examenmedical_set.all():
-                tarif_e = resolve('examen', examen.type_examen)
-                prix_e = tarif_e.prix if tarif_e else Decimal('0')
-                nom_e  = tarif_e.nom  if tarif_e else f"Examen — {examen.type_examen}"
-                lignes.append(LigneFacture(
-                    facture=self,
-                    description=f"{nom_e} ({examen.type_examen})",
-                    type_service='examen',
-                    prix_unitaire=prix_e,
-                    quantite=1,
-                ))
+        # ── EXAMEN MÉDICAL ───────────────────────────────────────
+        elif self.examen:
+            e = self.examen
+            tarif_e = resolve('examen', e.type_examen)
+            prix_e = tarif_e.prix if tarif_e else Decimal('0')
+            nom_e  = tarif_e.nom  if tarif_e else f"Examen — {e.type_examen}"
+            lignes.append(LigneFacture(
+                facture=self,
+                description=f"{nom_e} ({e.type_examen})",
+                type_service='examen',
+                prix_unitaire=prix_e,
+                quantite=1,
+            ))
 
-        # ── 2. HOSPITALISATION ───────────────────────────────────
-        if self.hospitalisation:
+        # ── HOSPITALISATION ──────────────────────────────────────
+        elif self.hospitalisation:
             h = self.hospitalisation
             type_ch = (h.type_chambre or 'standard').strip()
             jours   = max(int(h.nombre_jours or 1), 1)
@@ -185,24 +230,18 @@ class Facture(models.Model):
                 quantite=jours,
             ))
 
-        # ── 3. MÉDICAMENTS dispensés (sorties de stock portées sur cette facture) ──
-        # Régénérées depuis les MouvementStock liés : le total reste juste à chaque
-        # recalcul, comme pour les consultations/examens (une requête, sans N+1).
-        if self.pk:
-            # Filet de sécurité : rattache à cette facture les médicaments déjà
-            # dispensés contre une ordonnance de SA consultation mais pas encore
-            # portés sur une facture (sorties « orphelines »). Ainsi les médicaments
-            # de l'ordonnance apparaissent toujours sur la facture de la consultation.
-            if self.consultation_id:
-                from pharmacie.models import MouvementStock
-                MouvementStock.objects.filter(
-                    type_mouvement='sortie',
-                    facture__isnull=True,
-                    ordonnance__consultation_id=self.consultation_id,
-                ).update(facture=self)
-            for mv in (self.mouvements
-                       .filter(type_mouvement='sortie')
-                       .select_related('medicament')):
+        # ── PHARMACIE : médicaments dispensés pour une ordonnance ─
+        # Une facture par ordonnance : on repart des sorties de stock rattachées
+        # à cette ordonnance, quel que soit le nombre de passages en pharmacie.
+        # Les sorties font foi, le total reste donc juste à chaque recalcul.
+        elif self.ordonnance_id and self.pk:
+            from pharmacie.models import MouvementStock
+            sorties = (MouvementStock.objects
+                       .filter(type_mouvement='sortie', ordonnance_id=self.ordonnance_id)
+                       .select_related('medicament'))
+            # Traçabilité : ces sorties portent bien cette facture-là.
+            sorties.exclude(facture_id=self.pk).update(facture=self)
+            for mv in sorties:
                 lignes.append(LigneFacture(
                     facture=self,
                     description=f"Médicament — {mv.medicament.libelle()}",
@@ -299,7 +338,8 @@ class Facture(models.Model):
         Facture.objects.filter(pk=self.pk).update(statut=self.statut)
 
     def __str__(self):
-        return f"FAC-{str(self.pk).zfill(4)} — {self.patient} — {self.montant_total:,.0f} FCFA — {self.statut}"
+        return (f"FAC-{str(self.pk).zfill(4)} — {self.patient} — {self.service_libelle()} — "
+                f"{self.montant_total:,.0f} FCFA — {self.statut}")
 
 
 class LigneFacture(models.Model):

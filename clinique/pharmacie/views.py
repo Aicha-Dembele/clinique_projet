@@ -44,14 +44,16 @@ def _stats():
 
 
 def _facture_pour_dispensation(patient_id, ordonnance_id):
-    """Facture sur laquelle porter un médicament dispensé à un patient.
+    """Facture pharmacie sur laquelle porter un médicament dispensé.
 
-    Le patient de la sortie fait FOI : on ne rattache jamais le médicament à la
-    facture d'un autre patient. L'ordonnance n'est utilisée que si sa consultation
-    appartient bien à ce patient.
+    Chaque service est facturé à part : les médicaments ne sont plus portés sur
+    la facture de la consultation, ils ont leur PROPRE facture, rattachée à
+    l'ordonnance. Une ordonnance = une facture pharmacie, même si le patient
+    revient chercher le reste de ses médicaments un autre jour.
 
-    - Ordonnance valide (même patient) → facture de sa consultation (créée si besoin).
-    - Sinon → dernière facture non soldée du patient (créée si aucune).
+    Le patient de la sortie fait FOI : on ne rattache jamais le médicament à
+    l'ordonnance d'un autre patient. Sans ordonnance valide, on ne facture rien
+    (`_verifier_ordonnance_vente` a déjà interdit ce cas pour une vente).
     """
     from facturation.models import Facture
     from consultation.models import Ordonnance
@@ -60,31 +62,23 @@ def _facture_pour_dispensation(patient_id, ordonnance_id):
         patient_id = int(patient_id)
     except (TypeError, ValueError):
         return None
+    if not ordonnance_id:
+        return None
 
-    consultation = None
-    if ordonnance_id:
-        ordo = (Ordonnance.objects
-                .select_related('consultation__rendez_vous')
-                .filter(pk=ordonnance_id).first())
-        # On n'utilise l'ordonnance que si sa consultation est bien CELLE du patient
-        if ordo and ordo.consultation and ordo.consultation.rendez_vous.patient_id == patient_id:
-            consultation = ordo.consultation
+    ordo = (Ordonnance.objects
+            .select_related('consultation__rendez_vous')
+            .filter(pk=ordonnance_id).first())
+    # L'ordonnance n'est retenue que si sa consultation est bien CELLE du patient
+    try:
+        appartient = ordo.consultation.rendez_vous.patient_id == patient_id
+    except AttributeError:
+        appartient = False
+    if not appartient:
+        return None
 
-    if consultation:
-        facture = Facture.objects.filter(consultation=consultation).first()
-        if facture is None:
-            facture = Facture(patient_id=patient_id, consultation=consultation)
-            facture.save()
-        return facture
-
-    # Repli : on porte le médicament sur une facture non soldée du patient
-    facture = (Facture.objects
-               .filter(patient_id=patient_id)
-               .exclude(statut='payé')
-               .order_by('-date_creation')
-               .first())
+    facture = Facture.objects.filter(ordonnance=ordo).first()
     if facture is None:
-        facture = Facture(patient_id=patient_id)
+        facture = Facture(patient_id=patient_id, ordonnance=ordo)
         facture.save()
     return facture
 

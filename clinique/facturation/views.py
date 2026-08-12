@@ -112,106 +112,134 @@ def paiement_pdf(request, pk):
     return paiement_pdf_response(paiement)
 
 
+def _enregistrer_service(request, facture):
+    """Rattache à `facture` le SEUL service choisi dans le formulaire.
+
+    Une facture = un service. Le formulaire envoie `service` (le type) puis
+    l'identifiant de l'acte dans le champ du même nom. Les trois autres liens
+    sont remis à vide : impossible de se retrouver avec une facture hybride.
+
+    Lève ValueError si rien n'est choisi, ou si l'acte est déjà facturé.
+    """
+    libelles = dict(Facture.SERVICES)
+    service = (request.POST.get('service') or '').strip()
+    if service not in libelles:
+        raise ValueError("Choisissez le type de service à facturer.")
+
+    objet_id = request.POST.get(service) or None
+    if not objet_id:
+        raise ValueError(f"Choisissez l'acte à facturer ({libelles[service]}).")
+
+    # Un même acte ne peut pas être facturé deux fois.
+    deja = (Facture.objects
+            .filter(**{f'{service}_id': objet_id})
+            .exclude(pk=facture.pk) if facture.pk else
+            Facture.objects.filter(**{f'{service}_id': objet_id}))
+    deja = deja.first()
+    if deja:
+        raise ValueError(
+            f"{libelles[service]} déjà facturé sur FAC-{str(deja.pk).zfill(4)}. "
+            f"Supprimez cette facture d'abord pour en créer une nouvelle.")
+
+    for code, _ in Facture.SERVICES:
+        setattr(facture, f'{code}_id', objet_id if code == service else None)
+
+
+def _contexte_form(request, facture=None):
+    """Listes proposées dans le formulaire de facture, service par service.
+
+    Chaque acte déjà facturé est signalé (et désactivé) dans sa liste, pour que
+    la réception voie d'un coup d'œil ce qui reste à facturer.
+    """
+    from consultation.models import Consultation, Hospitalisation, ExamenMedical, Ordonnance
+
+    exclure = {'pk': facture.pk} if facture and facture.pk else None
+
+    def deja_factures(champ):
+        qs = Facture.objects.filter(**{f'{champ}__isnull': False})
+        if exclure:
+            qs = qs.exclude(**exclure)
+        return set(qs.values_list(f'{champ}_id', flat=True))
+
+    # Pharmacie : seules les ordonnances réellement dispensées ont un montant.
+    ordonnances = (Ordonnance.objects
+                   .filter(dispensations__type_mouvement='sortie')
+                   .select_related('consultation__rendez_vous__patient')
+                   .distinct().order_by('-date'))
+    for o in ordonnances:
+        o.montant_dispense = sum(
+            (mv.montant() for mv in o.dispensations.filter(type_mouvement='sortie')),
+            Decimal('0'))
+
+    return {
+        'patients':         _patients_facturables(
+                                inclure_pk=facture.patient_id if facture else None),
+        'consultations':    Consultation.objects.select_related(
+                                'rendez_vous__patient', 'rendez_vous__medecin').order_by('-date'),
+        'examens':          ExamenMedical.objects.select_related(
+                                'patient', 'medecin').order_by('-id'),
+        'hospitalisations': Hospitalisation.objects.select_related('patient').order_by('-date_entree'),
+        'ordonnances':      ordonnances,
+        'consult_facturees': deja_factures('consultation'),
+        'examen_factures':   deja_factures('examen'),
+        'hospit_facturees':  deja_factures('hospitalisation'),
+        'ordo_facturees':    deja_factures('ordonnance'),
+        'services':         Facture.SERVICES,
+        'assurances':       Assurance.objects.filter(actif=True),
+        'tarifs':           Tarif.objects.all().order_by('type_service', 'nom'),
+    }
+
+
 @role_required('admin', 'receptionniste')
 def facture_ajouter(request):
-    from consultation.models import Consultation, Hospitalisation
-
     if request.method == 'POST':
         try:
-            patient_id      = request.POST['patient']
-            consultation_id = request.POST.get('consultation') or None
-            hospit_id       = request.POST.get('hospitalisation') or None
-
-            # Une consultation / hospitalisation ne peut être facturée qu'UNE fois.
-            if consultation_id:
-                existante = Facture.objects.filter(consultation_id=consultation_id).first()
-                if existante:
-                    messages.error(
-                        request,
-                        f"Une facture existe déjà pour cette consultation "
-                        f"(FAC-{str(existante.pk).zfill(4)}). Supprimez-la d'abord "
-                        f"pour en créer une nouvelle.")
-                    return redirect('facturation:detail', pk=existante.pk)
-            if hospit_id:
-                existante = Facture.objects.filter(hospitalisation_id=hospit_id).first()
-                if existante:
-                    messages.error(
-                        request,
-                        f"Une facture existe déjà pour cette hospitalisation "
-                        f"(FAC-{str(existante.pk).zfill(4)}). Supprimez-la d'abord.")
-                    return redirect('facturation:detail', pk=existante.pk)
-
             facture = Facture(
-                patient_id=patient_id,
-                consultation_id=consultation_id,
-                hospitalisation_id=hospit_id,
+                patient_id=request.POST['patient'],
                 assurance_id=request.POST.get('assurance') or None,
                 notes=request.POST.get('notes', ''),
             )
+            _enregistrer_service(request, facture)
             taux = request.POST.get('taux_prise_en_charge', '')
             if taux:
                 facture.taux_prise_en_charge = Decimal(taux)
             facture.save()   # génère les lignes et calcule le total
 
-            messages.success(request, f'Facture FAC-{str(facture.pk).zfill(4)} créée — Total : {_fmt(facture.montant_total)} FCFA')
+            messages.success(
+                request,
+                f'Facture FAC-{str(facture.pk).zfill(4)} créée — '
+                f'{facture.service_libelle()} — Total : {_fmt(facture.montant_total)} FCFA')
             return redirect('facturation:detail', pk=facture.pk)
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    # GET — pré-sélection depuis URL (ex: ?patient=3&consultation=5)
-    pre_patient      = request.GET.get('patient', '')
-    pre_consultation = request.GET.get('consultation', '')
-    pre_hospit       = request.GET.get('hospitalisation', '')
-
-    consultations = Consultation.objects.select_related(
-        'rendez_vous__patient', 'rendez_vous__medecin'
-    ).prefetch_related('examenmedical_set').order_by('-date')
-
-    # Toutes les hospitalisations (terminées ET en cours)
-    hospitalisations = Hospitalisation.objects.select_related('patient').order_by('-date_entree')
-
-    return render(request, 'facturation/form.html', {
-        'patients':         _patients_facturables(),
-        'consultations':    consultations,
-        'hospitalisations': hospitalisations,
-        'consult_facturees': set(Facture.objects.filter(consultation__isnull=False).values_list('consultation_id', flat=True)),
-        'hospit_facturees':  set(Facture.objects.filter(hospitalisation__isnull=False).values_list('hospitalisation_id', flat=True)),
-        'assurances':       Assurance.objects.filter(actif=True),
+    ctx = _contexte_form(request)
+    ctx.update({
         'action':           'Créer',
-        'pre_patient':      pre_patient,
-        'pre_consultation': pre_consultation,
-        'pre_hospit':       pre_hospit,
-        'tarifs':           Tarif.objects.all().order_by('type_service', 'nom'),
+        # Pré-sélection depuis l'URL (ex: ?service=consultation&consultation=5)
+        'pre_service':      request.GET.get('service', ''),
+        'pre_patient':      request.GET.get('patient', ''),
+        'pre_consultation': request.GET.get('consultation', ''),
+        'pre_examen':       request.GET.get('examen', ''),
+        'pre_hospit':       request.GET.get('hospitalisation', ''),
+        'pre_ordonnance':   request.GET.get('ordonnance', ''),
     })
+    return render(request, 'facturation/form.html', ctx)
 
 
 @role_required('admin', 'receptionniste')
 def facture_modifier(request, pk):
     facture = get_object_or_404(Facture, pk=pk)
-    from consultation.models import Consultation, Hospitalisation
 
     if request.method == 'POST':
         try:
-            facture.patient_id         = request.POST['patient']
-            facture.consultation_id    = request.POST.get('consultation') or None
-            facture.hospitalisation_id = request.POST.get('hospitalisation') or None
-            facture.assurance_id       = request.POST.get('assurance') or None
+            facture.patient_id   = request.POST['patient']
+            facture.assurance_id = request.POST.get('assurance') or None
             taux = request.POST.get('taux_prise_en_charge', '')
             # taux saisi → on l'applique ; champ vidé → save() reprendra celui de l'assurance (ou 0)
             facture.taux_prise_en_charge = Decimal(taux) if taux else Decimal('0')
-            facture.notes              = request.POST.get('notes', '')
-
-            # Pas deux factures pour la même consultation / hospitalisation
-            if facture.consultation_id:
-                autre = Facture.objects.filter(consultation_id=facture.consultation_id).exclude(pk=facture.pk).first()
-                if autre:
-                    messages.error(request, f"Une autre facture (FAC-{str(autre.pk).zfill(4)}) couvre déjà cette consultation.")
-                    return redirect('facturation:detail', pk=facture.pk)
-            if facture.hospitalisation_id:
-                autre = Facture.objects.filter(hospitalisation_id=facture.hospitalisation_id).exclude(pk=facture.pk).first()
-                if autre:
-                    messages.error(request, f"Une autre facture (FAC-{str(autre.pk).zfill(4)}) couvre déjà cette hospitalisation.")
-                    return redirect('facturation:detail', pk=facture.pk)
+            facture.notes = request.POST.get('notes', '')
+            _enregistrer_service(request, facture)
 
             facture.save()   # recalcule tout
 
@@ -220,24 +248,18 @@ def facture_modifier(request, pk):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    consultations_qs = Consultation.objects.select_related(
-        'rendez_vous__patient', 'rendez_vous__medecin'
-    ).prefetch_related('examenmedical_set').order_by('-date')
-
-    return render(request, 'facturation/form.html', {
+    ctx = _contexte_form(request, facture=facture)
+    ctx.update({
         'facture':          facture,
-        'patients':         _patients_facturables(inclure_pk=facture.patient_id),
-        'consultations':    consultations_qs,
-        'hospitalisations': Hospitalisation.objects.select_related('patient').order_by('-date_entree'),
-        'consult_facturees': set(Facture.objects.filter(consultation__isnull=False).exclude(pk=facture.pk).values_list('consultation_id', flat=True)),
-        'hospit_facturees':  set(Facture.objects.filter(hospitalisation__isnull=False).exclude(pk=facture.pk).values_list('hospitalisation_id', flat=True)),
-        'assurances':       Assurance.objects.filter(actif=True),
         'action':           'Modifier',
+        'pre_service':      facture.service() or '',
         'pre_patient':      '',
         'pre_consultation': '',
+        'pre_examen':       '',
         'pre_hospit':       '',
-        'tarifs':           Tarif.objects.all().order_by('type_service', 'nom'),
+        'pre_ordonnance':   '',
     })
+    return render(request, 'facturation/form.html', ctx)
 
 
 @role_required('admin', 'receptionniste')
