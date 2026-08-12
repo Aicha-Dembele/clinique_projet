@@ -775,6 +775,135 @@ def rapports(request):
 
 # ── Exports CSV (Excel) ──────────────────────────────────────────
 
+# ── Créances assurances ──────────────────────────────────────────
+# Ce que la clinique doit RÉCLAMER à chaque assureur : la part prise en charge
+# n'est jamais encaissée auprès du patient, elle reste due par l'assurance.
+
+MOIS_FR = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+           'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+
+def _periode(request):
+    """(annee, mois, libelle, valeur) depuis ?mois=YYYY-MM. Vide = toutes périodes."""
+    mois_param = (request.GET.get('mois') or '').strip()
+    if mois_param:
+        try:
+            y, m = mois_param.split('-')
+            y, m = int(y), int(m)
+            if 1 <= m <= 12:
+                return y, m, f'{MOIS_FR[m]} {y}', f'{y}-{m:02d}'
+        except (ValueError, TypeError):
+            pass
+    return None, None, 'Toutes périodes', ''
+
+
+def _factures_prises_en_charge(request):
+    """Factures dont une part revient à une assurance, sur la période choisie."""
+    annee, mois, libelle, valeur = _periode(request)
+    qs = (Facture.objects
+          .filter(assurance__isnull=False, taux_prise_en_charge__gt=0)
+          .select_related('patient', 'assurance', 'consultation', 'examen',
+                          'hospitalisation', 'ordonnance')
+          .order_by('assurance__nom', 'patient__nom', 'pk'))
+    if annee and mois:
+        qs = qs.filter(date_creation__year=annee, date_creation__month=mois)
+    return qs, libelle, valeur
+
+
+@permission_required('facture.view', 'rapport.view')
+def creances_assurances(request):
+    """État des sommes à réclamer aux assurances, regroupées par assureur.
+
+    Chaque facture porte un taux de prise en charge : la part assurance n'est
+    pas encaissée auprès du patient, c'est une créance sur l'assureur. Cet écran
+    la regroupe par assurance et par mois pour que la clinique parte réclamer
+    son dû avec le détail patient par patient.
+    """
+    from django.db.models.functions import TruncMonth
+
+    factures, periode_label, mois_selectionne = _factures_prises_en_charge(request)
+
+    # Mois proposés dans le sélecteur : ceux qui ont au moins une facture.
+    mois_options = []
+    for r in (Facture.objects.exclude(date_creation__isnull=True)
+              .annotate(mo=TruncMonth('date_creation'))
+              .values('mo').distinct().order_by('-mo')):
+        d = r['mo']
+        if d:
+            mois_options.append({'value': f'{d.year}-{d.month:02d}',
+                                 'label': f'{MOIS_FR[d.month]} {d.year}'})
+
+    # Regroupement par assurance. Les montants viennent des méthodes du modèle
+    # (mêmes arrondis que la facture affichée au patient) : pas de calcul
+    # parallèle en SQL qui pourrait diverger d'un franc.
+    groupes = {}
+    for f in factures:
+        g = groupes.setdefault(f.assurance_id, {
+            'assurance': f.assurance, 'factures': [],
+            'total_facture': Decimal('0'), 'a_reclamer': Decimal('0'),
+            'part_patient': Decimal('0'),
+        })
+        g['factures'].append(f)
+        g['total_facture'] += f.montant_total
+        g['a_reclamer'] += f.part_assurance()
+        g['part_patient'] += f.part_patient()
+
+    groupes = sorted(groupes.values(), key=lambda g: g['a_reclamer'], reverse=True)
+
+    total_a_reclamer = sum((g['a_reclamer'] for g in groupes), Decimal('0'))
+    total_facture    = sum((g['total_facture'] for g in groupes), Decimal('0'))
+    nb_patients      = len({f.patient_id for f in factures})
+
+    return render(request, 'facturation/creances_assurances.html', {
+        'groupes':           groupes,
+        'total_a_reclamer':  total_a_reclamer,
+        'total_facture':     total_facture,
+        'nb_factures':       len(factures),
+        'nb_patients':       nb_patients,
+        'periode_label':     periode_label,
+        'mois_selectionne':  mois_selectionne,
+        'mois_options':      mois_options,
+    })
+
+
+@permission_required('facture.view', 'rapport.view')
+def creances_export(request):
+    """Exporte le détail à réclamer, prêt à être envoyé à l'assureur.
+
+    ?assurance=<id> limite l'export à un seul assureur : c'est le fichier que
+    la clinique joint à sa demande de remboursement.
+    """
+    from django.utils.text import slugify
+    from .exports import csv_response
+
+    factures, periode_label, _ = _factures_prises_en_charge(request)
+
+    assurance_id = (request.GET.get('assurance') or '').strip()
+    nom = 'toutes-assurances'
+    if assurance_id:
+        factures = factures.filter(assurance_id=assurance_id)
+        premiere = factures.first()
+        if premiere:
+            # slugify : sans accent ni « % », sinon le nom de fichier casse
+            # l'en-tête HTTP et n'est pas enregistrable sous Windows.
+            nom = slugify(premiere.assurance.nom) or 'assurance'
+
+    headers = ['Assurance', 'Taux (%)', 'Facture', 'Patient', 'Numero assure',
+               'Service', 'Date', 'Montant total', 'A reclamer', 'Part patient']
+    rows = [[
+        f.assurance.nom,
+        f'{f.taux_prise_en_charge:.0f}',
+        f'FAC-{f.pk:04d}',
+        f'{f.patient.nom} {f.patient.prenom}',
+        f.patient.numero_assure or '',
+        f.service_libelle(),
+        f.date_creation.strftime('%d/%m/%Y') if f.date_creation else '',
+        int(f.montant_total), int(f.part_assurance()), int(f.part_patient()),
+    ] for f in factures]
+
+    return csv_response(f'creances_{nom}_{slugify(periode_label)}.csv', headers, rows)
+
+
 @permission_required('facture.view')
 def factures_export(request):
     """Exporte la liste des factures (filtres de recherche appliqués) en CSV."""

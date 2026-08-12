@@ -1947,6 +1947,11 @@
       <i class="bi bi-shield-fill-check"></i> Assurances
     </a>
     {% endif %}
+    {% if 'facture.view' in user_permissions or 'rapport.view' in user_permissions %}
+    <a href="{% url 'facturation:creances' %}" class="sb-link {% block nav_creances %}{% endblock %}">
+      <i class="bi bi-cash-stack"></i> Créances assurances
+    </a>
+    {% endif %}
 
     <!-- Pharmacie -->
     {% if 'pharmacie.view' in user_permissions %}

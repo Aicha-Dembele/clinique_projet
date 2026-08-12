@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
+
+{% block title %}Créances assurances{% endblock %}
+{% block nav_creances %}active{% endblock %}
+{% block page_title %}Créances assurances{% endblock %}
+{% block page_heading %}Créances assurances{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Créances assurances</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'facturation:creances_export' %}{% if mois_selectionne %}?mois={{ mois_selectionne }}{% endif %}"
+   class="btn-c btn-primary-c"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter tout (Excel)</a>
+{% endblock %}
+
+{% block extra_css %}<style>
+
+.hero-banner { position: relative; border-radius: 1.2rem; overflow: hidden; height: 160px; margin-bottom: 1.5rem; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+.hero-banner-bg { position: absolute; inset: 0; background: url('/static/consultation/img/facturation.jpg?v=1') center/cover no-repeat; filter: brightness(.55) saturate(.9); }
+.hero-banner-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(168,85,247,.72) 0%, rgba(88,28,135,.45) 60%, transparent 100%); }
+.hero-banner-content { position: relative; z-index: 2; height: 100%; display: flex; align-items: center; padding: 0 2rem; gap: 1.5rem; }
+.hero-title { font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: -.02em; margin: 0; }
+.hero-sub { font-size: .85rem; color: rgba(255,255,255,.78); margin-top: .25rem; }
+
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.1rem 1.2rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s; animation: fadeUp .5s ease both; }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-lbl { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.stat-h-val { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .2rem; }
+
+/* ── Barre de période ── */
+.periode-bar { background: linear-gradient(135deg, rgba(168,85,247,.08) 0%, rgba(139,92,246,.05) 100%); border: 1.5px solid rgba(168,85,247,.35); border-radius: .9rem; padding: .9rem 1.2rem; margin-bottom: 1rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+
+/* ── Carte assureur ── */
+.assureur-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; box-shadow: var(--shadow-sm); margin-bottom: 1.1rem; overflow: hidden; animation: fadeUp .5s ease both; }
+.assureur-hdr { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.3rem; border-bottom: 1px solid var(--card-border); flex-wrap: wrap; background: linear-gradient(135deg, rgba(168,85,247,.06), transparent); }
+.assureur-ico { width: 46px; height: 46px; border-radius: .8rem; background: rgba(168,85,247,.12); color: #a855f7; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.assureur-nom { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.assureur-meta { font-size: .72rem; color: var(--text-muted); margin-top: .1rem; }
+.assureur-montant { margin-left: auto; text-align: right; }
+.assureur-montant-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.assureur-montant-val { font-size: 1.45rem; font-weight: 900; color: #a855f7; font-family: 'Outfit', sans-serif; line-height: 1.1; }
+
+.modern-table { width: 100%; border-collapse: collapse; }
+.modern-table thead th { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: .7rem 1.1rem; border-bottom: 2px solid var(--card-border); background: var(--card-bg); white-space: nowrap; }
+.modern-table tbody tr { border-bottom: 1px solid var(--card-border); transition: background .12s; }
+.modern-table tbody tr:last-child { border-bottom: none; }
+.modern-table tbody tr:hover { background: rgba(168,85,247,.04); }
+.modern-table tbody td { padding: .8rem 1.1rem; font-size: .83rem; vertical-align: middle; }
+.modern-table tfoot td { padding: .8rem 1.1rem; font-weight: 800; font-size: .85rem; border-top: 2px solid var(--card-border); background: rgba(168,85,247,.05); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.badge-service { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 700; padding: .25em .7em; border-radius: 999px; background: rgba(0,136,170,.12); color: #0088aa; white-space: nowrap; }
+.av-sm { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; background: rgba(168,85,247,.12); color: #a855f7; }
+.con-num { font-size: .72rem; font-weight: 800; color: var(--text-muted); font-family: 'Outfit', monospace; background: var(--input-bg); padding: .2em .55em; border-radius: .35rem; border: 1px solid var(--card-border); }
+
+</style>{% endblock %}
+
+{% block content %}
+
+<!-- ── HERO ── -->
+<div class="hero-banner">
+  <div class="hero-banner-bg"></div>
+  <div class="hero-banner-overlay"></div>
+  <div class="hero-banner-content">
+    <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);width:56px;height:56px;border-radius:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,.25)">
+      <i class="bi bi-shield-fill-check" style="font-size:1.6rem;color:#fff"></i>
+    </div>
+    <div>
+      <div class="hero-title">Ce que les assurances doivent à la clinique</div>
+      <div class="hero-sub">{{ periode_label }} — part prise en charge, non encaissée auprès des patients</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOTAUX ── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.04s">
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-cash-stack"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="stat-h-lbl">Total à réclamer</div>
+        <div class="stat-h-val">{{ total_a_reclamer|floatformat:0 }}</div>
+        <div class="stat-h-trend" style="color:#a855f7">FCFA, toutes assurances</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.08s">
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-receipt"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="stat-h-lbl">Montant facturé</div>
+        <div class="stat-h-val">{{ total_facture|floatformat:0 }}</div>
+        <div class="stat-h-trend" style="color:#0088aa">FCFA au total</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-people-fill"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="stat-h-lbl">Patients concernés</div>
+        <div class="stat-h-val">{{ nb_patients }}</div>
+        <div class="stat-h-trend" style="color:#14b8a6">{{ nb_factures }} facture{{ nb_factures|pluralize }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h" style="animation-delay:.16s">
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-building"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="stat-h-lbl">Assureurs à relancer</div>
+        <div class="stat-h-val">{{ groupes|length }}</div>
+        <div class="stat-h-trend" style="color:#f59e0b">Un dossier par assureur</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PÉRIODE ── -->
+<div class="periode-bar">
+  <form method="get" class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
+    <label class="f-label mb-0" style="white-space:nowrap"><i class="bi bi-calendar3" style="color:#a855f7"></i> Période</label>
+    <select name="mois" class="f-input f-select" style="max-width:260px" onchange="this.form.submit()">
+      <option value="">Toutes périodes</option>
+      {% for m in mois_options %}
+      <option value="{{ m.value }}" {% if m.value == mois_selectionne %}selected{% endif %}>{{ m.label }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn-c btn-primary-c">Afficher</button></noscript>
+  </form>
+</div>
+
+<!-- ── UN BLOC PAR ASSUREUR ── -->
+{% for g in groupes %}
+<div class="assureur-card" style="animation-delay:.0{{ forloop.counter }}s">
+  <div class="assureur-hdr">
+    <div class="assureur-ico"><i class="bi bi-shield-fill-check"></i></div>
+    <div>
+      <div class="assureur-nom">{{ g.assurance.nom }}</div>
+      <div class="assureur-meta">
+        Prise en charge {{ g.assurance.taux_prise_en_charge|floatformat:0 }} %
+        · {{ g.factures|length }} facture{{ g.factures|length|pluralize }}
+        · {{ g.total_facture|floatformat:0 }} FCFA facturés
+      </div>
+    </div>
+    <div class="assureur-montant">
+      <div class="assureur-montant-lbl">À réclamer</div>
+      <div class="assureur-montant-val">{{ g.a_reclamer|floatformat:0 }} FCFA</div>
+      <a href="{% url 'facturation:creances_export' %}?assurance={{ g.assurance.pk }}{% if mois_selectionne %}&mois={{ mois_selectionne }}{% endif %}"
+         class="btn-c btn-outline-c" style="margin-top:.4rem">
+        <i class="bi bi-download"></i> Dossier {{ g.assurance.nom }}
+      </a>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table class="modern-table">
+      <thead>
+        <tr>
+          <th>Facture</th>
+          <th>Patient</th>
+          <th>N° assuré</th>
+          <th>Service</th>
+          <th>Date</th>
+          <th class="num">Montant</th>
+          <th class="num">Taux</th>
+          <th class="num">À réclamer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in g.factures %}
+        <tr>
+          <td><span class="con-num">FAC-{{ f.pk|stringformat:"04d" }}</span></td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="av-sm">{{ f.patient.nom|slice:":1" }}{{ f.patient.prenom|slice:":1" }}</div>
+              <div style="font-weight:700">{{ f.patient.nom }} {{ f.patient.prenom }}</div>
+            </div>
+          </td>
+          <td><span style="font-size:.8rem;color:var(--text-secondary)">{{ f.patient.numero_assure|default:"—" }}</span></td>
+          <td><span class="badge-service">{{ f.service_libelle }}</span></td>
+          <td>{{ f.date_creation|date:'d/m/Y' }}</td>
+          <td class="num">{{ f.montant_total|floatformat:0 }}</td>
+          <td class="num">{{ f.taux_prise_en_charge|floatformat:0 }} %</td>
+          <td class="num" style="font-weight:800;color:#a855f7">{{ f.part_assurance|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">Total {{ g.assurance.nom }}</td>
+          <td class="num">{{ g.total_facture|floatformat:0 }}</td>
+          <td></td>
+          <td class="num" style="color:#a855f7">{{ g.a_reclamer|floatformat:0 }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% empty %}
+<div class="panel">
+  <div class="panel-body text-center py-5" style="color:var(--text-muted)">
+    <i class="bi bi-shield-check" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+    Aucune facture prise en charge par une assurance sur cette période.
+    <div style="font-size:.78rem;margin-top:.5rem">
+      Seules les factures rattachées à une assurance avec un taux supérieur à 0 apparaissent ici.
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
