@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 {% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 {% block title %}{{ action }} une facture{% endblock %}
 {% block nav_factures %}active{% endblock %}
@@ -123,7 +124,7 @@
       </div>
 
       <!-- Consultation -->
-      <div class="col-12 col-md-7 bloc-service" id="bloc-consultation" style="display:none">
+      <div class="col-12 col-md-7 bloc-service" id="bloc-consultation">
         <label class="f-label"><i class="bi bi-clipboard2-pulse-fill" style="color:#0088aa"></i> Consultation</label>
         <select name="consultation" id="sel-consultation" class="f-input f-select">
           <option value="">-- Choisir la consultation --</option>
@@ -142,7 +143,7 @@
       </div>
 
       <!-- Examen médical -->
-      <div class="col-12 col-md-7 bloc-service" id="bloc-examen" style="display:none">
+      <div class="col-12 col-md-7 bloc-service" id="bloc-examen">
         <label class="f-label"><i class="bi bi-eyedropper" style="color:#8b5cf6"></i> Examen médical</label>
         <select name="examen" id="sel-examen" class="f-input f-select">
           <option value="">-- Choisir l'examen --</option>
@@ -160,7 +161,7 @@
       </div>
 
       <!-- Hospitalisation -->
-      <div class="col-12 col-md-7 bloc-service" id="bloc-hospitalisation" style="display:none">
+      <div class="col-12 col-md-7 bloc-service" id="bloc-hospitalisation">
         <label class="f-label"><i class="bi bi-hospital-fill" style="color:#3b82f6"></i> Hospitalisation</label>
         <select name="hospitalisation" id="sel-hospit" class="f-input f-select">
           <option value="">-- Choisir l'hospitalisation --</option>
@@ -186,7 +187,7 @@
       </div>
 
       <!-- Pharmacie / ordonnance -->
-      <div class="col-12 col-md-7 bloc-service" id="bloc-ordonnance" style="display:none">
+      <div class="col-12 col-md-7 bloc-service" id="bloc-ordonnance">
         <label class="f-label"><i class="bi bi-capsule" style="color:#14b8a6"></i> Ordonnance dispensée</label>
         <select name="ordonnance" id="sel-ordonnance" class="f-input f-select">
           <option value="">-- Choisir l'ordonnance --</option>
@@ -314,6 +315,13 @@
 <!-- Données tarifs & examens en JSON pour le JS -->
 <script>
 // Un service = une facture : chaque type a son propre bareme.
+//
+// {% templatetag openblock %} localize off {% templatetag closeblock %} est OBLIGATOIRE ici : la langue du site est le francais, donc
+// Django ecrirait les nombres avec une virgule decimale (10000,00). En JavaScript
+// cette virgule est une erreur de syntaxe qui casse TOUT le script — et comme
+// c'est lui qui affiche le menu de l'acte a facturer, le formulaire devenait
+// inutilisable. « localize off » force le point decimal (10000.00).
+{% localize off %}
 const TARIFS_CONSULTATION = {
   {% for c in consultations %}
   "{{ c.pk }}": {
@@ -352,6 +360,7 @@ const TARIFS_ORDONNANCE = {
   }{% if not forloop.last %},{% endif %}
   {% endfor %}
 };
+{% endlocalize %}
 
 function fmt(n) {
   return parseInt(n).toLocaleString('fr-FR') + ' FCFA';
@@ -359,6 +368,11 @@ function fmt(n) {
 
 // Affiche le seul menu correspondant au type de service choisi, et vide les autres
 // pour qu'aucun acte fantome ne parte dans le formulaire.
+//
+// Les quatre menus sont VISIBLES dans le HTML et c'est ce script qui masque les
+// trois inutiles. Volontaire : si jamais ce script cassait, la reception verrait
+// les quatre menus et pourrait quand meme travailler, au lieu de se retrouver
+// devant un formulaire ou l'acte a facturer est introuvable.
 function majBlocsService() {
   const service = document.getElementById('sel-service').value;
   document.querySelectorAll('.bloc-service').forEach(bloc => {
@@ -435,8 +449,10 @@ function updatePreview() {
 
 // ── Assurance : auto-remplissage depuis le patient + taux par défaut ──
 const PATIENTS_ASSURANCE = {};
+{% localize off %}
 {% for p in patients %}{% if p.assurance_id %}PATIENTS_ASSURANCE["{{ p.pk }}"] = { id: "{{ p.assurance_id }}", taux: {{ p.assurance.taux_prise_en_charge|floatformat:0 }} };
 {% endif %}{% endfor %}
+{% endlocalize %}
 
 const selPatient   = document.getElementById('sel-patient');
 const selAssurance = document.getElementById('sel-assurance');
