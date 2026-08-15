@@ -5,6 +5,41 @@ rendez-vous, dossiers médicaux, consultations, examens & résultats,
 ordonnances, hospitalisations, traitements, facturation (avec assurance
 AMO), pharmacie/stock, rôles & permissions et tableaux de bord.
 
+## Protocole de soin : le paiement précède l'acte
+
+À la clinique Nevroglie, **on paie avant d'être soigné**. Trois actes sont
+prépayés. Pour chacun, deux moments distincts : la facture est créée
+**automatiquement** dès que l'acte est enregistré, et l'acte est **refusé**
+tant qu'elle n'est pas soldée.
+
+| Acte | La facture est créée quand… | L'acte est refusé tant que la facture n'est pas réglée |
+|------|-----------------------------|--------------------------------------------------------|
+| Consultation | la réception fixe le **rendez-vous** | le médecin ne peut pas enregistrer la consultation |
+| Examen médical | le médecin prescrit l'examen | le laborantin ne peut pas saisir le résultat |
+| Hospitalisation | le médecin enregistre l'admission | la chambre est réservée, le patient n'est pas admis |
+| **Pharmacie** | **après** la dispensation — exception | rien n'est bloqué |
+
+La pharmacie fait exception parce que le montant n'est connu qu'une fois les
+médicaments servis.
+
+Précisions :
+
+- « Soldée » veut dire **toute la part patient encaissée**. La part prise en
+  charge par l'assurance reste une créance sur l'assureur : un patient couvert
+  à 100 % n'a rien à payer et n'est donc jamais bloqué.
+- La consultation se facture sur le **rendez-vous**, pas sur la consultation :
+  on ne peut pas encaisser un compte rendu qui n'existe pas encore.
+- Modifier un acte refait sa facture. Rallonger un séjour de deux nuits
+  re-bloque donc l'admission jusqu'au complément de paiement.
+
+Toute la règle tient dans **`clinique/facturation/regles.py`** : c'est le seul
+fichier à lire pour la comprendre, et à modifier pour l'ajuster.
+
+> Sur une base contenant déjà des rendez-vous, examens ou hospitalisations
+> **sans facture**, ces actes deviennent impossibles à réaliser. La commande
+> `python manage.py facturer_actes_existants` crée les factures manquantes
+> (voir `--dry-run` pour simuler d'abord).
+
 ## Stack technique
 
 - **Python** 3.14 · **Django** 6.0

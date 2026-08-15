@@ -266,3 +266,41 @@ python manage.py collectstatic --noinput
 ```
 
 Puis **Reload** sur l'onglet *Web*. Tes données ne sont jamais touchées par un `git pull`.
+
+---
+
+## Mise à jour « paiement avant soins » — une étape en plus, une seule fois
+
+Le logiciel exige désormais que la facture soit **réglée avant** la
+consultation, l'examen et l'hospitalisation (voir la section *Protocole de
+soin* du `README.md`).
+
+La base en ligne contient des rendez-vous, des examens et des hospitalisations
+enregistrés **avant** cette règle : ils n'ont pas de facture, donc plus rien
+n'est réalisable pour eux — le médecin ne peut plus enregistrer leur
+consultation, le laborantin ne peut plus saisir leur résultat. Il faut leur
+créer leur facture manquante, **une seule fois**, juste après le `migrate` :
+
+```bash
+python manage.py facturer_actes_existants --dry-run
+```
+
+Cette première commande n'écrit **rien** : elle affiche seulement combien de
+factures seraient créées. Si le compte te paraît juste, relance sans
+`--dry-run` :
+
+```bash
+python manage.py facturer_actes_existants
+```
+
+Elle demande confirmation, puis liste chaque facture créée avec le montant à
+encaisser. Les factures créées sont **non payées** : c'est à la réception de
+les recouvrer. Les actes qui ont déjà une facture ne sont pas touchés, et les
+rendez-vous **annulés** sont ignorés.
+
+Ensuite seulement, **Reload** sur l'onglet *Web*.
+
+> La commande est sans danger si tu la relances : elle ne crée jamais de
+> doublon. Aux mises à jour suivantes, il n'y aura plus rien à régulariser
+> (elle répondra « Rien à faire ») — les nouvelles factures sont créées
+> automatiquement à l'enregistrement de chaque acte.
