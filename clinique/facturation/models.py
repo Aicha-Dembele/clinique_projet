@@ -87,8 +87,15 @@ class Facture(models.Model):
     # Chaque prestation est facturée SÉPARÉMENT : la consultation, chaque examen,
     # l'hospitalisation et les médicaments d'une ordonnance ont chacun leur propre
     # facture, avec leur propre prise en charge par l'assurance. Un et un seul de
-    # ces quatre liens est renseigné par facture (voir `service()`).
+    # ces liens est renseigné par facture (voir `service()`).
     patient         = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    # La consultation se facture sur le RENDEZ-VOUS, pas sur la consultation :
+    # le patient règle à la caisse avant d'être reçu, donc avant que le compte
+    # rendu de consultation n'existe (cf. facturation.regles).
+    rendez_vous     = models.ForeignKey("consultation.Rendez_vous", on_delete=models.SET_NULL, null=True, blank=True,
+                                        help_text="Consultation prépayée : facture établie dès la prise du rendez-vous.")
+    # Ancien rattachement, conservé pour les factures créées avant le passage au
+    # paiement anticipé. Plus proposé à la création.
     consultation    = models.ForeignKey("consultation.Consultation",  on_delete=models.SET_NULL, null=True, blank=True)
     examen          = models.ForeignKey("consultation.ExamenMedical", on_delete=models.SET_NULL, null=True, blank=True)
     hospitalisation = models.ForeignKey("consultation.Hospitalisation", on_delete=models.SET_NULL, null=True, blank=True)
@@ -154,19 +161,29 @@ class Facture(models.Model):
 
         # update() cible les seuls champs de recouvrement : pas de save() complet,
         # qui régénérerait les lignes et recalculerait le total sans raison.
-        Facture.objects.filter(pk=self.pk).update(
+        Facture.objects.using(self._db()).filter(pk=self.pk).update(
             statut_assurance=self.statut_assurance,
             date_reclamation=self.date_reclamation,
             date_remboursement=self.date_remboursement,
         )
 
     # ── Identification du service facturé ─────────────────────────
+    # Services proposés à la création d'une facture, dans l'ordre du parcours
+    # de soin. La consultation apparaît sous son acte facturable réel : le
+    # rendez-vous, réglé avant que le patient ne soit reçu.
     SERVICES = [
-        ('consultation',    'Consultation'),
+        ('rendez_vous',     'Consultation'),
         ('examen',          'Examen médical'),
         ('hospitalisation', 'Hospitalisation'),
         ('ordonnance',      'Pharmacie (ordonnance)'),
     ]
+
+    # Tous les liens possibles vers un acte, `consultation` compris : celui-ci
+    # n'est plus proposé à la création mais porte encore les anciennes factures,
+    # qui doivent continuer de s'afficher et de se recalculer normalement.
+    LIENS = ['rendez_vous', 'consultation', 'examen', 'hospitalisation', 'ordonnance']
+
+    LIBELLES_SERVICE = dict(SERVICES, consultation='Consultation')
 
     def service(self):
         """Code du service facturé, ou None si la facture n'est rattachée à rien.
@@ -174,28 +191,31 @@ class Facture(models.Model):
         Une facture ne porte qu'un seul service : on renvoie le premier lien
         renseigné, dans l'ordre du parcours de soin.
         """
-        if self.consultation_id:
-            return 'consultation'
-        if self.examen_id:
-            return 'examen'
-        if self.hospitalisation_id:
-            return 'hospitalisation'
-        if self.ordonnance_id:
-            return 'ordonnance'
+        for code in self.LIENS:
+            if getattr(self, f'{code}_id'):
+                return code
         return None
 
     def service_libelle(self):
         """Nom lisible du service facturé, pour l'affichage et les PDF."""
-        code = self.service()
-        return dict(self.SERVICES).get(code, 'Prestation')
+        return self.LIBELLES_SERVICE.get(self.service(), 'Prestation')
 
     # ── Calcul principal ──────────────────────────────────────────
     def calculer_total(self):
         """Recalcule le total depuis les LigneFacture existantes."""
         return sum(l.sous_total() for l in self.lignes.all()) or Decimal('0')
 
+    def _db(self):
+        """Base sur laquelle travailler : celle de l'instance.
+
+        Le poste de développement en a deux (MySQL et la copie SQLite du
+        déploiement). Sans cela, recalculer une facture lue dans l'une
+        écrirait ses lignes dans l'autre.
+        """
+        return self._state.db or 'default'
+
     @staticmethod
-    def _index_tarifs():
+    def _index_tarifs(db='default'):
         """Précharge TOUS les tarifs en une seule requête et construit un index
         en mémoire → matching O(1) sans requête par ligne (zéro N+1).
 
@@ -204,7 +224,7 @@ class Facture(models.Model):
           defaults[type_service] = tarif de repli (1er selon l'ordre du modèle)
         """
         index, defaults = {}, {}
-        for t in Tarif.objects.all():                 # ordering Meta : type_service, nom
+        for t in Tarif.objects.using(db).all():       # ordering Meta : type_service, nom
             index.setdefault(t.type_service, {})[_norm(t.specialite)] = t
             defaults.setdefault(t.type_service, t)    # 1er rencontré = repli (== .first())
         return index, defaults
@@ -220,8 +240,9 @@ class Facture(models.Model):
 
         Appelée lors du save(). Les tarifs sont préchargés en une seule requête.
         """
+        db = self._db()
         self.lignes.all().delete()
-        index, defaults = self._index_tarifs()
+        index, defaults = self._index_tarifs(db)
 
         def resolve(type_service, specialite):
             """Tarif correspondant au type/spécialité (accents & casse ignorés), sinon repli."""
@@ -232,10 +253,14 @@ class Facture(models.Model):
         # ── CONSULTATION ─────────────────────────────────────────
         # Uniquement l'acte de consultation : les examens prescrits pendant
         # celle-ci sont factures separement, sur leur propre facture.
-        if self.consultation:
+        # Le prix depend de la specialite du medecin, connue des la prise du
+        # rendez-vous : la facture peut donc etre etablie (et payee) avant la
+        # consultation. `consultation` couvre les factures d'avant cette regle.
+        if self.rendez_vous_id or self.consultation_id:
             specialite = ''
             try:
-                specialite = self.consultation.rendez_vous.medecin.specialite
+                rdv = self.rendez_vous or self.consultation.rendez_vous
+                specialite = rdv.medecin.specialite
             except Exception:
                 pass
 
@@ -287,7 +312,7 @@ class Facture(models.Model):
         # Les sorties font foi, le total reste donc juste à chaque recalcul.
         elif self.ordonnance_id and self.pk:
             from pharmacie.models import MouvementStock
-            sorties = (MouvementStock.objects
+            sorties = (MouvementStock.objects.using(db)
                        .filter(type_mouvement='sortie', ordonnance_id=self.ordonnance_id)
                        .select_related('medicament'))
             # Traçabilité : ces sorties portent bien cette facture-là.
@@ -301,7 +326,7 @@ class Facture(models.Model):
                     quantite=mv.quantite,
                 ))
 
-        LigneFacture.objects.bulk_create(lignes)
+        LigneFacture.objects.using(db).bulk_create(lignes)
 
     def save(self, *args, **kwargs):
         # Cohérence assurance ↔ taux de prise en charge :
@@ -321,7 +346,8 @@ class Facture(models.Model):
         # Recalcule le total depuis les lignes
         self.montant_total = self.calculer_total()
         # Save final sans boucle infinie
-        Facture.objects.filter(pk=self.pk).update(montant_total=self.montant_total)
+        Facture.objects.using(self._db()).filter(pk=self.pk).update(
+            montant_total=self.montant_total)
         # Recalcule le statut selon la part réellement due par le patient
         self.update_statut()
 
@@ -386,7 +412,17 @@ class Facture(models.Model):
             self.statut = 'payé'
         else:
             self.statut = 'partiel'
-        Facture.objects.filter(pk=self.pk).update(statut=self.statut)
+        Facture.objects.using(self._db()).filter(pk=self.pk).update(statut=self.statut)
+
+    def est_reglee(self):
+        """La facture est-elle soldée par le patient ?
+
+        C'est la condition qui autorise la réalisation d'un acte prépayé
+        (consultation, examen, hospitalisation) — voir facturation.regles.
+        Seule la part patient est exigée : la part assurance n'est pas encaissée
+        au guichet, elle reste une créance sur l'assureur.
+        """
+        return self.statut == 'payé'
 
     def __str__(self):
         return (f"FAC-{str(self.pk).zfill(4)} — {self.patient} — {self.service_libelle()} — "

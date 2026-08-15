@@ -36,6 +36,18 @@ class Rendez_vous(models.Model):
         default='programme'
     )
 
+    def get_tarif(self):
+        """Tarif de la consultation, connu dès la prise du rendez-vous.
+
+        C'est la spécialité du médecin qui fixe le prix : on peut donc établir
+        (et encaisser) la facture avant que le patient ne soit reçu.
+        """
+        try:
+            return Tarif.objects.get(type_service='consultation',
+                                     specialite=self.medecin.specialite)
+        except Tarif.DoesNotExist:
+            return Tarif.objects.filter(type_service='consultation').first()
+
     def __str__(self):
         return f"{self.patient} - {self.medecin} - {self.date}"
 
@@ -314,6 +326,27 @@ class Hospitalisation(models.Model):
 
     statut.short_description = "Statut"
 
+    # ── Admission : réglée d'avance ───────────────────────────────
+    # Le séjour est prépayé. Enregistrer l'admission réserve la chambre et
+    # établit la facture ; le patient n'est admis qu'une fois celle-ci soldée.
+
+    def facture_sejour(self):
+        """Facture de ce séjour, ou None.
+
+        Les listes préchargent la facture dans `_facture` (une seule requête
+        pour tout l'écran) ; sinon on va la chercher ici.
+        """
+        if not hasattr(self, '_facture'):
+            from facturation.regles import facture_de
+            self._facture = facture_de('hospitalisation', self)
+        return self._facture
+
+    def est_admis(self):
+        """Admission confirmée ? Tant que le séjour n'est pas réglé, la chambre
+        est réservée mais le patient n'est pas encore admis."""
+        facture = self.facture_sejour()
+        return bool(facture and facture.est_reglee())
+
     def date_sortie_prevue(self):
         """Date de sortie : reelle si renseignee, sinon estimee (entree + nombre de jours)."""
         from datetime import timedelta
@@ -328,12 +361,18 @@ class Hospitalisation(models.Model):
 
         Pour un patient hospitalise, l'etat est choisi a l'admission (champ
         etat_clinique) ; la sortie a la priorite sur tout le reste.
+
+        Tant que le sejour n'est pas regle, l'admission n'est pas confirmee :
+        c'est ce qu'il faut voir en premier dans la liste, avant l'etat
+        clinique, car c'est la seule chose qui demande une action.
         """
         from datetime import date
         if self.date_sortie:
             if self.date_sortie == date.today():
                 return {'code': 'sortie', 'label': 'Sortie auj.'}
             return {'code': 'sorti', 'label': 'Sorti'}
+        if not self.est_admis():
+            return {'code': 'attente_paiement', 'label': 'Attente paiement'}
         if (self.etat_clinique or '').lower() == 'critique':
             return {'code': 'critique', 'label': 'Critique'}
         return {'code': 'stable', 'label': 'Stable'}

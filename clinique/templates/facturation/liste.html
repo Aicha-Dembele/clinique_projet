@@ -169,9 +169,10 @@
             </div>
           </td>
           <td>
-            {% if f.consultation %}<span class="pill pill-info"><i class="bi bi-clipboard2-pulse-fill"></i> Consultation</span>
+            {% if f.rendez_vous or f.consultation %}<span class="pill pill-info"><i class="bi bi-clipboard2-pulse-fill"></i> Consultation</span>
             {% elif f.examen %}<span class="pill pill-purple"><i class="bi bi-eyedropper"></i> Examen</span>
             {% elif f.hospitalisation %}<span class="pill pill-warn"><i class="bi bi-hospital"></i> Hospitalisation</span>
+            {% elif f.ordonnance %}<span class="pill pill-success"><i class="bi bi-capsule"></i> Pharmacie</span>
             {% else %}<span class="pill pill-gray">—</span>{% endif %}
           </td>
           <td><strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem">{{ f.montant_total|floatformat:0 }} <small style="font-size:.7rem;color:var(--text-muted);font-weight:600">FCFA</small></strong></td>

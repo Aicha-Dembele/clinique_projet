@@ -247,7 +247,8 @@
       Consultations fixées qui n'ont pas encore été faites
     </span>
     <span style="font-size:.75rem;color:var(--text-muted);font-weight:600">
-      {{ a_faire_count }} rendez-vous
+      {{ a_faire_count }} rendez-vous{% if a_encaisser %} ·
+      <span style="color:#ef4444">{{ a_encaisser }} à encaisser</span>{% endif %}
     </span>
   </div>
   <div class="panel-body p-0" style="overflow-x:auto">
@@ -260,6 +261,7 @@
           <th>Médecin</th>
           <th>Date prévue</th>
           <th>État</th>
+          <th>Paiement</th>
           {% if 'rdv.change' in user_permissions %}<th>Actions</th>{% endif %}
         </tr>
       </thead>
@@ -295,6 +297,25 @@
               </span>
             {% endif %}
           </td>
+          <td>
+            {# La consultation se règle d'avance : tant que ce n'est pas payé,
+               le médecin ne peut pas recevoir le patient. #}
+            {% if rdv.paiement.reglee %}
+              <span class="badge-statut badge-termine">
+                <i class="bi bi-check-circle-fill"></i> Réglé
+              </span>
+            {% elif rdv.paiement.facture %}
+              <a href="{% url 'facturation:paiement_ajouter' %}?facture={{ rdv.paiement.facture.pk }}"
+                 class="badge-statut badge-retard" style="text-decoration:none"
+                 title="Encaisser cette consultation">
+                <i class="bi bi-cash-coin"></i> {{ rdv.paiement.libelle }}
+              </a>
+            {% else %}
+              <span class="badge-statut badge-neutre">
+                <i class="bi bi-dash-circle"></i> Non facturé
+              </span>
+            {% endif %}
+          </td>
           {% if 'rdv.change' in user_permissions %}
           <td>
             <div class="d-flex gap-1">
@@ -305,7 +326,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="text-center py-5" style="color:var(--text-muted)">
+          <td colspan="8" class="text-center py-5" style="color:var(--text-muted)">
             <i class="bi bi-check2-circle" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
             Aucune consultation en attente : tous les rendez-vous fixés ont été honorés.
           </td>

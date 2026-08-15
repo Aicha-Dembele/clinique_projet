@@ -23,6 +23,11 @@ from personnel.models import Medecin, Laborantin, Infirmier
 from comptes.decorators import role_required, permission_required, get_role
 from comptes.models import JournalAudit
 from comptes.recherche import termes_q, nouveau_en_tete
+# On paie avant d'etre soigne : consultation, examen et hospitalisation sont
+# factures des leur enregistrement, et ne peuvent etre realises qu'une fois la
+# facture reglee. La pharmacie fait exception (cf. facturation/regles.py).
+from facturation.regles import (
+    facturer, blocage, factures_par_acte, etat_paiement, fcfa)
 
 
 def _get_personnel(user, attr):
@@ -58,6 +63,30 @@ def _patients_du_medecin_courant(request, inclure_pk=None):
     if inclure_pk:
         condition |= models.Q(pk=inclure_pk)
     return qs.filter(condition).distinct()
+
+
+def _annoter_paiement(actes, lien):
+    """Pose sur chaque acte son état de paiement (`acte.paiement`), en une
+    seule requête. Les menus déroulants s'en servent pour griser les actes
+    qui ne sont pas encore réglés, et les listes pour afficher un badge."""
+    actes = list(actes)
+    factures = factures_par_acte(lien, actes)
+    for acte in actes:
+        acte.paiement = etat_paiement(factures.get(acte.pk))
+    return actes
+
+
+def _annoter_sejours(hospitalisations):
+    """Précharge la facture de chaque séjour (une seule requête).
+
+    `Hospitalisation.est_admis()` interroge la facture : sans ce préchargement,
+    afficher une liste de 40 séjours coûterait 40 requêtes.
+    """
+    sejours = list(hospitalisations)
+    factures = factures_par_acte('hospitalisation', sejours)
+    for h in sejours:
+        h._facture = factures.get(h.pk)
+    return sejours
 
 
 def _consultations_du_medecin_courant(request, inclure_pk=None):
@@ -165,13 +194,20 @@ def rdv_liste(request):
 def rdv_ajouter(request):
     if request.method == 'POST':
         try:
-            Rendez_vous.objects.create(
+            rdv = Rendez_vous.objects.create(
                 patient_id=request.POST['patient'],
                 medecin_id=request.POST['medecin'],
                 date=request.POST['date'],
                 statut=request.POST.get('statut', 'programme'),
             )
-            messages.success(request, 'Rendez-vous cree.')
+            # Consultation prepayee : la facture est etablie des maintenant, au
+            # tarif de la specialite du medecin. Le medecin ne pourra recevoir
+            # le patient qu'une fois cette facture encaissee.
+            facture = facturer(rdv.patient, 'rendez_vous', rdv)
+            messages.success(
+                request,
+                f'Rendez-vous cree — facture FAC-{facture.pk:04d} etablie : '
+                f'{fcfa(facture.part_patient())} a encaisser avant la consultation.')
             return redirect('consultation:rdv_liste')
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
@@ -193,6 +229,10 @@ def rdv_modifier(request, pk):
             rdv.date = request.POST['date']
             rdv.statut = request.POST.get('statut', rdv.statut)
             rdv.save()
+            # Changer de medecin peut changer de specialite, donc de tarif :
+            # la facture est remise au prix juste (et recreee si elle manque,
+            # cas des rendez-vous pris avant le paiement d'avance).
+            facturer(rdv.patient, 'rendez_vous', rdv)
             messages.success(request, 'Rendez-vous modifie.')
             return redirect('consultation:rdv_liste')
         except Exception as e:
@@ -256,7 +296,10 @@ def suivi_consultations(request):
     en_retard = list(a_faire_qs.filter(date__lt=maintenant).order_by('date'))
     a_venir = list(a_faire_qs.filter(date__gte=maintenant).order_by('date'))
     # Les retards d'abord : ce sont eux qui demandent une action de la réception.
-    a_faire = en_retard + a_venir
+    # État de paiement en prime : la consultation se règle d'avance, c'est donc
+    # la réception qui doit encaisser avant que le médecin puisse recevoir.
+    a_faire = _annoter_paiement(en_retard + a_venir, 'rendez_vous')
+    a_encaisser = sum(1 for r in a_faire if not r.paiement['reglee'])
 
     # Déjà passées : une consultation existe, ou le RDV a été clôturé à la main.
     passees_qs = (base
@@ -280,6 +323,7 @@ def suivi_consultations(request):
         'q':               q,
         'a_faire':         a_faire,
         'a_faire_count':   len(a_faire),
+        'a_encaisser':     a_encaisser,
         'en_retard_count': len(en_retard),
         'a_venir_count':   len(a_venir),
         'passees':         passees,
@@ -449,8 +493,15 @@ def consultation_liste(request):
 def consultation_ajouter(request):
     if request.method == 'POST':
         try:
+            rdv = get_object_or_404(Rendez_vous, pk=request.POST['rendez_vous'])
+            # On paie avant d'etre recu : tant que la facture du rendez-vous
+            # n'est pas soldee, la consultation ne peut pas etre enregistree.
+            refus = blocage('rendez_vous', rdv)
+            if refus:
+                raise ValueError(refus)
+
             c = Consultation.objects.create(
-                rendez_vous_id=request.POST['rendez_vous'],
+                rendez_vous=rdv,
                 motif=request.POST['motif'],
                 diagnostic=request.POST.get('diagnostic', ''),
                 observation=request.POST.get('observation', ''),
@@ -464,12 +515,19 @@ def consultation_ajouter(request):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    rdvs = Rendez_vous.objects.filter(statut='programme').order_by('-date')
+    rdvs = list(Rendez_vous.objects.filter(statut='programme')
+                .select_related('patient', 'medecin').order_by('-date'))
     medecin = _get_personnel(request.user, 'medecin')
     if medecin:
-        rdvs = rdvs.filter(medecin=medecin)
+        rdvs = [r for r in rdvs if r.medecin_id == medecin.pk]
+
+    # Le menu deroulant grise les rendez-vous qui ne sont pas encore regles.
+    rdvs = _annoter_paiement(rdvs, 'rendez_vous')
+    rdvs_regles = sum(1 for r in rdvs if r.paiement['reglee'])
+
     return render(request, 'consultation/form_consultation.html', {
         'rdvs': rdvs,
+        'rdvs_regles': rdvs_regles,
         'action': 'Ajouter',
     })
 
@@ -491,9 +549,13 @@ def consultation_modifier(request, pk):
         messages.success(request, 'Consultation modifiee.')
         return redirect('consultation:detail', pk=consultation.pk)
 
+    rdvs = _annoter_paiement(
+        Rendez_vous.objects.select_related('patient', 'medecin').order_by('-date'),
+        'rendez_vous')
     return render(request, 'consultation/form_consultation.html', {
         'consultation': consultation,
-        'rdvs': Rendez_vous.objects.all().order_by('-date'),
+        'rdvs': rdvs,
+        'rdvs_regles': sum(1 for r in rdvs if r.paiement['reglee']),
         'action': 'Modifier',
     })
 
@@ -543,6 +605,9 @@ def examens(request):
 
     qs = qs.prefetch_related('resultats')
     examens_liste, new_pk = nouveau_en_tete(request, qs)
+    # L'examen se règle avant d'être réalisé : la liste dit lesquels attendent
+    # encore leur encaissement.
+    examens_liste = _annoter_paiement(examens_liste, 'examen')
     return render(request, 'consultation/examens.html', {
         'examens':          examens_liste,
         'new_pk':           new_pk,
@@ -604,9 +669,15 @@ def examen_ajouter(request):
                 motif=request.POST.get('motif', ''),
                 date=request.POST.get('date') or None,
             )
+            # Examen prepaye : facture etablie des la prescription. Le
+            # laborantin ne pourra saisir le resultat qu'une fois encaissee.
+            facture = facturer(ex.patient, 'examen', ex)
             # Le laborantin désigné est prévenu de l'examen qui lui est adressé.
             _notifier_laborantin_examen(ex)
-            messages.success(request, 'Examen demande.')
+            messages.success(
+                request,
+                f'Examen demande — facture FAC-{facture.pk:04d} etablie : '
+                f'{fcfa(facture.part_patient())} a regler avant la realisation.')
             return redirect(f"{reverse('consultation:examens')}?new={ex.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
@@ -651,6 +722,8 @@ def examen_modifier(request, pk):
         if request.POST.get('laborantin'):
             examen.laborantin_id = request.POST['laborantin']
         examen.save()
+        # Changer le type d'examen change le tarif : la facture suit.
+        facturer(examen.patient, 'examen', examen)
         # Nouveau laborantin affecté (différent de l'ancien) → on le prévient.
         if examen.laborantin_id and examen.laborantin_id != ancien_labo:
             _notifier_laborantin_examen(examen)
@@ -715,6 +788,11 @@ def resultat_ajouter(request):
     if request.method == 'POST':
         try:
             examen = get_object_or_404(ExamenMedical, pk=request.POST['examen'])
+            # Examen prepaye : pas de resultat tant que la facture n'est pas
+            # soldee. L'examen n'est pas cense avoir ete realise.
+            refus = blocage('examen', examen)
+            if refus:
+                raise ValueError(refus)
             labo = _get_personnel(request.user, 'laborantin')
             res = ResultatExamen.objects.create(
                 patient=examen.patient,
@@ -730,9 +808,13 @@ def resultat_ajouter(request):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    examens_qs = ExamenMedical.objects.filter(statut__in=['en_attente', 'en_cours']).order_by('-id')
+    examens_qs = (ExamenMedical.objects
+                  .filter(statut__in=['en_attente', 'en_cours'])
+                  .select_related('patient').order_by('-id'))
+    examens = _annoter_paiement(examens_qs, 'examen')
     return render(request, 'consultation/resultat_form.html', {
-        'examens': examens_qs,
+        'examens': examens,
+        'examens_regles': sum(1 for e in examens if e.paiement['reglee']),
         'examen_id': examen_id,
         'action': 'Enregistrer',
     })
@@ -975,9 +1057,19 @@ def hospitalisations(request):
     base_h = Hospitalisation.objects.all()
     if medecin:
         base_h = base_h.filter(medecin=medecin)
-    total_en_cours   = base_h.filter(date_sortie__isnull=True).count()
-    patients_critiques = base_h.filter(etat_clinique='critique', date_sortie__isnull=True).count()
     today = date.today()
+
+    # Séjours en cours, avec leur facture préchargée (une seule requête) : le
+    # statut d'admission en dépend, et il est lu pour chaque chambre du plan.
+    en_cours = _annoter_sejours(
+        base_h.filter(date_sortie__isnull=True).select_related('patient', 'medecin'))
+
+    # « Hospitalisés » ne compte que les admissions confirmées, c'est-à-dire
+    # les séjours réglés. Les autres n'ont qu'une chambre réservée.
+    total_en_cours      = sum(1 for h in en_cours if h.est_admis())
+    attente_paiement    = len(en_cours) - total_en_cours
+    patients_critiques  = sum(1 for h in en_cours
+                              if h.est_admis() and (h.etat_clinique or '').lower() == 'critique')
     sorties_prevues  = base_h.filter(date_sortie=today).count()
 
     # Services distincts pour le filtre
@@ -985,8 +1077,7 @@ def hospitalisations(request):
 
     # Grille chambres : plan fixe 101-110 (VIP), 201-210/301-302 (double), 303-310/401-410 (simple)
     occ_par_chambre = {}
-    for h in (base_h.filter(date_sortie__isnull=True)
-              .select_related('patient', 'medecin')):
+    for h in en_cours:
         occ_par_chambre.setdefault(h.numero_chambre, []).append(h)
     sorties_jour = set(
         base_h.filter(date_sortie=today)
@@ -1004,7 +1095,11 @@ def hospitalisations(request):
             cap = Hospitalisation.capacite_pour(type_)
             occs = occ_par_chambre.get(num, [])
             n = len(occs)
-            if n >= cap:
+            if n > 0 and not any(o.est_admis() for o in occs):
+                # Place prise, mais aucun séjour réglé : la chambre est
+                # seulement réservée, personne n'y est encore admis.
+                statut_c = 'reservee'
+            elif n >= cap:
                 statut_c = 'occupee'      # pleine
             elif n > 0:
                 statut_c = 'partiel'      # des places restent libres
@@ -1029,10 +1124,12 @@ def hospitalisations(request):
         etages.append(rangee)
 
     hospit_liste, new_pk = nouveau_en_tete(request, qs)
+    hospit_liste = _annoter_sejours(hospit_liste)
     return render(request, 'consultation/hospitalisations.html', {
         'hospitalisations': hospit_liste,
         'new_pk':           new_pk,
         'total_en_cours':   total_en_cours,
+        'attente_paiement': attente_paiement,
         'chambres_libres':  chambres_libres,
         'patients_critiques': patients_critiques,
         'sorties_prevues':  sorties_prevues,
@@ -1122,7 +1219,15 @@ def hospit_ajouter(request):
                 date_entree=request.POST['date_entree'],
                 date_sortie=request.POST.get('date_sortie') or None,
             )
-            messages.success(request, 'Hospitalisation enregistree.')
+            # Sejour prepaye : la chambre est reservee et la facture etablie,
+            # mais l'admission n'est confirmee qu'une fois celle-ci reglee
+            # (cf. Hospitalisation.est_admis).
+            facture = facturer(h.patient, 'hospitalisation', h)
+            messages.success(
+                request,
+                f'Chambre {h.numero_chambre} reservee — facture FAC-{facture.pk:04d} '
+                f'etablie : {fcfa(facture.part_patient())} a regler pour confirmer '
+                f"l'admission.")
             return redirect(f"{reverse('consultation:hospitalisations')}?new={h.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
@@ -1150,6 +1255,10 @@ def hospit_modifier(request, pk):
         hospit.nombre_jours = request.POST['nombre_jours']
         hospit.date_sortie = request.POST.get('date_sortie') or None
         hospit.save()
+        # Le prix depend du type de chambre et du nombre de nuits : si l'un des
+        # deux change, la facture est refaite. Un sejour rallonge repasse donc
+        # en « partiel » jusqu'au complement de paiement.
+        facturer(hospit.patient, 'hospitalisation', hospit)
         messages.success(request, 'Hospitalisation modifiee.')
         return redirect('consultation:hospitalisations')
 

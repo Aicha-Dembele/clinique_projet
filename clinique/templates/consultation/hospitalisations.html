@@ -79,6 +79,8 @@ body.page-consultation-bg .etat-postop    { background: #f59e0b; color: #fff !im
 body.page-consultation-bg .etat-critique  { background: #ef4444; color: #fff !important; box-shadow: 0 0 0 3px rgba(239,68,68,.18); }
 body.page-consultation-bg .etat-sortie    { background: #2563eb; color: #fff !important; }
 body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); color: #fff !important; }
+/* Séjour non réglé : la chambre est réservée, le patient pas encore admis */
+body.page-consultation-bg .etat-attente_paiement { background: #a855f7; color: #fff !important; }
 
 /* ── Boutons d'action ── */
 .act-btn {
@@ -98,6 +100,7 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
 }
 .room-occupee   { background: #2563eb; color: #fff; }
 .room-partiel   { background: #14b8a6; color: #fff; }
+.room-reservee  { background: #a855f7; color: #fff; }   /* réservée, séjour non réglé */
 .room-libre     { background: rgba(255,255,255,.45); color: #16a34a; border-color: #16a34a; }
 .room-nettoyage { background: #f59e0b; color: #fff; }
 .room-soins     { background: #ef4444; color: #fff; }
@@ -140,6 +143,7 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
 .plan-room-partiel   { background: rgba(20,184,166,.16); color: #0f766e; border-color: rgba(20,184,166,.5); }
 .plan-room-libre     { background: rgba(22,163,74,.12); color: #16a34a; border-color: rgba(22,163,74,.45); }
 .plan-room-nettoyage { background: #f59e0b; color: #fff; }
+.plan-room-reservee  { background: #a855f7; color: #fff; }   /* séjour non réglé */
 .plan-room-soins     { background: #ef4444; color: #fff; }
 
 @media (max-width: 575.98px) {
@@ -159,7 +163,13 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
         <span class="stat-h-ico" style="background:rgba(37,99,235,.14);color:#2563eb"><i class="bi bi-hospital-fill"></i></span>
       </div>
       <div class="stat-h-val">{{ total_en_cours }}</div>
-      <div class="stat-h-trend">Patients actuels</div>
+      <div class="stat-h-trend"{% if attente_paiement %} style="color:#f59e0b"{% endif %}>
+        {% if attente_paiement %}
+          + {{ attente_paiement }} chambre{{ attente_paiement|pluralize }} réservée{{ attente_paiement|pluralize }}, séjour non réglé
+        {% else %}
+          Admissions confirmées
+        {% endif %}
+      </div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -312,6 +322,7 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
           <span class="legend-item"><span class="legend-dot" style="background:#14b8a6"></span> Partielle</span>
           <span class="legend-item"><span class="legend-dot" style="background:#fff;border:1.5px solid #16a34a"></span> Libre</span>
           <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Nettoyage</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#a855f7"></span> Réservée (non réglée)</span>
         </div>
       </div>
     </div>
@@ -350,6 +361,7 @@ body.page-consultation-bg .etat-sorti     { background: rgba(120,120,120,.55); c
         <span class="legend-item"><span class="legend-dot" style="background:#14b8a6"></span> Partielle</span>
         <span class="legend-item"><span class="legend-dot" style="background:rgba(22,163,74,.2);border:1.5px solid #16a34a"></span> Libre</span>
         <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Nettoyage</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#a855f7"></span> Réservée (non réglée)</span>
       </div>
     </div>
   </div>

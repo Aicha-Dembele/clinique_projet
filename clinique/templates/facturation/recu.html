@@ -103,7 +103,12 @@
           {% else %}{{ paiement.get_mode_paiement_display }}{% endif %}
         </span>
       </div>
-      {% if paiement.facture.consultation %}
+      {% if paiement.facture.rendez_vous %}
+      <div class="recu-row">
+        <span class="recu-row-lbl">Service</span>
+        <span class="recu-row-val">Consultation Dr. {{ paiement.facture.rendez_vous.medecin }}</span>
+      </div>
+      {% elif paiement.facture.consultation %}
       <div class="recu-row">
         <span class="recu-row-lbl">Service</span>
         <span class="recu-row-val">Consultation Dr. {{ paiement.facture.consultation.rendez_vous.medecin }}</span>

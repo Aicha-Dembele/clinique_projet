@@ -69,7 +69,7 @@
 <div class="invoice-hero">
   <div>
     <div class="invoice-num">FACTURE FAC-{{ facture.pk|stringformat:"04d" }}</div>
-    <div class="invoice-meta">Document de facturation médicale{% if facture.consultation %} • Consultation du {{ facture.consultation.rendez_vous.date|date:'d/m/Y H:i' }}{% endif %}</div>
+    <div class="invoice-meta">Document de facturation médicale{% if facture.rendez_vous %} • Consultation du {{ facture.rendez_vous.date|date:'d/m/Y H:i' }}{% elif facture.consultation %} • Consultation du {{ facture.consultation.rendez_vous.date|date:'d/m/Y H:i' }}{% endif %}</div>
   </div>
   <div class="d-flex align-items-center gap-2 flex-wrap">
     {% if facture.statut == 'payé' %}

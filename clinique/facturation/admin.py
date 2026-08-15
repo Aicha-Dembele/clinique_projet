@@ -19,15 +19,10 @@ class FactureAdmin(admin.ModelAdmin):
         return f"{obj.part_patient():,.0f} FCFA"
     part_patient.short_description = "Reste patient"
     def type_service(self, obj):
-        services = []
-        if obj.consultation:
-            services.append("Consultation")
-        # Les examens sont désormais des lignes liées à la consultation
-        if obj.lignes.filter(type_service='examen').exists():
-            services.append("Examen")
-        if obj.hospitalisation:
-            services.append("Hospitalisation")
-        return " + ".join(services) or "—"
+        # Une facture = un seul service (le rendez-vous pour la consultation,
+        # qui se règle avant que le patient ne soit reçu).
+        return obj.service_libelle()
+    type_service.short_description = "Service"
 
 
 class PaiementAdmin(admin.ModelAdmin):

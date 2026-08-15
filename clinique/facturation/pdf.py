@@ -205,8 +205,12 @@ def paiement_pdf_response(paiement):
     rows.append([Paragraph("<b>Mode de paiement</b>", normal), paiement.get_mode_paiement_display()])
 
     service = None
-    if f.consultation_id:
+    if f.rendez_vous_id:
+        service = f"Consultation Dr. {f.rendez_vous.medecin}"
+    elif f.consultation_id:
         service = f"Consultation Dr. {f.consultation.rendez_vous.medecin}"
+    elif f.examen_id:
+        service = f"Examen — {f.examen.type_examen}"
     elif f.hospitalisation_id:
         service = f"Hospitalisation — Ch. {f.hospitalisation.numero_chambre}"
     if service:

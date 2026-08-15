@@ -17,12 +17,27 @@
     <div class="row g-3">
       {% if not resultat %}
       <div class="col-md-12">
+        <div style="display:flex;gap:.7rem;align-items:flex-start;background:rgba(245,158,11,.10);
+                    border:1.5px solid rgba(245,158,11,.35);border-radius:.8rem;
+                    padding:.85rem 1.1rem;margin-bottom:1rem;font-size:.8rem;line-height:1.5">
+          <i class="bi bi-cash-coin" style="color:#f59e0b;font-size:1rem"></i>
+          <div>
+            <strong>L'examen se règle avant d'être réalisé.</strong>
+            Seuls les examens dont la facture est encaissée acceptent un résultat —
+            les autres sont grisés ci-dessous.
+            {% if examens and not examens_regles %}
+            <br><em>Aucun examen réglé pour l'instant.</em>
+            {% endif %}
+          </div>
+        </div>
         <label class="form-label">Examen *</label>
         <select name="examen" class="form-select" required>
           <option value="">-- Choisir --</option>
           {% for e in examens %}
-            <option value="{{ e.id }}" {% if examen_id|add:0 == e.id %}selected{% endif %}>
-              #{{ e.id }} - {{ e.patient }} - {{ e.type_examen }} ({{ e.statut }})
+            <option value="{{ e.id }}"
+              {% if not e.paiement.reglee %}disabled{% endif %}
+              {% if examen_id|add:0 == e.id %}selected{% endif %}>
+              #{{ e.id }} - {{ e.patient }} - {{ e.type_examen }} ({{ e.statut }}) — {{ e.paiement.libelle }}
             </option>
           {% endfor %}
         </select>

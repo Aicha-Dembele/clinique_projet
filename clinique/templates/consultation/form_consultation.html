@@ -17,6 +17,14 @@
 .form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
 .form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
 .req-mark { color: #ef4444; }
+/* Rappel de la règle : la consultation se règle avant d'être reçu */
+.avis-paiement {
+  display: flex; gap: .7rem; align-items: flex-start;
+  background: rgba(245,158,11,.10); border: 1.5px solid rgba(245,158,11,.35);
+  border-radius: .8rem; padding: .85rem 1.1rem; margin-bottom: 1rem;
+  font-size: .8rem; color: var(--text-primary); line-height: 1.5;
+}
+.avis-paiement i { color: #f59e0b; font-size: 1rem; line-height: 1.4; }
 </style>
 {% endblock %}
 {% block content %}
@@ -33,12 +41,29 @@
     </div>
     <div class="row g-3">
       <div class="col-12 col-lg-8">
+        {% if not consultation %}
+        <div class="avis-paiement">
+          <i class="bi bi-cash-coin"></i>
+          <div>
+            <strong>La consultation se règle d'avance.</strong>
+            Seuls les rendez-vous dont la facture est encaissée peuvent être
+            consultés — les autres sont grisés ci-dessous. Si un patient est là
+            sans avoir payé, envoyez-le d'abord à la réception.
+            {% if rdvs and not rdvs_regles %}
+            <br><em>Aucun rendez-vous réglé pour l'instant.</em>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
         <label class="f-label">Rendez-vous <span class="req-mark">*</span></label>
         <select name="rendez_vous" class="f-input f-select" required>
           <option value="">-- Choisir un rendez-vous --</option>
           {% for rdv in rdvs %}
-          <option value="{{ rdv.pk }}" {% if consultation and consultation.rendez_vous_id == rdv.pk %}selected{% endif %}>
+          <option value="{{ rdv.pk }}"
+            {% if not rdv.paiement.reglee and not consultation %}disabled{% endif %}
+            {% if consultation and consultation.rendez_vous_id == rdv.pk %}selected{% endif %}>
             {{ rdv.patient }} — Dr. {{ rdv.medecin }} — {{ rdv.date|date:"d/m/Y H:i" }}
+            — {{ rdv.paiement.libelle }}
           </option>
           {% endfor %}
         </select>

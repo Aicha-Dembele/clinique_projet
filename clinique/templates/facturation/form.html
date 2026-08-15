@@ -87,7 +87,7 @@
       <span class="form-section-ico" style="color:#14b8a6;background:rgba(20,184,166,.12)"><i class="bi bi-receipt-cutoff"></i></span>
       <div>
         <div class="form-section-title">Service à facturer</div>
-        <div class="form-section-sub">Une facture = un seul service. La consultation, chaque examen, l'hospitalisation et les médicaments d'une ordonnance sont facturés séparément, chacun avec sa propre prise en charge par l'assurance.</div>
+        <div class="form-section-sub">Une facture = un seul service. La consultation (facturée sur le rendez-vous, avant que le patient ne soit reçu), chaque examen, l'hospitalisation et les médicaments d'une ordonnance sont facturés séparément, chacun avec sa propre prise en charge par l'assurance.</div>
       </div>
     </div>
 
@@ -99,10 +99,11 @@
         <div class="helper" style="background:rgba(245,158,11,.10);border:1.5px solid rgba(245,158,11,.35);border-radius:.8rem;padding:.85rem 1.1rem;color:var(--text-primary)">
           <i class="bi bi-exclamation-triangle-fill me-1" style="color:#f59e0b"></i>
           <strong>Il n'y a plus rien à facturer.</strong>
-          Toutes les consultations, tous les examens et toutes les hospitalisations
-          enregistrés ont déjà leur facture. Pour en créer une nouvelle, il faut
-          d'abord qu'un nouvel acte soit enregistré (une consultation, un examen,
-          une hospitalisation ou une dispensation de médicaments).
+          Tous les rendez-vous, examens et hospitalisations enregistrés ont déjà
+          leur facture — elle est d'ailleurs créée automatiquement dès que l'acte
+          est saisi. Pour en créer une nouvelle ici, il faut d'abord qu'un nouvel
+          acte soit enregistré (un rendez-vous, un examen, une hospitalisation ou
+          une dispensation de médicaments).
         </div>
       </div>
       {% endif %}
@@ -123,23 +124,30 @@
         <div class="helper"><i class="bi bi-info-circle me-1"></i> Le nombre indique les actes qui n'ont pas encore de facture.</div>
       </div>
 
-      <!-- Consultation -->
-      <div class="col-12 col-md-7 bloc-service" id="bloc-consultation">
-        <label class="f-label"><i class="bi bi-clipboard2-pulse-fill" style="color:#0088aa"></i> Consultation</label>
-        <select name="consultation" id="sel-consultation" class="f-input f-select">
-          <option value="">-- Choisir la consultation --</option>
-          {% for c in consultations %}
-          <option value="{{ c.pk }}"
-            {% if c.pk in consult_facturees %}disabled{% endif %}
-            {% if facture and facture.consultation_id == c.pk %}selected{% endif %}
-            {% if pre_consultation == c.pk|stringformat:"s" %}selected{% endif %}>
-            {{ c.rendez_vous.patient.nom }} {{ c.rendez_vous.patient.prenom }}
-            — Dr. {{ c.rendez_vous.medecin.nom }}
-            ({{ c.rendez_vous.medecin.specialite|default:"Générale" }})
-            — {{ c.rendez_vous.date|date:'d/m/Y' }}{% if c.pk in consult_facturees %} — ✓ déjà facturée{% endif %}
+      <!-- Consultation : on facture le RENDEZ-VOUS, avant que le patient ne soit reçu -->
+      <div class="col-12 col-md-7 bloc-service" id="bloc-rendez_vous">
+        <label class="f-label"><i class="bi bi-clipboard2-pulse-fill" style="color:#0088aa"></i> Rendez-vous à régler</label>
+        <select name="rendez_vous" id="sel-rendez_vous" class="f-input f-select">
+          <option value="">-- Choisir le rendez-vous --</option>
+          {% for r in rendez_vous %}
+          <option value="{{ r.pk }}"
+            {% if r.pk in rdv_factures %}disabled{% endif %}
+            {% if facture and facture.rendez_vous_id == r.pk %}selected{% endif %}
+            {% if pre_rendez_vous == r.pk|stringformat:"s" %}selected{% endif %}>
+            {{ r.patient.nom }} {{ r.patient.prenom }}
+            — Dr. {{ r.medecin.nom }}
+            ({{ r.medecin.specialite|default:"Générale" }})
+            — {{ r.date|date:'d/m/Y H:i' }}{% if r.pk in rdv_factures %} — ✓ déjà facturé{% endif %}
           </option>
           {% endfor %}
         </select>
+        <div class="helper" style="margin-top:.5rem">
+          <i class="bi bi-info-circle me-1"></i>
+          La consultation se règle d'avance : la facture est établie sur le
+          rendez-vous, et le médecin ne peut recevoir le patient qu'une fois
+          celle-ci encaissée. Normalement elle est créée automatiquement dès la
+          prise du rendez-vous.
+        </div>
       </div>
 
       <!-- Examen médical -->
@@ -323,10 +331,10 @@
 // inutilisable. « localize off » force le point decimal (10000.00).
 {% localize off %}
 const TARIFS_CONSULTATION = {
-  {% for c in consultations %}
-  "{{ c.pk }}": {
-    prix: {{ c.get_tarif.prix|default:0 }},
-    label: "Consultation {{ c.rendez_vous.medecin.specialite|default:'Générale' }}"
+  {% for r in rendez_vous %}
+  "{{ r.pk }}": {
+    prix: {{ r.get_tarif.prix|default:0 }},
+    label: "Consultation {{ r.medecin.specialite|default:'Générale' }}"
   }{% if not forloop.last %},{% endif %}
   {% endfor %}
 };
@@ -397,8 +405,8 @@ function updatePreview() {
   let total = 0;
   hospitDetail.style.display = 'none';
 
-  if (service === 'consultation') {
-    const t = TARIFS_CONSULTATION[document.getElementById('sel-consultation').value];
+  if (service === 'rendez_vous') {
+    const t = TARIFS_CONSULTATION[document.getElementById('sel-rendez_vous').value];
     if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; }
 
   } else if (service === 'examen') {
@@ -487,7 +495,7 @@ document.getElementById('sel-service').addEventListener('change', () => {
   majBlocsService();
   updatePreview();
 });
-['sel-consultation', 'sel-examen', 'sel-hospit', 'sel-ordonnance'].forEach(id => {
+['sel-rendez_vous', 'sel-examen', 'sel-hospit', 'sel-ordonnance'].forEach(id => {
   document.getElementById(id).addEventListener('change', updatePreview);
 });
 

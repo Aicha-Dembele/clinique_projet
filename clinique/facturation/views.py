@@ -25,16 +25,17 @@ def _fmt(val):
 def _patients_facturables(inclure_pk=None):
     """Patients qui ont réellement quelque chose à facturer.
 
-    Une facture se rattache toujours à une consultation ou à une
-    hospitalisation : ce sont elles qui produisent les lignes et le montant.
-    Proposer dans la liste déroulante un patient qui n'a ni l'une ni l'autre
-    ne mène qu'à une facture vide à 0 FCFA — la réception perdait du temps à
-    faire défiler des noms non facturables.
+    Une facture se rattache toujours à un acte : un rendez-vous, un examen, une
+    hospitalisation ou une ordonnance dispensée. Proposer dans la liste
+    déroulante un patient qui n'a aucun de ces actes ne mène qu'à une facture
+    vide à 0 FCFA — la réception perdait du temps à faire défiler des noms non
+    facturables.
 
     `inclure_pk` garde le patient déjà enregistré sur une facture existante,
     pour que le formulaire de modification ne perde jamais sa valeur.
     """
-    condition = (Q(rendez_vous__consultation__isnull=False) |
+    condition = (Q(rendez_vous__isnull=False) |
+                 Q(examenmedical__isnull=False) |
                  Q(hospitalisation__isnull=False))
     if inclure_pk:
         condition |= Q(pk=inclure_pk)
@@ -77,7 +78,8 @@ def facture_liste(request):
 @permission_required('facture.view')
 def facture_detail(request, pk):
     facture = get_object_or_404(
-        Facture.objects.select_related('patient', 'consultation', 'hospitalisation')
+        Facture.objects.select_related('patient', 'rendez_vous__medecin',
+                                       'consultation', 'hospitalisation')
                        .prefetch_related('lignes', 'paiements'),
         pk=pk
     )
@@ -107,6 +109,7 @@ def paiement_pdf(request, pk):
     paiement = get_object_or_404(
         Paiement.objects.select_related(
             'facture__patient', 'facture__assurance',
+            'facture__rendez_vous__medecin',
             'facture__consultation__rendez_vous__medecin',
             'facture__hospitalisation'),
         pk=pk,
@@ -148,7 +151,9 @@ def _enregistrer_service(request, facture):
             f"{libelles[service]} déjà facturé sur FAC-{str(deja.pk).zfill(4)}. "
             f"Supprimez cette facture d'abord pour en créer une nouvelle.")
 
-    for code, _ in Facture.SERVICES:
+    # On vide TOUS les liens possibles, y compris l'ancien `consultation` : sans
+    # cela, modifier une vieille facture laisserait deux services rattachés.
+    for code in Facture.LIENS:
         setattr(facture, f'{code}_id', objet_id if code == service else None)
 
 
@@ -158,7 +163,7 @@ def _contexte_form(request, facture=None):
     Chaque acte déjà facturé est signalé (et désactivé) dans sa liste, pour que
     la réception voie d'un coup d'œil ce qui reste à facturer.
     """
-    from consultation.models import Consultation, Hospitalisation, ExamenMedical, Ordonnance
+    from consultation.models import Rendez_vous, Hospitalisation, ExamenMedical, Ordonnance
 
     exclure = {'pk': facture.pk} if facture and facture.pk else None
 
@@ -178,19 +183,21 @@ def _contexte_form(request, facture=None):
             (mv.montant() for mv in o.dispensations.filter(type_mouvement='sortie')),
             Decimal('0'))
 
-    consultations    = Consultation.objects.select_related(
-                           'rendez_vous__patient', 'rendez_vous__medecin').order_by('-date')
+    # Consultation : c'est le RENDEZ-VOUS que l'on facture, avant que le patient
+    # ne soit reçu. Un rendez-vous annulé n'a plus rien à facturer.
+    rendez_vous      = (Rendez_vous.objects.exclude(statut='annule')
+                        .select_related('patient', 'medecin').order_by('-date'))
     examens          = ExamenMedical.objects.select_related('patient', 'medecin').order_by('-id')
     hospitalisations = Hospitalisation.objects.select_related('patient').order_by('-date_entree')
 
     faits = {
-        'consultation':    deja_factures('consultation'),
+        'rendez_vous':     deja_factures('rendez_vous'),
         'examen':          deja_factures('examen'),
         'hospitalisation': deja_factures('hospitalisation'),
         'ordonnance':      deja_factures('ordonnance'),
     }
     actes = {
-        'consultation':    consultations,
+        'rendez_vous':     rendez_vous,
         'examen':          examens,
         'hospitalisation': hospitalisations,
         'ordonnance':      ordonnances,
@@ -210,11 +217,11 @@ def _contexte_form(request, facture=None):
     return {
         'patients':         _patients_facturables(
                                 inclure_pk=facture.patient_id if facture else None),
-        'consultations':    consultations,
+        'rendez_vous':      rendez_vous,
         'examens':          examens,
         'hospitalisations': hospitalisations,
         'ordonnances':      ordonnances,
-        'consult_facturees': faits['consultation'],
+        'rdv_factures':      faits['rendez_vous'],
         'examen_factures':   faits['examen'],
         'hospit_facturees':  faits['hospitalisation'],
         'ordo_facturees':    faits['ordonnance'],
@@ -254,7 +261,7 @@ def facture_ajouter(request):
         # Pré-sélection depuis l'URL (ex: ?service=consultation&consultation=5)
         'pre_service':      request.GET.get('service', ''),
         'pre_patient':      request.GET.get('patient', ''),
-        'pre_consultation': request.GET.get('consultation', ''),
+        'pre_rendez_vous':  request.GET.get('rendez_vous', ''),
         'pre_examen':       request.GET.get('examen', ''),
         'pre_hospit':       request.GET.get('hospitalisation', ''),
         'pre_ordonnance':   request.GET.get('ordonnance', ''),
@@ -289,7 +296,7 @@ def facture_modifier(request, pk):
         'action':           'Modifier',
         'pre_service':      facture.service() or '',
         'pre_patient':      '',
-        'pre_consultation': '',
+        'pre_rendez_vous':  '',
         'pre_examen':       '',
         'pre_hospit':       '',
         'pre_ordonnance':   '',
@@ -808,8 +815,8 @@ def _factures_prises_en_charge(request, avec_filtre_statut=True):
     annee, mois, libelle, valeur = _periode(request)
     qs = (Facture.objects
           .filter(assurance__isnull=False, taux_prise_en_charge__gt=0)
-          .select_related('patient', 'assurance', 'consultation', 'examen',
-                          'hospitalisation', 'ordonnance')
+          .select_related('patient', 'assurance', 'rendez_vous', 'consultation',
+                          'examen', 'hospitalisation', 'ordonnance')
           .order_by('assurance__nom', 'patient__nom', 'pk'))
     if annee and mois:
         qs = qs.filter(date_creation__year=annee, date_creation__month=mois)

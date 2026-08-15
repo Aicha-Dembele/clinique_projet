@@ -314,6 +314,11 @@
           <td>
             {% if e.resultats.all %}
               <span class="badge-statut badge-termine"><i class="bi bi-check-circle-fill"></i> Terminé</span>
+            {% elif not e.paiement.reglee %}
+              {# L'examen se règle avant d'être réalisé : pas de résultat possible. #}
+              <span class="badge-statut badge-annule" title="{{ e.paiement.libelle }}">
+                <i class="bi bi-cash-coin"></i> {{ e.paiement.libelle }}
+              </span>
             {% else %}
               <span class="badge-statut badge-encours"><i class="bi bi-hourglass-split"></i> En cours</span>
             {% endif %}
