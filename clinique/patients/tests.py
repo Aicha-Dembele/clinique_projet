@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 
 from comptes.models import Role, Profil
+from comptes.roles import installer_roles
 from personnel.models import Medecin
 from patients.models import Patient
 from consultation.models import Rendez_vous
@@ -20,8 +21,17 @@ def _patient(nom):
 
 @override_settings(ALLOWED_HOSTS=['testserver'])
 class MedecinVoitSesPatientsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Les vrais rôles de la clinique, avec leurs permissions. Les vues sont
+        # protégées par `permission_required` : un rôle « médecin » créé à la
+        # main et sans permission serait refusé à l'entrée (redirection 302) et
+        # le test ne vérifierait plus rien du cloisonnement des dossiers.
+        # Une seule fois pour toute la classe : le catalogue fait ~70 permissions.
+        installer_roles()
+
     def setUp(self):
-        role = Role.objects.create(code='medecin', libelle='Médecin')
+        role = Role.objects.get(code='medecin')
 
         self.med_a = Medecin.objects.create(
             nom='Alpha', prenom='A', telephone='1', service='Cardio',
@@ -65,7 +75,11 @@ class MedecinVoitSesPatientsTests(TestCase):
     def test_detail_patient_d_un_autre_medecin_est_refuse(self):
         self.client.force_login(self.user_a)
         r = self.client.get(f'/patients/{self.pat_b.pk}/')
-        self.assertEqual(r.status_code, 302)  # redirigé vers la liste
+        # On vérifie la DESTINATION, pas seulement le code 302 : un refus de
+        # permission renvoie lui aussi un 302, mais vers le tableau de bord.
+        # Sans cette précision, le test resterait vert alors même que le
+        # cloisonnement ne serait plus exercé du tout.
+        self.assertRedirects(r, '/patients/')
 
     def test_detail_de_son_patient_est_accessible(self):
         self.client.force_login(self.user_a)
