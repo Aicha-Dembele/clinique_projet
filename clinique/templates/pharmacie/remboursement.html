@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Prise en charge par l'assurance{% endblock %}
+{% block nav_pharmacie %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Prise en charge par l'assurance{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Prise en charge</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.rb-intro { background: var(--card-bg); border: 1px solid var(--card-border); border-left: 3px solid var(--primary); border-radius: .9rem; padding: 1.1rem 1.3rem; margin-bottom: 1.2rem; font-size: .88rem; line-height: 1.6; }
+.rb-intro strong { color: var(--text-primary); }
+.rb-groupe { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.1rem 1.3rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); }
+.rb-groupe h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 0 0 .9rem; padding-bottom: .6rem; border-bottom: 1px solid var(--card-border); }
+.rb-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .5rem .9rem; }
+.rb-item { display: flex; align-items: flex-start; gap: .6rem; padding: .45rem .6rem; border-radius: .6rem; cursor: pointer; margin: 0; }
+.rb-item:hover { background: rgba(13,148,136,.06); }
+.rb-item input { margin-top: .22rem; flex-shrink: 0; }
+.rb-nom { font-weight: 600; font-size: .9rem; }
+.rb-dci { font-size: .73rem; color: var(--text-muted); }
+.rb-marque { display: inline-block; font-size: .64rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; background: rgba(245,158,11,.14); color: #b45309; padding: .08rem .4rem; border-radius: .3rem; margin-left: .35rem; }
+.rb-barre { position: sticky; bottom: 0; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: .9rem 1.2rem; display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; box-shadow: var(--shadow-md); margin-top: 1rem; }
+.rb-compteur { font-size: .85rem; color: var(--text-muted); margin-right: auto; }
+.rb-compteur b { color: var(--primary); font-size: 1.05rem; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="rb-intro">
+  <strong>L'assurance s'applique médicament par médicament, jamais sur le total de l'ordonnance.</strong>
+  Un médicament décoché reste <u>entièrement</u> à la charge du patient, même assuré — les autres
+  restent pris en charge normalement.
+  <br><br>
+  La liste qui fait foi est celle de l'assureur (la CANAM pour l'AMO) : <strong>demande-la à ton pharmacien</strong>.
+  Le bouton « Appliquer la proposition » ne fait que pré-cocher, d'après deux règles de terrain :
+  les consommables ne sont pas des médicaments, et l'assurance rembourse le générique
+  (Paracétamol) et non la marque (Doliprane). <strong>Rien n'est enregistré tant que tu ne valides pas.</strong>
+</div>
+
+<form method="post" id="form-remboursement">
+  {% csrf_token %}
+
+  {% for groupe in groupes %}
+  <div class="rb-groupe">
+    <h3>{{ groupe.libelle }}</h3>
+    <div class="rb-liste">
+      {% for m in groupe.medicaments %}
+      <label class="rb-item">
+        <input type="checkbox" name="rembourse_{{ m.pk }}"
+               data-propose="{% if m.propose %}1{% else %}0{% endif %}"
+               {% if m.rembourse %}checked{% endif %}>
+        <span>
+          <span class="rb-nom">{{ m.nom }}</span>{% if not m.propose and m.categorie != 'consommable' %}<span class="rb-marque">marque ?</span>{% endif %}
+          {% if m.dci and m.dci != m.nom %}<br><span class="rb-dci">DCI : {{ m.dci }}</span>{% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="rb-groupe"><p class="text-center" style="color:var(--text-muted)">Aucun médicament au catalogue.</p></div>
+  {% endfor %}
+
+  <div class="rb-barre">
+    <span class="rb-compteur"><b id="rb-nb">{{ nb_rembourse }}</b> / {{ nb_total }} médicaments remboursés</span>
+    <button type="button" class="btn-c btn-outline-c" id="rb-proposition"><i class="bi bi-magic"></i> Appliquer la proposition</button>
+    <button type="button" class="btn-c btn-outline-c" id="rb-tout"><i class="bi bi-check-all"></i> Tout cocher</button>
+    <button type="button" class="btn-c btn-outline-c" id="rb-rien"><i class="bi bi-x-lg"></i> Tout décocher</button>
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-save"></i> Enregistrer</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var cases = Array.prototype.slice.call(
+    document.querySelectorAll('#form-remboursement input[type="checkbox"]'));
+  var compteur = document.getElementById('rb-nb');
+
+  function recompter() {
+    compteur.textContent = cases.filter(function (c) { return c.checked; }).length;
+  }
+  function appliquer(valeurDe) {
+    cases.forEach(function (c) { c.checked = valeurDe(c); });
+    recompter();
+  }
+
+  cases.forEach(function (c) { c.addEventListener('change', recompter); });
+  document.getElementById('rb-proposition').addEventListener('click', function () {
+    appliquer(function (c) { return c.dataset.propose === '1'; });
+  });
+  document.getElementById('rb-tout').addEventListener('click', function () {
+    appliquer(function () { return true; });
+  });
+  document.getElementById('rb-rien').addEventListener('click', function () {
+    appliquer(function () { return false; });
+  });
+  recompter();
+})();
+</script>
+{% endblock %}

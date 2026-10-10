@@ -24,16 +24,29 @@ class Specialite(models.Model):
 class Medicament(models.Model):
     """Médicament géré en stock par la pharmacie de la clinique."""
 
+    # Rangées dans l'ordre où un soignant y pense : la douleur et les
+    # infections d'abord, les consommables à la fin. Cet ordre est celui de
+    # l'affichage par groupes, en pharmacie comme dans l'assistant
+    # d'ordonnance — changer l'ordre ici change l'ordre des deux écrans.
+    # Les codes ne changent JAMAIS : ils sont enregistrés en base.
     CATEGORIE_CHOICES = [
-        ('antibiotique',     'Antibiotique'),
         ('antalgique',       'Antalgique / Antidouleur'),
         ('anti_inflammatoire', 'Anti-inflammatoire'),
+        ('antipyretique',    'Antipyrétique (fièvre)'),
+        ('antibiotique',     'Antibiotique'),
+        ('antifongique',     'Antifongique (mycoses)'),
+        ('antiviral',        'Antiviral'),
         ('antipaludique',    'Antipaludique'),
-        ('antipyretique',    'Antipyrétique'),
+        ('antiallergique',   'Antiallergique / Antihistaminique'),
+        ('orl',              'ORL — rhume, gorge, oreilles'),
+        ('respiratoire',     'Respiratoire (asthme, toux)'),
         ('cardiovasculaire', 'Cardiovasculaire'),
         ('digestif',         'Digestif / Gastro'),
-        ('respiratoire',     'Respiratoire'),
-        ('dermatologique',   'Dermatologique'),
+        ('endocrinien',      'Diabète / Hormones'),
+        ('neuro_psy',        'Neurologie / Psychiatrie'),
+        ('gynecologie',      'Gynécologie / Obstétrique'),
+        ('dermatologique',   'Dermatologique (peau)'),
+        ('ophtalmologique',  'Ophtalmologie (yeux)'),
         ('vitamine',         'Vitamines / Compléments'),
         ('solute',           'Soluté / Perfusion'),
         ('antiseptique',     'Antiseptique / Désinfectant'),
@@ -59,6 +72,12 @@ class Medicament(models.Model):
     commun         = models.BooleanField(
         default=False,
         help_text="Médicament de base, proposé à toutes les spécialités.")
+    # Toutes les assurances ne remboursent pas tout : un générique essentiel
+    # est pris en charge, une spécialité de marque souvent pas. Décoché, le
+    # médicament est entièrement à la charge du patient, même assuré.
+    rembourse      = models.BooleanField(
+        "remboursé par l'assurance", default=True,
+        help_text="Décochez si ce médicament reste entièrement à la charge du patient.")
     specialites    = models.ManyToManyField(
         Specialite, blank=True, related_name='medicaments',
         help_text="Spécialités pour lesquelles ce médicament est proposé en priorité.")

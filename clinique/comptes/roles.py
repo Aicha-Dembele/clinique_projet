@@ -120,7 +120,12 @@ ROLE_PERMISSIONS = {
         'traitement.view',
         'pharmacie.view', 'medicament.manage',
         'stock.entree', 'stock.sortie',
+        # Le pharmacien tient sa propre caisse : il encaisse les medicaments
+        # qu'il vient de servir. Il ne peut encaisser QUE les factures
+        # d'ordonnance (cf. facturation/regles.py, section « Qui encaisse
+        # quoi »), jamais une consultation.
         'facture.view',
+        'paiement.view', 'paiement.add',
     ],
 }
 

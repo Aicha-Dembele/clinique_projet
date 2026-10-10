@@ -20,7 +20,8 @@ from .models import (
 )
 from patients.models import Patient
 from personnel.models import Medecin, Laborantin, Infirmier
-from comptes.decorators import role_required, permission_required, get_role
+from comptes.decorators import (
+    role_required, role_required_strict, permission_required, get_role)
 from comptes.models import JournalAudit
 from comptes.recherche import termes_q, nouveau_en_tete
 # On paie avant d'etre soigne : consultation, examen et hospitalisation sont
@@ -977,12 +978,23 @@ def ordonnance_ajouter(request):
     for c in consultations:
         c.code_spec = code_specialite(c.rendez_vous.medecin.specialite) or ''
 
+    # Catalogue range par CATEGORIE (antalgiques, antibiotiques, ...) puis par
+    # nom. Le medecin cherche d'abord une famille de medicaments, pas une
+    # lettre de l'alphabet. L'ordre des familles est celui du modele, qui suit
+    # l'ordre ou un soignant y pense.
+    libelles_categories = dict(Medicament.CATEGORIE_CHOICES)
+    rang = {code: i for i, (code, _) in enumerate(Medicament.CATEGORIE_CHOICES)}
+    medicaments = sorted(
+        Medicament.objects.filter(actif=True).prefetch_related('specialites'),
+        key=lambda m: (rang.get(m.categorie, 999), m.nom.lower()))
+
     catalogue = [{
         'libelle':     m.libelle(),
         'indication':  m.indication,
         'commun':      m.commun,
+        'categorie':   libelles_categories.get(m.categorie, 'Non classé'),
         'specialites': [s.code for s in m.specialites.all()],
-    } for m in Medicament.objects.filter(actif=True).prefetch_related('specialites').order_by('nom')]
+    } for m in medicaments]
 
     return render(request, 'consultation/ordonnance_form.html', {
         'consultations':   consultations,
@@ -1519,3 +1531,108 @@ def assistance_ajouter(request):
     return render(request, 'consultation/assistance_form.html', {
         'patients': Patient.objects.all().order_by('nom'),
     })
+
+# ─────────────────────────────────────────────────────────────────
+#  Réception : tout le passage d'un patient sur un seul écran
+# ─────────────────────────────────────────────────────────────────
+
+@role_required_strict('receptionniste')
+def reception(request):
+    """Enregistrer le patient, fixer son rendez-vous et encaisser, d'un coup.
+
+    Avant, la réception devait passer par quatre écrans dans trois modules :
+    créer la fiche patient, créer le rendez-vous, retrouver la facture,
+    encaisser. Cette page fait les quatre en une seule validation.
+
+    Elle ne contourne aucune règle : le rendez-vous crée sa facture comme
+    partout ailleurs (facturation.regles.facturer), et c'est cette facture
+    qui est encaissée. En espèces, on repart avec le reçu du patient ; pour
+    les autres modes, on enchaîne sur la page de paiement habituelle, qui
+    sait déjà parler à Orange Money et à Stripe.
+    """
+    from django.db import transaction
+    from facturation.models import Paiement
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                patient = _patient_du_formulaire(request)
+
+                rdv = Rendez_vous.objects.create(
+                    patient=patient,
+                    medecin_id=request.POST['medecin'],
+                    date=request.POST['date'],
+                    statut='programme',
+                )
+                facture = facturer(patient, 'rendez_vous', rdv)
+
+                mode = request.POST.get('mode_paiement', '')
+                a_regler = facture.montant_restant()
+
+                # Patient couvert à 100 % : il n'y a rien à encaisser.
+                if a_regler <= 0:
+                    messages.success(
+                        request,
+                        f'{patient} — rendez-vous enregistré. Rien à encaisser : '
+                        f'la prise en charge couvre la totalité.')
+                    return redirect('facturation:detail', pk=facture.pk)
+
+                if mode == 'cash':
+                    paiement = Paiement.objects.create(
+                        facture=facture, montant=a_regler, mode_paiement='cash',
+                        note='Encaissement à la réception')
+                    messages.success(
+                        request,
+                        f'{patient} — rendez-vous enregistré et '
+                        f'{fcfa(a_regler)} encaissés. Voici le reçu.')
+                    return redirect('facturation:paiement_recu', pk=paiement.pk)
+
+            # Hors transaction : on quitte la page avec la facture établie.
+            if mode in ('orange_money', 'carte'):
+                messages.info(
+                    request,
+                    f'{patient} — rendez-vous enregistré. '
+                    f'{fcfa(a_regler)} à encaisser.')
+                return redirect(
+                    f"{reverse('facturation:paiement_ajouter')}?facture={facture.pk}")
+
+            messages.success(
+                request,
+                f'{patient} — rendez-vous enregistré. '
+                f'{fcfa(a_regler)} restent à encaisser avant la consultation.')
+            return redirect('facturation:detail', pk=facture.pk)
+
+        except Exception as e:
+            messages.error(request, f'Erreur : {e}')
+
+    from facturation.models import Assurance
+    return render(request, 'consultation/reception.html', {
+        'patients':   Patient.objects.all().order_by('nom', 'prenom'),
+        'medecins':   Medecin.objects.all().order_by('nom'),
+        'assurances': Assurance.objects.filter(actif=True),
+    })
+
+
+def _patient_du_formulaire(request):
+    """Le patient visé : soit un dossier existant, soit un nouveau à créer."""
+    if request.POST.get('type_patient') == 'existant':
+        return get_object_or_404(Patient, pk=request.POST['patient'])
+
+    manquants = [champ for champ in ('nom', 'prenom', 'date_naissance', 'telephone')
+                 if not request.POST.get(champ)]
+    if manquants:
+        raise ValueError(
+            "Il manque, pour créer la fiche : " + ', '.join(manquants) + '.')
+
+    return Patient.objects.create(
+        nom=request.POST['nom'],
+        prenom=request.POST['prenom'],
+        sexe=request.POST.get('sexe', ''),
+        date_naissance=request.POST['date_naissance'],
+        adresse=request.POST.get('adresse', ''),
+        telephone=request.POST['telephone'],
+        email=request.POST.get('email', ''),
+        numero_urgence=request.POST.get('numero_urgence', ''),
+        assurance_id=request.POST.get('assurance') or None,
+        numero_assure=request.POST.get('numero_assure', ''),
+    )

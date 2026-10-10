@@ -137,6 +137,11 @@
           <span style="font-weight:600">Médicament commun (proposé à <u>toutes</u> les spécialités)</span>
         </label>
         <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
+          <input type="checkbox" name="rembourse" {% if not medicament or medicament.rembourse %}checked{% endif %}>
+          <span style="font-weight:600">Remboursé par l'assurance</span>
+        </label>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>Décoché, ce médicament reste <u>entièrement</u> à la charge du patient, même assuré. L'assurance s'applique médicament par médicament, pas sur le total de l'ordonnance.</div>
+        <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
           <input type="checkbox" name="actif" {% if not medicament or medicament.actif %}checked{% endif %}>
           <span style="font-weight:600">Médicament actif (disponible à la dispensation)</span>
         </label>

@@ -102,6 +102,15 @@ class Facture(models.Model):
     ordonnance      = models.ForeignKey("consultation.Ordonnance", on_delete=models.SET_NULL, null=True, blank=True,
                                         help_text="Facture des médicaments dispensés pour cette ordonnance.")
     montant_total   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Part du total sur laquelle l'assurance s'applique. Égale au total pour
+    # les soins ; sur une ordonnance, elle exclut les médicaments non
+    # remboursés. Recalculée à chaque save() comme montant_total, pour que
+    # part_assurance() n'ait pas à relire les lignes à chaque affichage.
+    # NULL = jamais calculée (facture construite en mémoire, ou établie avant
+    # l'application de l'assurance médicament par médicament). On retombe
+    # alors sur le total, c'est-à-dire l'ancien comportement.
+    montant_remboursable = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True, default=None)
     statut          = models.CharField(max_length=20, choices=STATUT_CHOICES, default='non payé')
     date_creation   = models.DateTimeField(auto_now_add=True, null=True)
     notes           = models.TextField(blank=True, default='')
@@ -204,6 +213,29 @@ class Facture(models.Model):
     def calculer_total(self):
         """Recalcule le total depuis les LigneFacture existantes."""
         return sum(l.sous_total() for l in self.lignes.all()) or Decimal('0')
+
+    def base_assurable(self):
+        """Montant sur lequel l'assurance s'applique réellement.
+
+        C'est `montant_remboursable` dès que la facture a été enregistrée.
+        Tant qu'il vaut NULL — facture jamais sauvegardée, ou établie avant
+        la règle du médicament par médicament — on prend le total, ce qui
+        redonne exactement l'ancien calcul.
+        """
+        if self.montant_remboursable is None:
+            return self.montant_total or Decimal('0')
+        return self.montant_remboursable
+
+    def calculer_remboursable(self):
+        """Part du total que l'assurance accepte de couvrir.
+
+        L'assurance ne s'applique pas en bloc sur une ordonnance : elle
+        s'applique médicament par médicament. Un médicament non remboursé
+        sort donc de l'assiette, et son prix reste intégralement au patient.
+        Pour les soins, toutes les lignes sont remboursables : on retrouve
+        le total.
+        """
+        return sum(l.sous_total() for l in self.lignes.all() if l.rembourse) or Decimal('0')
 
     def _db(self):
         """Base sur laquelle travailler : celle de l'instance.
@@ -324,6 +356,7 @@ class Facture(models.Model):
                     type_service='medicament',
                     prix_unitaire=mv.prix_unitaire,
                     quantite=mv.quantite,
+                    rembourse=mv.medicament.rembourse,
                 ))
 
         LigneFacture.objects.using(db).bulk_create(lignes)
@@ -343,11 +376,15 @@ class Facture(models.Model):
         super().save(*args, **kwargs)
         # Génère les lignes
         self.generer_lignes()
-        # Recalcule le total depuis les lignes
+        # Recalcule le total depuis les lignes, et la part sur laquelle
+        # l'assurance peut s'appliquer (les médicaments non remboursés en
+        # sont exclus : ils restent entièrement à la charge du patient).
         self.montant_total = self.calculer_total()
+        self.montant_remboursable = self.calculer_remboursable()
         # Save final sans boucle infinie
         Facture.objects.using(self._db()).filter(pk=self.pk).update(
-            montant_total=self.montant_total)
+            montant_total=self.montant_total,
+            montant_remboursable=self.montant_remboursable)
         # Recalcule le statut selon la part réellement due par le patient
         self.update_statut()
 
@@ -367,6 +404,21 @@ class Facture(models.Model):
         sous-total par groupe. Travaille sur les lignes déjà préchargées
         (prefetch_related) : aucune requête supplémentaire."""
         lignes = list(self.lignes.all())
+
+        # Répartition assurance / patient LIGNE PAR LIGNE : sur une
+        # ordonnance, un médicament non remboursé reste entièrement au
+        # patient pendant que les autres sont pris en charge. Le taux est lu
+        # une seule fois ici, pas une requête par médicament.
+        taux = self.taux_prise_en_charge or Decimal('0')
+        for ligne in lignes:
+            sous_total = ligne.sous_total()
+            if ligne.rembourse and taux > 0:
+                ligne.part_assurance = (
+                    sous_total * taux / Decimal('100')).quantize(Decimal('1'))
+            else:
+                ligne.part_assurance = Decimal('0')
+            ligne.part_patient = sous_total - ligne.part_assurance
+
         groupes = []
         for code, label in self.GROUPES_LIGNES:
             items = [l for l in lignes if l.type_service == code]
@@ -391,7 +443,8 @@ class Facture(models.Model):
         taux = self.taux_prise_en_charge or Decimal('0')
         if taux <= 0:
             return Decimal('0')
-        return (self.montant_total * taux / Decimal('100')).quantize(Decimal('1'))
+        # Sur la part remboursable seulement : voir base_assurable().
+        return (self.base_assurable() * taux / Decimal('100')).quantize(Decimal('1'))
 
     def part_patient(self):
         """Reste à charge du patient (ticket modérateur) = ce qu'il doit régler."""
@@ -435,6 +488,10 @@ class LigneFacture(models.Model):
     type_service  = models.CharField(max_length=50)
     prix_unitaire = models.DecimalField(max_digits=10, decimal_places=2)
     quantite      = models.PositiveIntegerField(default=1)
+    # Copie, au moment de la facturation, de l'état du médicament : si on le
+    # déréférence plus tard de la liste des remboursables, les factures déjà
+    # établies ne changent pas rétroactivement.
+    rembourse     = models.BooleanField("pris en charge", default=True)
 
     def sous_total(self):
         return self.prix_unitaire * self.quantite

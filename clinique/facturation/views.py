@@ -8,7 +8,10 @@ from decimal import Decimal
 
 from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
 from patients.models import Patient
-from comptes.decorators import role_required, permission_required
+from comptes.decorators import role_required, permission_required, get_role
+from .regles import (
+    CAISSE_PHARMACIE, CAISSE_RECEPTION, blocage_caisse, caisse_de,
+    caisses_du_role, factures_de_la_caisse)
 from comptes.recherche import termes_q
 
 
@@ -334,6 +337,15 @@ def facture_recalculer(request, pk):
 def paiement_liste(request):
     paiements = Paiement.objects.select_related('facture__patient').order_by('-date')
 
+    # Chacun voit la caisse qu'il tient : le pharmacien ses encaissements de
+    # medicaments, la reception ceux des soins (cf. facturation/regles.py).
+    role = get_role(request.user)
+    caisses = caisses_du_role(role)
+    if caisses == {CAISSE_PHARMACIE}:
+        paiements = paiements.filter(facture__ordonnance__isnull=False)
+    elif caisses == {CAISSE_RECEPTION}:
+        paiements = paiements.filter(facture__ordonnance__isnull=True)
+
     q = request.GET.get('q', '').strip()
     if q:
         paiements = paiements.filter(
@@ -347,12 +359,19 @@ def paiement_liste(request):
     })
 
 
-@role_required('admin', 'receptionniste')
+@role_required('admin', 'receptionniste', 'pharmacien')
 def paiement_ajouter(request):
     facture_id = request.GET.get('facture')
     if request.method == 'POST':
         try:
             facture = get_object_or_404(Facture, pk=request.POST['facture'])
+
+            # Deux caisses : les medicaments au comptoir de la pharmacie, les
+            # soins a la reception (cf. facturation/regles.py).
+            refus = blocage_caisse(facture, get_role(request.user))
+            if refus:
+                raise ValueError(refus)
+
             montant = Decimal(request.POST['montant'])
             if montant <= 0:
                 raise ValueError("Le montant doit être positif.")
@@ -375,21 +394,25 @@ def paiement_ajouter(request):
                 }
                 return redirect('facturation:paiement_orange_money')
 
-            Paiement.objects.create(
+            paiement = Paiement.objects.create(
                 facture=facture,
                 montant=montant,
                 mode_paiement=request.POST['mode_paiement'],
                 note=request.POST.get('note', ''),
             )
             messages.success(request, f'Paiement de {_fmt(montant)} FCFA enregistré.')
-            return redirect('facturation:detail', pk=facture.pk)
+            # On remet le reçu au patient : la caisse arrive directement sur
+            # le document à imprimer, sans avoir à le chercher.
+            return redirect('facturation:paiement_recu', pk=paiement.pk)
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
     return render(request, 'facturation/paiement.html', {
-        'factures':   Facture.objects.filter(statut__in=['non payé', 'partiel'])
-                                     .select_related('patient', 'assurance')
-                                     .prefetch_related('paiements'),
+        'factures':   factures_de_la_caisse(
+                          Facture.objects.filter(statut__in=['non payé', 'partiel'])
+                                         .select_related('patient', 'assurance')
+                                         .prefetch_related('paiements'),
+                          get_role(request.user)),
         'modes':      Paiement.MODE_CHOICES,
         'facture_id': facture_id,
         'action':     'Enregistrer',
@@ -443,7 +466,7 @@ def _rediriger_vers_stripe(request, facture, montant, note):
     return redirect(session.url)
 
 
-@role_required('admin', 'receptionniste')
+@role_required('admin', 'receptionniste', 'pharmacien')
 def paiement_carte_succes(request):
     """Retour de Stripe après paiement : vérifie la session côté serveur
     (statut « paid ») puis enregistre le Paiement — une seule fois, même si
@@ -474,7 +497,7 @@ def paiement_carte_succes(request):
     if not Paiement.objects.filter(facture=facture, note__contains=session_id).exists():
         note = (session.metadata.get('note') or '').strip()
         montant = Decimal(session.amount_total)  # XOF sans décimales : déjà en francs
-        Paiement.objects.create(
+        paiement = Paiement.objects.create(
             facture=facture,
             montant=montant,
             mode_paiement='carte',
@@ -483,6 +506,7 @@ def paiement_carte_succes(request):
         messages.success(
             request,
             f'Paiement par carte de {_fmt(montant)} FCFA confirmé par Stripe (mode test).')
+        return redirect('facturation:paiement_recu', pk=paiement.pk)
     return redirect('facturation:detail', pk=facture.pk)
 
 
@@ -511,7 +535,7 @@ def _valider_carte_test(numero, expiration, cvc):
     return None
 
 
-@role_required('admin', 'receptionniste')
+@role_required('admin', 'receptionniste', 'pharmacien')
 def paiement_carte_simulation(request):
     """Page locale simulant la procédure de paiement par carte bancaire
     (utilisée quand aucune clé Stripe n'est configurée). Reproduit le
@@ -541,7 +565,7 @@ def paiement_carte_simulation(request):
         if erreur is None:
             note = (data.get('note') or '').strip()
             ref = f'PayPal (simulation) — carte •••• {numero[-4:]}'
-            Paiement.objects.create(
+            paiement = Paiement.objects.create(
                 facture=facture,
                 montant=montant,
                 mode_paiement='carte',
@@ -551,7 +575,7 @@ def paiement_carte_simulation(request):
             messages.success(
                 request,
                 f'Paiement PayPal de {_fmt(montant)} FCFA accepté (simulation — carte •••• {numero[-4:]}).')
-            return redirect('facturation:detail', pk=facture.pk)
+            return redirect('facturation:paiement_recu', pk=paiement.pk)
 
     return render(request, 'facturation/carte_simulation.html', {
         'facture': facture,
@@ -560,7 +584,7 @@ def paiement_carte_simulation(request):
     })
 
 
-@role_required('admin', 'receptionniste')
+@role_required('admin', 'receptionniste', 'pharmacien')
 def paiement_carte_annule(request):
     """Retour de Stripe quand l'utilisateur abandonne le paiement."""
     facture_id = request.GET.get('facture')
@@ -589,7 +613,7 @@ def _valider_orange_money(numero, code):
     return None
 
 
-@role_required('admin', 'receptionniste')
+@role_required('admin', 'receptionniste', 'pharmacien')
 def paiement_orange_money(request):
     """Page locale reproduisant la procédure de paiement Orange Money (#144#).
     Simulation pour la démo : aucun mouvement d'argent réel."""
@@ -617,7 +641,7 @@ def paiement_orange_money(request):
         if erreur is None:
             note = (data.get('note') or '').strip()
             ref = f'Orange Money (simulation) — {numero[:2]}••••{numero[-2:]}'
-            Paiement.objects.create(
+            paiement = Paiement.objects.create(
                 facture=facture,
                 montant=montant,
                 mode_paiement='orange_money',
@@ -627,7 +651,7 @@ def paiement_orange_money(request):
             messages.success(
                 request,
                 f'Paiement Orange Money de {_fmt(montant)} FCFA accepté (simulation).')
-            return redirect('facturation:detail', pk=facture.pk)
+            return redirect('facturation:paiement_recu', pk=paiement.pk)
 
     return render(request, 'facturation/orange_money_simulation.html', {
         'facture':   facture,

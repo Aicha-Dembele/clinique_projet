@@ -3,6 +3,7 @@ import unicodedata
 from decimal import Decimal
 
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib import messages
 from django.db.models import Sum, F, Q, DecimalField
 from django.db.models.functions import Coalesce
@@ -23,6 +24,28 @@ def _fmt(val):
         return f"{int(val):,}".replace(',', ' ')
     except Exception:
         return '0'
+
+
+def grouper_par_categorie(medicaments):
+    """Range une liste de médicaments par catégorie, pour l'affichage.
+
+    L'ordre des groupes est celui de `Medicament.CATEGORIE_CHOICES`, qui suit
+    l'ordre où un soignant y pense : la douleur et les infections d'abord,
+    les consommables à la fin. Les groupes vides ne sont pas renvoyés, et un
+    médicament sans catégorie atterrit dans « Non classé » plutôt que de
+    disparaître de la liste.
+    """
+    restants = list(medicaments)
+    groupes = []
+    for code, libelle in Medicament.CATEGORIE_CHOICES:
+        membres = [m for m in restants if m.categorie == code]
+        if membres:
+            groupes.append({'code': code, 'libelle': libelle, 'medicaments': membres})
+    connus = {code for code, _ in Medicament.CATEGORIE_CHOICES}
+    sans = [m for m in restants if m.categorie not in connus]
+    if sans:
+        groupes.append({'code': '', 'libelle': 'Non classé', 'medicaments': sans})
+    return groupes
 
 
 def _stats():
@@ -269,6 +292,14 @@ def _dispenser_groupe(request):
     if not faits and not erreurs and not ignores:
         messages.info(request, "Aucun médicament sélectionné à dispenser.")
         return None
+
+    # Les medicaments se reglent ICI, au comptoir de la pharmacie, et non a la
+    # reception (cf. facturation/regles.py, « Qui encaisse quoi »). On emmene
+    # donc le pharmacien droit sur l'encaissement de ce qu'il vient de servir.
+    if facture is not None and faits and not facture.est_reglee():
+        return redirect(
+            f"{reverse('facturation:paiement_ajouter')}?facture={facture.pk}")
+
     return redirect('pharmacie:medicaments')
 
 
@@ -299,6 +330,7 @@ def medicament_liste(request):
     stats = _stats()
     return render(request, 'pharmacie/medicaments.html', {
         'medicaments':  medicaments,
+        'groupes':      grouper_par_categorie(medicaments),
         'categories':   Medicament.CATEGORIE_CHOICES,
         'q':            q,
         'categorie':    categorie,
@@ -322,6 +354,7 @@ def medicament_ajouter(request):
                 categorie=request.POST.get('categorie', ''),
                 indication=request.POST.get('indication', '').strip(),
                 commun='commun' in request.POST,
+                rembourse='rembourse' in request.POST,
                 unite=request.POST.get('unite', 'boîte').strip() or 'boîte',
                 prix_unitaire=request.POST.get('prix_unitaire') or 0,
                 quantite_stock=request.POST.get('quantite_stock') or 0,
@@ -355,6 +388,7 @@ def medicament_modifier(request, pk):
             medicament.categorie      = request.POST.get('categorie', '')
             medicament.indication     = request.POST.get('indication', '').strip()
             medicament.commun         = 'commun' in request.POST
+            medicament.rembourse      = 'rembourse' in request.POST
             medicament.unite          = request.POST.get('unite', 'boîte').strip() or 'boîte'
             medicament.prix_unitaire  = request.POST.get('prix_unitaire') or 0
             medicament.seuil_alerte   = request.POST.get('seuil_alerte') or 0
@@ -533,4 +567,85 @@ def mouvement_supprimer(request, pk):
         'objet':      f'Mouvement {mouvement.get_type_mouvement_display()} de {mouvement.quantite} '
                       f'{mouvement.medicament.unite} ({mouvement.medicament.nom})',
         'retour_url': '/pharmacie/mouvements/',
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Quels médicaments l'assurance prend-elle en charge ?
+# ─────────────────────────────────────────────────────────────────
+
+def proposition_remboursement(medicament):
+    """Faut-il, a priori, cocher « remboursé » pour ce médicament ?
+
+    Ce n'est qu'une PROPOSITION, à relire avec le pharmacien : la liste qui
+    fait foi est celle de l'assureur (la CANAM pour l'AMO). Elle repose sur
+    deux constats du terrain :
+
+    - un consommable (compresses, gants, aiguilles) n'est pas un médicament
+      et ne relève pas du remboursement de médicaments ;
+    - l'assurance rembourse le GÉNÉRIQUE, désigné par sa DCI, et pas la
+      spécialité de marque : Paracétamol oui, Doliprane non.
+
+    On reconnaît donc un générique au fait que son nom EST sa DCI, ou la
+    contient (« Povidone iodée (Bétadine) » reste un générique).
+    """
+    if medicament.categorie == 'consommable':
+        return False
+    if not medicament.dci:
+        return False        # DCI inconnue : à vérifier, donc non coché
+    nom, dci = _sans_dosage(medicament.nom), _sans_dosage(medicament.dci)
+    return bool(dci) and (dci in nom or nom in dci)
+
+
+def _sans_dosage(libelle):
+    """« Povidone iodée 10% » → « povidone iodee ».
+
+    Le dosage fait partie du libellé mais pas de l'identité du produit :
+    sans ce nettoyage, « Povidone iodée (Bétadine) » et sa DCI « Povidone
+    iodée 10% » passeraient pour deux produits différents, et le générique
+    serait pris pour une marque.
+    """
+    texte = _norm_nom(libelle)
+    texte = re.sub(r'\d+[\d,.]*\s*(mg|g|ml|ui|%|°|mg/ml|g/l)?', ' ', texte)
+    return ' '.join(texte.split()).strip(' ()-')
+
+
+@permission_required('medicament.manage')
+def remboursement_liste(request):
+    """Cocher d'un seul écran les médicaments pris en charge par l'assurance.
+
+    Évite d'ouvrir les quarante fiches une par une. Le bouton « proposition »
+    ne fait que pré-cocher : rien n'est enregistré tant qu'on ne valide pas.
+    """
+    if request.method == 'POST':
+        rembourses = {
+            int(cle.removeprefix('rembourse_'))
+            for cle in request.POST if cle.startswith('rembourse_')
+        }
+        tous = list(Medicament.objects.all())
+        for medicament in tous:
+            medicament.rembourse = medicament.pk in rembourses
+        Medicament.objects.bulk_update(tous, ['rembourse'])
+
+        pris = len(rembourses)
+        messages.success(
+            request,
+            f"Prise en charge enregistrée : {pris} médicament(s) remboursé(s), "
+            f"{len(tous) - pris} à la charge du patient.")
+        return redirect('pharmacie:remboursement')
+
+    libelles = dict(Medicament.CATEGORIE_CHOICES)
+    groupes = {}
+    for medicament in Medicament.objects.all().order_by('categorie', 'nom'):
+        groupe = groupes.setdefault(
+            medicament.categorie,
+            {'libelle': libelles.get(medicament.categorie, 'Non classé'),
+             'medicaments': []})
+        medicament.propose = proposition_remboursement(medicament)
+        groupe['medicaments'].append(medicament)
+
+    return render(request, 'pharmacie/remboursement.html', {
+        'groupes':      list(groupes.values()),
+        'nb_total':     Medicament.objects.count(),
+        'nb_rembourse': Medicament.objects.filter(rembourse=True).count(),
     })

@@ -5,6 +5,8 @@ app_name = 'consultation'
 
 urlpatterns = [
     # Rendez-vous
+    # L'accueil : patient, rendez-vous et encaissement sur un seul écran.
+    path('reception/', views.reception, name='reception'),
     path('rdv/', views.rdv_liste, name='rdv_liste'),
     path('rdv/ajouter/', views.rdv_ajouter, name='rdv_ajouter'),
     path('rdv/<int:pk>/modifier/', views.rdv_modifier, name='rdv_modifier'),

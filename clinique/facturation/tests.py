@@ -133,9 +133,13 @@ class StatutPaiementTests(TestCase):
 
     def _facture_avec_total(self, total, taux=Decimal('0')):
         # generer_lignes() remet montant_total à 0 sans lignes : on force la valeur.
+        # On force aussi la part remboursable, que save() aurait calculée
+        # depuis les lignes : sans elle, l'assurance n'aurait plus d'assiette
+        # et la facture paraîtrait entièrement à la charge du patient.
         f = Facture.objects.create(patient=self.patient)
         Facture.objects.filter(pk=f.pk).update(
-            montant_total=Decimal(total), taux_prise_en_charge=taux)
+            montant_total=Decimal(total), montant_remboursable=Decimal(total),
+            taux_prise_en_charge=taux)
         f.refresh_from_db()
         return f
 

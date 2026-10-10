@@ -15,7 +15,9 @@ l'hospitalisation. Pour chacun, deux moments distincts :
 
 La PHARMACIE fait exception : le montant n'est connu qu'une fois les
 médicaments servis, sa facture est donc créée APRÈS la dispensation
-(voir pharmacie.views._facture_pour_dispensation).
+(voir pharmacie.views._facture_pour_dispensation). Elle se règle aussi
+ailleurs — au comptoir de la pharmacie et non à la réception : voir la
+section « Qui encaisse quoi » plus bas.
 
 « Soldée » veut dire : toute la part patient encaissée. La part prise en charge
 par l'assurance n'est pas exigée au guichet, elle reste une créance sur
@@ -148,6 +150,68 @@ def blocage(lien, acte):
                 f"{nom.capitalize()} ne peut pas être réalisé avant le paiement.")
 
     return None
+
+
+# ── Qui encaisse quoi : deux caisses séparées ────────────────────
+#
+# Les médicaments se règlent AU COMPTOIR DE LA PHARMACIE, chez le pharmacien
+# qui vient de les servir. Tout le reste — consultation, examen,
+# hospitalisation — se règle À LA RÉCEPTION. Une réceptionniste n'encaisse
+# donc pas une ordonnance, et un pharmacien n'encaisse pas une consultation.
+
+CAISSE_PHARMACIE = 'pharmacie'
+CAISSE_RECEPTION = 'reception'
+
+CAISSE_LIBELLES = {
+    CAISSE_PHARMACIE: 'la pharmacie',
+    CAISSE_RECEPTION: 'la réception',
+}
+
+#: Caisses que chaque rôle est habilité à tenir.
+CAISSES_PAR_ROLE = {
+    'pharmacien':     {CAISSE_PHARMACIE},
+    'receptionniste': {CAISSE_RECEPTION},
+    # L'administrateur garde l'accès aux deux : il n'encaisse pas au
+    # quotidien, mais il doit pouvoir rattraper une erreur de caisse.
+    'admin':          {CAISSE_PHARMACIE, CAISSE_RECEPTION},
+}
+
+
+def caisse_de(facture):
+    """À quelle caisse cette facture se règle-t-elle ?"""
+    return CAISSE_PHARMACIE if facture.ordonnance_id else CAISSE_RECEPTION
+
+
+def caisses_du_role(role):
+    """Les caisses que ce rôle peut tenir (ensemble vide s'il n'en tient aucune)."""
+    return CAISSES_PAR_ROLE.get(role, set())
+
+
+def factures_de_la_caisse(requete, role):
+    """Restreint une liste de factures à celles que ce rôle peut encaisser."""
+    caisses = caisses_du_role(role)
+    if CAISSE_PHARMACIE in caisses and CAISSE_RECEPTION in caisses:
+        return requete
+    if CAISSE_PHARMACIE in caisses:
+        return requete.filter(ordonnance__isnull=False)
+    if CAISSE_RECEPTION in caisses:
+        return requete.filter(ordonnance__isnull=True)
+    return requete.none()
+
+
+def blocage_caisse(facture, role):
+    """None si ce rôle peut encaisser cette facture, sinon le message de refus.
+
+    À appeler côté serveur avant d'enregistrer un paiement : la liste
+    déroulante ne propose déjà que les bonnes factures, mais un formulaire
+    peut toujours être renvoyé avec un numéro forcé.
+    """
+    caisse = caisse_de(facture)
+    if caisse in caisses_du_role(role):
+        return None
+    return (f"FAC-{facture.pk:04d} se règle à {CAISSE_LIBELLES[caisse]}, "
+            f"pas ici. Les médicaments s'encaissent au comptoir de la "
+            f"pharmacie, les soins à la réception.")
 
 
 def etat_paiement(facture):

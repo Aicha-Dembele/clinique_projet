@@ -1861,6 +1861,12 @@
       <i class="bi bi-people-fill"></i> Patients
     </a>
     {% endif %}
+    {% if 'patient.add' in user_permissions and 'rdv.add' in user_permissions %}
+    {# L'accueil : patient, rendez-vous et encaissement sur un seul écran. #}
+    <a href="{% url 'consultation:reception' %}" class="sb-link {% block nav_reception %}{% endblock %}">
+      <i class="bi bi-door-open-fill"></i> Réception
+    </a>
+    {% endif %}
     {% if 'rdv.view' in user_permissions %}
     <a href="{% url 'consultation:rdv_liste' %}" class="sb-link {% block nav_rdv %}{% endblock %}">
       <i class="bi bi-calendar-check-fill"></i> Rendez-vous
@@ -1963,6 +1969,12 @@
     <a href="{% url 'pharmacie:mouvements' %}" class="sb-link {% block nav_mouvements %}{% endblock %}">
       <i class="bi bi-arrow-left-right"></i> Mouvements de stock
     </a>
+    {% if 'medicament.manage' in user_permissions %}
+    {# Quels médicaments l'assurance prend en charge : réglage de masse. #}
+    <a href="{% url 'pharmacie:remboursement' %}" class="sb-link {% block nav_remboursement %}{% endblock %}">
+      <i class="bi bi-shield-plus"></i> Prise en charge
+    </a>
+    {% endif %}
     {% endif %}
 
     <!-- Administration -->

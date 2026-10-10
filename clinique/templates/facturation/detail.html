@@ -136,7 +136,23 @@
           <!-- Lignes de la section -->
           {% for ligne in groupe.lignes %}
           <tr>
-            <td style="font-weight:600;padding-left:1.6rem">{{ ligne.description }}</td>
+            <td style="font-weight:600;padding-left:1.6rem">
+              {{ ligne.description }}
+              {% if facture.assurance and not ligne.rembourse %}
+                <span class="badge" style="background:rgba(239,68,68,.12);color:#ef4444;font-size:.66rem;font-weight:700;margin-left:.4rem">Non remboursé</span>
+              {% endif %}
+              {# L'assurance s'applique prestation par prestation, jamais sur
+                 le total : on montre donc le partage ici, à chaque ligne. #}
+              {% if facture.assurance and ligne.part_assurance %}
+                <div style="font-size:.7rem;color:var(--text-muted);font-weight:500;margin-top:.15rem">
+                  Assurance {{ ligne.part_assurance|floatformat:0 }} · Patient {{ ligne.part_patient|floatformat:0 }} FCFA
+                </div>
+              {% elif facture.assurance and not ligne.rembourse %}
+                <div style="font-size:.7rem;color:var(--text-muted);font-weight:500;margin-top:.15rem">
+                  Entièrement à la charge du patient
+                </div>
+              {% endif %}
+            </td>
             <td>{{ ligne.prix_unitaire|floatformat:0 }} FCFA</td>
             <td>
               {% if ligne.type_service == 'hospitalisation' %}

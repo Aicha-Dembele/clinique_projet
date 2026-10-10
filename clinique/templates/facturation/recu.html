@@ -12,6 +12,7 @@
 {% endblock %}
 {% block page_actions %}
 <a href="{% url 'facturation:paiement_pdf' paiement.pk %}" target="_blank" class="btn-c btn-primary-c no-print"><i class="bi bi-file-earmark-pdf-fill"></i> Imprimer le reçu (PDF)</a>
+<a href="{% url 'facturation:detail' paiement.facture.pk %}" class="btn-c btn-outline-c no-print"><i class="bi bi-receipt"></i> Voir la facture</a>
 <a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c no-print"><i class="bi bi-arrow-left"></i> Retour</a>
 {% endblock %}
 {% block extra_css %}

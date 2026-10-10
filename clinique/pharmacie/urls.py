@@ -12,6 +12,8 @@ urlpatterns = [
     path('entree/',                   views.entree_stock,         name='entree_stock'),
     path('sortie/',                   views.sortie_stock,         name='sortie_stock'),
 
+    path('remboursement/',            views.remboursement_liste,  name='remboursement'),
+
     path('mouvements/',               views.mouvement_liste,      name='mouvements'),
     path('mouvements/<int:pk>/supprimer/', views.mouvement_supprimer, name='mouvement_supprimer'),
 ]
