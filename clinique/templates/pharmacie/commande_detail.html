@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}CMD-{{ commande.pk|stringformat:"04d" }}{% endblock %}
+{% block nav_commandes %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}CMD-{{ commande.pk|stringformat:"04d" }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:commandes' %}">Commandes</a></li>
+  <li class="breadcrumb-item active">CMD-{{ commande.pk|stringformat:"04d" }}</li>
+{% endblock %}
+{% block page_actions %}
+{% if not commande.est_receptionnee and commande.statut != 'annulee' and 'stock.entree' in user_permissions %}
+<a href="{% url 'pharmacie:commande_receptionner' commande.pk %}" class="btn-c btn-primary-c"><i class="bi bi-box-arrow-in-down"></i> Réceptionner la livraison</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+
+<div class="card-c mb-3">
+  <div class="row g-3">
+    <div class="col-6 col-md-3">
+      <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Fournisseur</div>
+      <div style="font-weight:700">{{ commande.fournisseur.nom }}</div>
+      {% if commande.fournisseur.telephone %}<div style="font-size:.76rem;color:var(--text-muted)">{{ commande.fournisseur.telephone }}</div>{% endif %}
+    </div>
+    <div class="col-6 col-md-3">
+      <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Commandée le</div>
+      <div style="font-weight:700">{{ commande.date_commande|date:"d/m/Y" }}</div>
+      {% if commande.reference %}<div style="font-size:.76rem;color:var(--text-muted)">Réf. {{ commande.reference }}</div>{% endif %}
+    </div>
+    <div class="col-6 col-md-3">
+      <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Statut</div>
+      <div style="font-weight:700">{{ commande.get_statut_display }}</div>
+      {% if commande.date_reception %}<div style="font-size:.76rem;color:var(--text-muted)">Reçue le {{ commande.date_reception|date:"d/m/Y" }}</div>{% endif %}
+    </div>
+    <div class="col-6 col-md-3">
+      <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Montant</div>
+      <div style="font-weight:700">{{ commande.montant_total|floatformat:0 }} FCFA</div>
+    </div>
+    {% if commande.notes %}
+    <div class="col-12" style="font-size:.84rem;color:var(--text-muted)">{{ commande.notes }}</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card-c">
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Médicament</th>
+          <th class="text-end">Commandé</th>
+          <th class="text-end">Reçu</th>
+          <th class="text-end">Reste</th>
+          <th class="text-end">Prix d'achat</th>
+          <th class="text-end">Sous-total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in commande.lignes.all %}
+        <tr>
+          <td style="font-weight:600">{{ ligne.medicament.libelle }}</td>
+          <td class="text-end">{{ ligne.quantite }}</td>
+          <td class="text-end">{{ ligne.quantite_recue }}</td>
+          <td class="text-end">
+            {% if ligne.quantite_restante %}
+              <span class="pill" style="background:rgba(245,158,11,.14);color:#d97706;font-size:.68rem">{{ ligne.quantite_restante }}</span>
+            {% else %}
+              <span class="pill" style="background:rgba(16,185,129,.12);color:#10b981;font-size:.68rem">Complet</span>
+            {% endif %}
+          </td>
+          <td class="text-end">{{ ligne.prix_achat|floatformat:0 }} FCFA</td>
+          <td class="text-end">{{ ligne.sous_total|floatformat:0 }} FCFA</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

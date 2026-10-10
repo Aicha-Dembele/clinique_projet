@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Nouvelle commande{% endblock %}
+{% block nav_commandes %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Nouvelle commande{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:commandes' %}">Commandes</a></li>
+  <li class="breadcrumb-item active">Nouvelle</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.cmd-ligne { display: grid; grid-template-columns: 2fr .7fr .9fr auto; gap: .6rem; align-items: end; margin-bottom: .6rem; }
+@media (max-width: 720px) { .cmd-ligne { grid-template-columns: 1fr; } }
+.cmd-suppr { background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: .6rem; padding: .45rem .7rem; cursor: pointer; }
+.cmd-suppr:hover { border-color: #ef4444; color: #ef4444; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="card-c mb-3">
+    <div class="row g-3">
+      <div class="col-12 col-md-5">
+        <label class="f-label">Fournisseur <span style="color:#ef4444">*</span></label>
+        <select name="fournisseur" class="f-input f-select" required>
+          <option value="">— Choisir —</option>
+          {% for f in fournisseurs %}<option value="{{ f.pk }}">{{ f.nom }}</option>{% endfor %}
+        </select>
+        {% if not fournisseurs %}
+        <div style="font-size:.78rem;color:#d97706;margin-top:.3rem">
+          Aucun fournisseur enregistré. <a href="{% url 'pharmacie:fournisseur_ajouter' %}">Ajoutez-en un d'abord.</a>
+        </div>
+        {% endif %}
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="f-label">Référence</label>
+        <input type="text" name="reference" class="f-input" placeholder="Votre numéro de bon de commande">
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="f-label">Statut</label>
+        <select name="statut" class="f-input f-select">
+          {% for valeur, libelle in statuts %}
+            {% if valeur != 'recue' %}<option value="{{ valeur }}">{{ libelle }}</option>{% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="f-label">Notes</label>
+        <input type="text" name="notes" class="f-input" placeholder="Délai annoncé, conditions…">
+      </div>
+    </div>
+  </div>
+
+  <div class="card-c">
+    <div style="font-weight:800;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.9rem">
+      Médicaments commandés
+    </div>
+
+    <div id="cmd-lignes">
+      {# Trois lignes pour commencer ; le bouton en ajoute autant qu'il faut.
+         Les lignes laissées vides sont simplement ignorées. #}
+      {% for i in "123" %}
+      <div class="cmd-ligne">
+        <div>
+          <label class="f-label">Médicament</label>
+          <select name="medicament_{{ forloop.counter }}" class="f-input f-select">
+            <option value="">—</option>
+            {% for m in medicaments %}<option value="{{ m.pk }}">{{ m.libelle }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="f-label">Quantité</label>
+          <input type="number" name="quantite_{{ forloop.counter }}" min="1" class="f-input">
+        </div>
+        <div>
+          <label class="f-label">Prix d'achat</label>
+          <input type="number" name="prix_achat_{{ forloop.counter }}" min="0" step="0.01" class="f-input" placeholder="FCFA">
+        </div>
+        <div></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <button type="button" class="btn-c btn-outline-c" id="cmd-ajouter"><i class="bi bi-plus-lg"></i> Ajouter une ligne</button>
+  </div>
+
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-save"></i> Enregistrer la commande</button>
+    <a href="{% url 'pharmacie:commandes' %}" class="btn-c btn-outline-c">Annuler</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var zone = document.getElementById('cmd-lignes');
+  var compteur = zone.querySelectorAll('.cmd-ligne').length;
+
+  document.getElementById('cmd-ajouter').addEventListener('click', function () {
+    compteur += 1;
+    var modele = zone.querySelector('.cmd-ligne');
+    var ligne = modele.cloneNode(true);
+    // On renomme les champs pour que le serveur les distingue, et on vide
+    // les valeurs recopiees par le clonage.
+    ligne.querySelectorAll('[name]').forEach(function (champ) {
+      champ.name = champ.name.replace(/_\d+$/, '_' + compteur);
+      champ.value = '';
+    });
+    var suppr = document.createElement('button');
+    suppr.type = 'button';
+    suppr.className = 'cmd-suppr';
+    suppr.innerHTML = '<i class="bi bi-trash"></i>';
+    suppr.addEventListener('click', function () { ligne.remove(); });
+    ligne.lastElementChild.appendChild(suppr);
+    zone.appendChild(ligne);
+  });
+})();
+</script>
+{% endblock %}

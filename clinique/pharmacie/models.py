@@ -138,9 +138,40 @@ class Medicament(models.Model):
     def est_perime(self):
         return bool(self.date_peremption) and self.date_peremption < timezone.localdate()
 
-    def bientot_perime(self, jours=30):
+    def rafraichir_peremption(self):
+        """La péremption du médicament = celle du lot qui périme le plus tôt.
+
+        Le champ `date_peremption` reste sur le médicament — toute
+        l'application s'en sert déjà (pastille « Périmé », filtre, badge du
+        menu) — mais il devient une **recopie du plus proche lot en stock**
+        au lieu d'une date saisie à la main. C'est ce qui corrige le défaut :
+        réapprovisionner n'efface plus la date de l'ancien stock, puisque
+        l'ancien lot est toujours là et reste le plus proche.
+
+        Sans aucun lot en stock, on ne touche à rien : les médicaments
+        d'avant les lots gardent la date qu'ils avaient.
+        """
+        plus_proche = (self.lots.filter(quantite_restante__gt=0)
+                       .exclude(date_peremption__isnull=True)
+                       .order_by('date_peremption')
+                       .values_list('date_peremption', flat=True).first())
+        if plus_proche and plus_proche != self.date_peremption:
+            self.date_peremption = plus_proche
+            Medicament.objects.filter(pk=self.pk).update(date_peremption=plus_proche)
+
+    def stock_par_lots(self):
+        """Somme des lots en stock. Doit valoir `quantite_stock` ; sert à
+        repérer un écart (médicament d'avant les lots, ou saisie manuelle)."""
+        return sum(l.quantite_restante for l in self.lots.all())
+
+    #: Au-delà de ce délai, la péremption n'est plus « proche ». Constante
+    #: partagée avec le badge d'alerte du menu (comptes/context_processors).
+    JOURS_AVANT_PEREMPTION = 30
+
+    def bientot_perime(self, jours=None):
         if not self.date_peremption or self.est_perime():
             return False
+        jours = self.JOURS_AVANT_PEREMPTION if jours is None else jours
         return self.date_peremption <= timezone.localdate() + timedelta(days=jours)
 
 
@@ -245,11 +276,64 @@ class MouvementStock(models.Model):
             self.prix_unitaire = self.medicament.prix_unitaire or Decimal('0')
         super().save(*args, **kwargs)
         if is_new:
+            # Le detail par lot AVANT le compteur : si la repartition echoue,
+            # le stock global n'a pas encore bouge.
+            if self.type_mouvement == 'entree':
+                self._creer_le_lot()
+            else:
+                self._consommer_les_lots()
+            self.medicament.rafraichir_peremption()
+
             delta = self.quantite if self.type_mouvement == 'entree' else -self.quantite
             avant = self._stock_actuel()
             self._appliquer(delta)
             if delta < 0:
                 self._notifier_si_seuil_franchi(avant, avant + delta)
+
+    # ── Le detail par lot ────────────────────────────────────────
+
+    def _creer_le_lot(self):
+        """Toute entree de stock cree un lot : c'est un arrivage.
+
+        Les precisions du bon de livraison (numero de lot, peremption, prix
+        d'achat, fournisseur) sont posees par l'appelant sur l'instance avant
+        le save, sous forme d'attributs `lot_*`. Quand elles manquent, on
+        retombe sur ce qu'on sait du medicament : l'entree reste tracee.
+        """
+        Lot.objects.create(
+            medicament=self.medicament,
+            numero=getattr(self, 'lot_numero', '') or '',
+            date_peremption=(getattr(self, 'lot_peremption', None)
+                             or self.medicament.date_peremption),
+            quantite_initiale=self.quantite,
+            quantite_restante=self.quantite,
+            prix_achat=(getattr(self, 'lot_prix_achat', None)
+                        or self.prix_unitaire or Decimal('0')),
+            fournisseur=getattr(self, 'lot_fournisseur', None),
+        )
+
+    def _consommer_les_lots(self):
+        """Sert d'abord le lot qui perime le plus tot (regle PEPS / FEFO).
+
+        Une sortie peut vider la fin d'un lot et entamer le suivant : chaque
+        part est enregistree dans SortieLot, pour savoir quel lot est parti
+        chez quel patient.
+
+        Si les lots ne couvrent pas la quantite — stock d'avant les lots, ou
+        ecart de saisie — on sert ce qu'on peut sans bloquer : le compteur
+        du medicament reste la reference, les lots sont le detail.
+        """
+        a_servir = self.quantite
+        disponibles = (Lot.objects.select_for_update()
+                       .filter(medicament=self.medicament, quantite_restante__gt=0))
+        for lot in disponibles:
+            if a_servir <= 0:
+                break
+            pris = min(lot.quantite_restante, a_servir)
+            lot.quantite_restante -= pris
+            lot.save(update_fields=['quantite_restante'])
+            SortieLot.objects.create(mouvement=self, lot=lot, quantite=pris)
+            a_servir -= pris
 
     def delete(self, *args, **kwargs):
         # Annule l'effet du mouvement avant suppression
@@ -264,3 +348,214 @@ class MouvementStock(models.Model):
         # Recalcule la facture pour retirer la ligne du médicament dispensé
         if facture is not None:
             facture.save()
+
+
+class Fournisseur(models.Model):
+    """Grossiste ou laboratoire chez qui la clinique achète ses médicaments.
+
+    Sans lui, une entrée de stock ne dit pas d'où vient la marchandise : on
+    ne peut ni calculer sa marge, ni rappeler un lot défectueux auprès de
+    celui qui l'a livré.
+    """
+    nom       = models.CharField(max_length=150, unique=True)
+    telephone = models.CharField(max_length=40, blank=True, default='')
+    email     = models.EmailField(blank=True, default='')
+    adresse   = models.CharField(max_length=250, blank=True, default='')
+    contact   = models.CharField(
+        max_length=120, blank=True, default='',
+        help_text="Personne à joindre chez ce fournisseur.")
+    actif     = models.BooleanField(default=True)
+    date_creation = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        verbose_name = "Fournisseur"
+        verbose_name_plural = "Fournisseurs"
+        ordering = ['nom']
+
+    def __str__(self):
+        return self.nom
+
+
+class Lot(models.Model):
+    """Un arrivage précis d'un médicament : une quantité, une péremption, un prix.
+
+    C'est ce qui manquait au stock. Sans lot, un médicament n'a qu'UNE date
+    de péremption : réapprovisionner écrase la date de l'ancien stock, qui
+    devient invisible et qu'on découvre périmé.
+
+    Avec les lots, chaque arrivage garde sa date. Et la dispensation sert
+    toujours **le lot qui périme le plus tôt** (règle PEPS / FEFO), comme
+    dans une vraie pharmacie : voir `MouvementStock._consommer_les_lots()`.
+    """
+    medicament  = models.ForeignKey(Medicament, related_name='lots',
+                                    on_delete=models.CASCADE)
+    numero      = models.CharField(
+        "numéro de lot", max_length=60, blank=True, default='',
+        help_text="Numéro imprimé sur la boîte par le fabricant.")
+    date_peremption   = models.DateField(null=True, blank=True)
+    quantite_initiale = models.PositiveIntegerField()
+    quantite_restante = models.PositiveIntegerField()
+    prix_achat  = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Prix d'achat unitaire chez le fournisseur (pour la marge).")
+    fournisseur = models.ForeignKey(Fournisseur, null=True, blank=True,
+                                    related_name='lots', on_delete=models.SET_NULL)
+    date_entree = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        verbose_name = "Lot"
+        verbose_name_plural = "Lots"
+        # Les lots sans date de péremption passent en dernier : on sert
+        # d'abord ce dont on connaît l'échéance.
+        ordering = [models.F('date_peremption').asc(nulls_last=True), 'pk']
+
+    def __str__(self):
+        etiquette = self.numero or f"lot {self.pk}"
+        if self.date_peremption:
+            return f"{etiquette} — périme le {self.date_peremption:%d/%m/%Y}"
+        return etiquette
+
+    def est_epuise(self):
+        return self.quantite_restante <= 0
+
+    def est_perime(self):
+        return bool(self.date_peremption) and self.date_peremption < timezone.localdate()
+
+    def bientot_perime(self):
+        if not self.date_peremption or self.est_perime():
+            return False
+        limite = timezone.localdate() + timedelta(
+            days=Medicament.JOURS_AVANT_PEREMPTION)
+        return self.date_peremption <= limite
+
+
+class SortieLot(models.Model):
+    """Quelle quantité une sortie a prise dans quel lot.
+
+    Une dispensation peut vider la fin d'un lot et entamer le suivant : ce
+    détail est enregistré ici, pour qu'on sache toujours quel lot est parti
+    chez quel patient — c'est ce qui permet de rappeler un lot défectueux.
+    """
+    mouvement = models.ForeignKey('MouvementStock', related_name='lots_servis',
+                                  on_delete=models.CASCADE)
+    lot       = models.ForeignKey(Lot, related_name='sorties',
+                                  on_delete=models.CASCADE)
+    quantite  = models.PositiveIntegerField()
+
+    class Meta:
+        verbose_name = "Sortie de lot"
+        verbose_name_plural = "Sorties de lot"
+        ordering = ['pk']
+
+    def __str__(self):
+        return f"{self.quantite} × {self.lot}"
+
+
+class Commande(models.Model):
+    """Commande passée à un fournisseur, puis réceptionnée.
+
+    C'est le chaînon qui manquait en amont du stock : aujourd'hui une entrée
+    sort de nulle part. Avec la commande, on sait ce qu'on a demandé, à qui,
+    à quel prix, et ce qui est réellement arrivé.
+
+    La réception ne se contente pas de changer un statut : elle crée les
+    entrées de stock, donc les lots, avec leur péremption (voir
+    `LigneCommande.receptionner`).
+    """
+    class Statut(models.TextChoices):
+        BROUILLON = 'brouillon', 'Brouillon'
+        ENVOYEE   = 'envoyee',   'Envoyée au fournisseur'
+        RECUE     = 'recue',     'Reçue'
+        ANNULEE   = 'annulee',   'Annulée'
+
+    fournisseur    = models.ForeignKey(Fournisseur, related_name='commandes',
+                                       on_delete=models.PROTECT)
+    reference      = models.CharField(
+        max_length=60, blank=True, default='',
+        help_text="Votre référence ou celle du bon de commande du fournisseur.")
+    statut         = models.CharField(max_length=12, choices=Statut.choices,
+                                      default=Statut.BROUILLON)
+    date_commande  = models.DateField(default=timezone.localdate)
+    date_reception = models.DateField(null=True, blank=True)
+    notes          = models.TextField(blank=True, default='')
+    utilisateur    = models.ForeignKey('auth.User', null=True, blank=True,
+                                       on_delete=models.SET_NULL)
+
+    class Meta:
+        verbose_name = "Commande fournisseur"
+        verbose_name_plural = "Commandes fournisseurs"
+        ordering = ['-date_commande', '-pk']
+
+    def __str__(self):
+        return f"CMD-{self.pk:04d} — {self.fournisseur}"
+
+    def montant_total(self):
+        return sum(l.sous_total() for l in self.lignes.all()) or Decimal('0')
+
+    def est_receptionnee(self):
+        return self.statut == self.Statut.RECUE
+
+    def reste_a_recevoir(self):
+        """Lignes pas encore servies en totalité."""
+        return [l for l in self.lignes.all() if l.quantite_restante() > 0]
+
+
+class LigneCommande(models.Model):
+    """Un médicament commandé : ce qu'on a demandé, ce qu'on a reçu."""
+    commande       = models.ForeignKey(Commande, related_name='lignes',
+                                       on_delete=models.CASCADE)
+    medicament     = models.ForeignKey(Medicament, related_name='lignes_commande',
+                                       on_delete=models.PROTECT)
+    quantite       = models.PositiveIntegerField("quantité commandée")
+    quantite_recue = models.PositiveIntegerField("quantité reçue", default=0)
+    prix_achat     = models.DecimalField("prix d'achat unitaire",
+                                         max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = "Ligne de commande"
+        verbose_name_plural = "Lignes de commande"
+        ordering = ['pk']
+
+    def __str__(self):
+        return f"{self.quantite} × {self.medicament.libelle()}"
+
+    def sous_total(self):
+        return self.prix_achat * self.quantite
+
+    def quantite_restante(self):
+        return max(self.quantite - self.quantite_recue, 0)
+
+    def receptionner(self, quantite, numero_lot='', date_peremption=None,
+                     utilisateur=None):
+        """Fait entrer en stock ce qui vient d'être livré sur cette ligne.
+
+        Une entrée de stock est créée, donc un lot : la marchandise arrive
+        avec sa propre péremption et son prix d'achat, rattachée au
+        fournisseur de la commande. Livrer en deux fois crée deux lots,
+        ce qui est fidèle à la réalité.
+        """
+        quantite = int(quantite or 0)
+        if quantite <= 0:
+            return None
+        if quantite > self.quantite_restante():
+            raise ValueError(
+                f"{self.medicament.nom} : {quantite} reçus pour "
+                f"{self.quantite_restante()} encore attendus.")
+
+        mouvement = MouvementStock(
+            medicament=self.medicament,
+            type_mouvement='entree',
+            quantite=quantite,
+            prix_unitaire=self.medicament.prix_unitaire or Decimal('0'),
+            motif=f"Réception {self.commande}",
+            utilisateur=utilisateur,
+        )
+        mouvement.lot_numero = numero_lot or ''
+        mouvement.lot_peremption = date_peremption
+        mouvement.lot_prix_achat = self.prix_achat or None
+        mouvement.lot_fournisseur = self.commande.fournisseur
+        mouvement.save()
+
+        self.quantite_recue += quantite
+        self.save(update_fields=['quantite_recue'])
+        return mouvement

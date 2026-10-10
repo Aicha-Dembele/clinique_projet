@@ -68,6 +68,38 @@
         <input id="motif" type="text" name="motif" class="f-input" placeholder="Achat fournisseur, don…">
       </div>
 
+      {# Le bon de livraison : ces trois champs forment le LOT. Chaque
+         arrivage garde sa propre date de péremption, et la dispensation
+         servira toujours le lot qui périme le plus tôt. #}
+      <div class="col-12"><hr style="border-color:var(--card-border);margin:.4rem 0 .2rem"></div>
+      <div class="col-12">
+        <div style="font-size:.74rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">Bon de livraison</div>
+        <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">Facultatif, mais c'est ce qui permet de suivre les péremptions arrivage par arrivage.</div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="f-label" for="fournisseur">Fournisseur</label>
+        <select id="fournisseur" name="fournisseur" class="f-input f-select">
+          <option value="">—</option>
+          {% for f in fournisseurs %}<option value="{{ f.pk }}">{{ f.nom }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="f-label" for="numero_lot">Numéro de lot</label>
+        <input id="numero_lot" type="text" name="numero_lot" class="f-input" placeholder="Imprimé sur la boîte">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="f-label" for="date_peremption">Date de péremption</label>
+        <input id="date_peremption" type="date" name="date_peremption" class="f-input">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="f-label" for="prix_achat">Prix d'achat unitaire (FCFA)</label>
+        <input id="prix_achat" type="number" name="prix_achat" min="0" step="0.01" class="f-input" placeholder="Ce que ça vous coûte">
+      </div>
+
       <div class="col-12">
         <div class="stock-now show" id="montant-box" style="background:rgba(0,136,170,.06);border-color:rgba(0,136,170,.2)">
           <span style="font-size:.8rem;color:var(--text-muted);font-weight:600">Montant total de l'entrée</span>

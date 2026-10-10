@@ -1975,6 +1975,13 @@
       <i class="bi bi-shield-plus"></i> Prise en charge
     </a>
     {% endif %}
+    {# Approvisionnement : d'où vient la marchandise. #}
+    <a href="{% url 'pharmacie:fournisseurs' %}" class="sb-link {% block nav_fournisseurs %}{% endblock %}">
+      <i class="bi bi-truck"></i> Fournisseurs
+    </a>
+    <a href="{% url 'pharmacie:commandes' %}" class="sb-link {% block nav_commandes %}{% endblock %}">
+      <i class="bi bi-clipboard-check"></i> Commandes
+    </a>
     {% endif %}
 
     <!-- Administration -->

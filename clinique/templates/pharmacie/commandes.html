@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Commandes fournisseurs{% endblock %}
+{% block nav_commandes %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Commandes fournisseurs{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Commandes</li>
+{% endblock %}
+{% block page_actions %}
+{% if 'stock.entree' in user_permissions %}
+<a href="{% url 'pharmacie:commande_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouvelle commande</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+
+<div class="card-c mb-3">
+  <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+    <label class="f-label mb-0">Statut</label>
+    <select name="statut" class="f-input f-select" style="max-width:260px" onchange="this.form.submit()">
+      <option value="">Toutes</option>
+      {% for valeur, libelle in statuts %}
+        <option value="{{ valeur }}" {% if statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="card-c">
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Commande</th>
+          <th>Fournisseur</th>
+          <th>Date</th>
+          <th class="text-end">Lignes</th>
+          <th class="text-end">Montant</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in commandes %}
+        <tr>
+          <td>
+            <a href="{% url 'pharmacie:commande_detail' c.pk %}" style="font-weight:700">CMD-{{ c.pk|stringformat:"04d" }}</a>
+            {% if c.reference %}<div style="font-size:.72rem;color:var(--text-muted)">{{ c.reference }}</div>{% endif %}
+          </td>
+          <td>{{ c.fournisseur.nom }}</td>
+          <td>{{ c.date_commande|date:"d/m/Y" }}</td>
+          <td class="text-end">{{ c.lignes.count }}</td>
+          <td class="text-end">{{ c.montant_total|floatformat:0 }} FCFA</td>
+          <td>
+            {% if c.statut == 'recue' %}<span class="pill" style="background:rgba(16,185,129,.12);color:#10b981;font-size:.68rem">{{ c.get_statut_display }}</span>
+            {% elif c.statut == 'annulee' %}<span class="pill" style="background:rgba(239,68,68,.12);color:#ef4444;font-size:.68rem">{{ c.get_statut_display }}</span>
+            {% elif c.statut == 'envoyee' %}<span class="pill" style="background:rgba(245,158,11,.14);color:#d97706;font-size:.68rem">{{ c.get_statut_display }}</span>
+            {% else %}<span class="pill" style="font-size:.68rem">{{ c.get_statut_display }}</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-clipboard-check" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucune commande.
+            <div style="font-size:.82rem;margin-top:.5rem">Une commande dit ce qu'on a demandé, à qui et à quel prix. Sa réception fait entrer la marchandise en stock, avec ses lots et ses péremptions.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

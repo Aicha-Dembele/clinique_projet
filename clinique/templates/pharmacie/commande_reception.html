@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Réception CMD-{{ commande.pk|stringformat:"04d" }}{% endblock %}
+{% block nav_commandes %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Réceptionner la livraison{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:commandes' %}">Commandes</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:commande_detail' commande.pk %}">CMD-{{ commande.pk|stringformat:"04d" }}</a></li>
+  <li class="breadcrumb-item active">Réception</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.rec-intro { background: var(--card-bg); border: 1px solid var(--card-border); border-left: 3px solid #0088aa; border-radius: .9rem; padding: 1rem 1.2rem; margin-bottom: 1.1rem; font-size: .87rem; line-height: 1.6; }
+.rec-ligne { border: 1px solid var(--card-border); border-radius: .9rem; padding: 1rem 1.1rem; margin-bottom: .8rem; }
+.rec-titre { font-weight: 700; margin-bottom: .2rem; }
+.rec-sous { font-size: .76rem; color: var(--text-muted); margin-bottom: .8rem; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="rec-intro">
+  Saisis ce qui est <strong>réellement arrivé</strong>, avec le numéro de lot et la date
+  de péremption lus sur les boîtes. Chaque ligne reçue crée une entrée de stock et
+  <strong>son propre lot</strong> : la marchandise garde sa péremption, et la pharmacie
+  servira toujours le lot qui périme le plus tôt.
+  <br><br>
+  Une livraison partielle est acceptée : laisse à zéro ce qui n'est pas arrivé,
+  la commande restera ouverte pour le reste.
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  {% for ligne in lignes %}
+  <div class="rec-ligne">
+    <div class="rec-titre">{{ ligne.medicament.libelle }}</div>
+    <div class="rec-sous">
+      Commandé : {{ ligne.quantite }} · Déjà reçu : {{ ligne.quantite_recue }} ·
+      <strong>Reste à recevoir : {{ ligne.quantite_restante }}</strong>
+    </div>
+
+    {% if ligne.quantite_restante %}
+    <div class="row g-3">
+      <div class="col-12 col-md-3">
+        <label class="f-label">Quantité reçue</label>
+        <input type="number" name="recu_{{ ligne.pk }}" min="0" max="{{ ligne.quantite_restante }}"
+               class="f-input" placeholder="0">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="f-label">Numéro de lot</label>
+        <input type="text" name="lot_{{ ligne.pk }}" class="f-input" placeholder="Imprimé sur la boîte">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="f-label">Date de péremption</label>
+        <input type="date" name="peremption_{{ ligne.pk }}" class="f-input">
+      </div>
+    </div>
+    {% else %}
+    <div style="font-size:.84rem;color:#10b981;font-weight:600">
+      <i class="bi bi-check-circle-fill"></i> Ligne complète, rien à recevoir.
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-box-arrow-in-down"></i> Enregistrer la réception</button>
+    <a href="{% url 'pharmacie:commande_detail' commande.pk %}" class="btn-c btn-outline-c">Annuler</a>
+  </div>
+</form>
+{% endblock %}

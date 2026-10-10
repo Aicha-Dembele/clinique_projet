@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}{{ action }} un fournisseur{% endblock %}
+{% block nav_fournisseurs %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}{{ action }} un fournisseur{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:fournisseurs' %}">Fournisseurs</a></li>
+  <li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <div class="card-c">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Nom <span style="color:#ef4444">*</span></label>
+        <input type="text" name="nom" class="f-input" value="{{ fournisseur.nom|default:'' }}" required>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Personne à contacter</label>
+        <input type="text" name="contact" class="f-input" value="{{ fournisseur.contact|default:'' }}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Téléphone</label>
+        <input type="text" name="telephone" class="f-input" value="{{ fournisseur.telephone|default:'' }}">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">E-mail</label>
+        <input type="email" name="email" class="f-input" value="{{ fournisseur.email|default:'' }}">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Adresse</label>
+        <input type="text" name="adresse" class="f-input" value="{{ fournisseur.adresse|default:'' }}">
+      </div>
+      <div class="col-12">
+        <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
+          <input type="checkbox" name="actif" {% if not fournisseur or fournisseur.actif %}checked{% endif %}>
+          <span style="font-weight:600">Fournisseur actif (proposé lors des commandes)</span>
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-save"></i> Enregistrer</button>
+    <a href="{% url 'pharmacie:fournisseurs' %}" class="btn-c btn-outline-c">Annuler</a>
+  </div>
+</form>
+{% endblock %}

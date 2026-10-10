@@ -9,7 +9,12 @@ from django.db.models import Sum, F, Q, DecimalField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
-from .models import Medicament, MouvementStock, Specialite
+from django.db import transaction
+from django.db.models import Count
+
+from .models import (
+    Commande, Fournisseur, LigneCommande, Lot, Medicament, MouvementStock,
+    Specialite)
 from patients.models import Patient
 from consultation.models import Ordonnance
 from comptes.decorators import role_required, permission_required
@@ -59,10 +64,11 @@ def _stats():
                    output_field=DecimalField(max_digits=14, decimal_places=2))
     )['v']
     return {
-        'nb_total':   qs.count(),
-        'nb_alerte':  len(en_alerte),
-        'nb_rupture': len(rupture),
-        'valeur':     valeur,
+        'nb_total':      qs.count(),
+        'nb_alerte':     len(en_alerte),
+        'nb_rupture':    len(rupture),
+        'nb_peremption': sum(1 for m in qs if m.est_perime() or m.bientot_perime()),
+        'valeur':        valeur,
     }
 
 
@@ -338,6 +344,7 @@ def medicament_liste(request):
         'nb_total':     stats['nb_total'],
         'nb_alerte':    stats['nb_alerte'],
         'nb_rupture':   stats['nb_rupture'],
+        'nb_peremption': stats['nb_peremption'],
         'valeur_stock': _fmt(stats['valeur']),
     })
 
@@ -438,7 +445,8 @@ def entree_stock(request):
                 raise ValueError("La quantité doit être supérieure à zéro.")
             prix = request.POST.get('prix_unitaire')
             prix = Decimal(prix) if prix else (medicament.prix_unitaire or Decimal('0'))
-            MouvementStock.objects.create(
+
+            mouvement = MouvementStock(
                 medicament=medicament,
                 type_mouvement='entree',
                 quantite=quantite,
@@ -446,13 +454,29 @@ def entree_stock(request):
                 motif=request.POST.get('motif', '').strip() or 'Réapprovisionnement',
                 utilisateur=request.user,
             )
-            messages.success(request, f'+{quantite} {medicament.unite} ajoutés au stock de {medicament.nom}.')
+            # Precisions du bon de livraison : elles partent dans le lot que
+            # le save() va creer (cf. MouvementStock._creer_le_lot).
+            prix_achat = request.POST.get('prix_achat')
+            mouvement.lot_numero = request.POST.get('numero_lot', '').strip()
+            mouvement.lot_peremption = request.POST.get('date_peremption') or None
+            mouvement.lot_prix_achat = Decimal(prix_achat) if prix_achat else None
+            mouvement.lot_fournisseur_id = request.POST.get('fournisseur') or None
+            if mouvement.lot_fournisseur_id:
+                mouvement.lot_fournisseur = get_object_or_404(
+                    Fournisseur, pk=mouvement.lot_fournisseur_id)
+            mouvement.save()
+
+            messages.success(
+                request,
+                f'+{quantite} {medicament.unite} ajoutés au stock de {medicament.nom}.'
+                + (f" Lot {mouvement.lot_numero}." if mouvement.lot_numero else ''))
             return redirect('pharmacie:medicaments')
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
     return render(request, 'pharmacie/entree_form.html', {
         'medicaments':    Medicament.objects.filter(actif=True).order_by('nom'),
+        'fournisseurs':   Fournisseur.objects.filter(actif=True),
         'pre_medicament': pre_medicament,
     })
 
@@ -648,4 +672,181 @@ def remboursement_liste(request):
         'groupes':      list(groupes.values()),
         'nb_total':     Medicament.objects.count(),
         'nb_rembourse': Medicament.objects.filter(rembourse=True).count(),
+    })
+
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Approvisionnement : fournisseurs et commandes
+# ─────────────────────────────────────────────────────────────────
+
+@permission_required('pharmacie.view')
+def fournisseur_liste(request):
+    fournisseurs = Fournisseur.objects.annotate(
+        nb_commandes=Count('commandes', distinct=True))
+    q = request.GET.get('q', '').strip()
+    if q:
+        fournisseurs = fournisseurs.filter(termes_q(q, 'nom', 'contact', 'telephone'))
+    return render(request, 'pharmacie/fournisseurs.html',
+                  {'fournisseurs': fournisseurs, 'q': q})
+
+
+@permission_required('medicament.manage')
+def fournisseur_form(request, pk=None):
+    """Création et modification d'un fournisseur, par le même formulaire."""
+    fournisseur = get_object_or_404(Fournisseur, pk=pk) if pk else None
+
+    if request.method == 'POST':
+        try:
+            champs = {
+                'nom':       request.POST['nom'].strip(),
+                'contact':   request.POST.get('contact', '').strip(),
+                'telephone': request.POST.get('telephone', '').strip(),
+                'email':     request.POST.get('email', '').strip(),
+                'adresse':   request.POST.get('adresse', '').strip(),
+                'actif':     'actif' in request.POST,
+            }
+            if not champs['nom']:
+                raise ValueError("Le nom du fournisseur est obligatoire.")
+            if fournisseur:
+                for cle, valeur in champs.items():
+                    setattr(fournisseur, cle, valeur)
+                fournisseur.save()
+                messages.success(request, f"Fournisseur « {fournisseur.nom} » mis à jour.")
+            else:
+                fournisseur = Fournisseur.objects.create(**champs)
+                messages.success(request, f"Fournisseur « {fournisseur.nom} » ajouté.")
+            return redirect('pharmacie:fournisseurs')
+        except Exception as e:
+            messages.error(request, f'Erreur : {e}')
+
+    return render(request, 'pharmacie/fournisseur_form.html', {
+        'fournisseur': fournisseur,
+        'action': 'Modifier' if fournisseur else 'Ajouter',
+    })
+
+
+@permission_required('pharmacie.view')
+def commande_liste(request):
+    commandes = (Commande.objects.select_related('fournisseur')
+                 .prefetch_related('lignes'))
+    statut = request.GET.get('statut', '')
+    if statut:
+        commandes = commandes.filter(statut=statut)
+    return render(request, 'pharmacie/commandes.html', {
+        'commandes': commandes,
+        'statuts':   Commande.Statut.choices,
+        'statut':    statut,
+    })
+
+
+@permission_required('stock.entree')
+def commande_ajouter(request):
+    """Passe une commande : un fournisseur, et des lignes médicament/quantité."""
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                commande = Commande.objects.create(
+                    fournisseur=get_object_or_404(
+                        Fournisseur, pk=request.POST['fournisseur']),
+                    reference=request.POST.get('reference', '').strip(),
+                    notes=request.POST.get('notes', '').strip(),
+                    statut=request.POST.get('statut', Commande.Statut.BROUILLON),
+                    utilisateur=request.user,
+                )
+                lignes = _lignes_du_formulaire(request, commande)
+                if not lignes:
+                    raise ValueError("Ajoutez au moins un médicament à la commande.")
+                LigneCommande.objects.bulk_create(lignes)
+
+            messages.success(request, f'{commande} enregistrée — {len(lignes)} ligne(s).')
+            return redirect('pharmacie:commande_detail', pk=commande.pk)
+        except Exception as e:
+            messages.error(request, f'Erreur : {e}')
+
+    return render(request, 'pharmacie/commande_form.html', {
+        'fournisseurs': Fournisseur.objects.filter(actif=True),
+        'medicaments':  Medicament.objects.filter(actif=True).order_by('nom'),
+        'statuts':      Commande.Statut.choices,
+    })
+
+
+def _lignes_du_formulaire(request, commande):
+    """Lit les lignes saisies : medicament_1, quantite_1, prix_achat_1, …
+
+    Les lignes vides sont ignorées : le formulaire en propose plusieurs, on
+    ne force personne à toutes les remplir.
+    """
+    lignes = []
+    for cle in request.POST:
+        if not cle.startswith('medicament_'):
+            continue
+        indice = cle.removeprefix('medicament_')
+        medicament_id = request.POST.get(cle)
+        quantite = request.POST.get(f'quantite_{indice}')
+        if not medicament_id or not quantite:
+            continue
+        quantite = int(quantite)
+        if quantite <= 0:
+            continue
+        prix = request.POST.get(f'prix_achat_{indice}') or 0
+        lignes.append(LigneCommande(
+            commande=commande, medicament_id=medicament_id,
+            quantite=quantite, prix_achat=Decimal(prix)))
+    return lignes
+
+
+@permission_required('pharmacie.view')
+def commande_detail(request, pk):
+    commande = get_object_or_404(
+        Commande.objects.select_related('fournisseur')
+                .prefetch_related('lignes__medicament'), pk=pk)
+    return render(request, 'pharmacie/commande_detail.html', {'commande': commande})
+
+
+@permission_required('stock.entree')
+def commande_receptionner(request, pk):
+    """Enregistre ce qui est réellement arrivé, et le fait entrer en stock.
+
+    Chaque ligne reçue crée une entrée de stock, donc un lot, avec sa
+    péremption et le fournisseur de la commande. Une livraison partielle est
+    acceptée : la commande ne passe en « Reçue » que lorsqu'il ne reste plus
+    rien à recevoir.
+    """
+    commande = get_object_or_404(Commande, pk=pk)
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                recus = 0
+                for ligne in commande.lignes.select_related('medicament'):
+                    mouvement = ligne.receptionner(
+                        request.POST.get(f'recu_{ligne.pk}'),
+                        numero_lot=request.POST.get(f'lot_{ligne.pk}', '').strip(),
+                        date_peremption=request.POST.get(f'peremption_{ligne.pk}') or None,
+                        utilisateur=request.user,
+                    )
+                    if mouvement:
+                        recus += 1
+
+                if not recus:
+                    raise ValueError("Aucune quantité reçue n'a été saisie.")
+
+                if not commande.reste_a_recevoir():
+                    commande.statut = Commande.Statut.RECUE
+                    commande.date_reception = timezone.localdate()
+                    commande.save(update_fields=['statut', 'date_reception'])
+
+            messages.success(
+                request,
+                f'{recus} ligne(s) reçue(s) et entrée(s) en stock.'
+                + ('' if commande.est_receptionnee()
+                   else " La commande reste ouverte : il manque des quantités."))
+            return redirect('pharmacie:commande_detail', pk=commande.pk)
+        except Exception as e:
+            messages.error(request, f'Erreur : {e}')
+
+    return render(request, 'pharmacie/commande_reception.html', {
+        'commande': commande,
+        'lignes':   commande.lignes.select_related('medicament'),
     })

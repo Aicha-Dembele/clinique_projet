@@ -14,6 +14,16 @@ urlpatterns = [
 
     path('remboursement/',            views.remboursement_liste,  name='remboursement'),
 
+    # Approvisionnement : d'ou vient la marchandise.
+    path('fournisseurs/',             views.fournisseur_liste,    name='fournisseurs'),
+    path('fournisseurs/ajouter/',     views.fournisseur_form,     name='fournisseur_ajouter'),
+    path('fournisseurs/<int:pk>/modifier/', views.fournisseur_form, name='fournisseur_modifier'),
+
+    path('commandes/',                views.commande_liste,       name='commandes'),
+    path('commandes/nouvelle/',       views.commande_ajouter,     name='commande_ajouter'),
+    path('commandes/<int:pk>/',       views.commande_detail,      name='commande_detail'),
+    path('commandes/<int:pk>/reception/', views.commande_receptionner, name='commande_receptionner'),
+
     path('mouvements/',               views.mouvement_liste,      name='mouvements'),
     path('mouvements/<int:pk>/supprimer/', views.mouvement_supprimer, name='mouvement_supprimer'),
 ]

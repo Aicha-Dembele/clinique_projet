@@ -32,16 +32,28 @@ class _PermLookup:
 
 
 def _stock_alertes(role):
-    """Nombre de médicaments actifs en rupture ou sous le seuil d'alerte.
-    Calculé seulement pour les rôles ayant accès à la pharmacie (badge du menu)."""
+    """Nombre de médicaments actifs qui réclament l'attention du pharmacien.
+
+    Trois motifs, comptés ensemble : rupture, stock sous le seuil d'alerte, et
+    péremption atteinte ou proche. La péremption manquait : un médicament
+    périmé ne faisait rien clignoter dans le menu, il fallait penser à ouvrir
+    le filtre pour le voir.
+
+    Un même médicament en rupture ET périmé n'est compté qu'une fois.
+    """
     if role not in ('admin', 'receptionniste', 'pharmacien'):
         return 0
     try:
-        from django.db.models import F
+        from datetime import timedelta
+        from django.db.models import F, Q
+        from django.utils import timezone
         from pharmacie.models import Medicament
-        return Medicament.objects.filter(
-            actif=True, quantite_stock__lte=F('seuil_alerte')
-        ).count()
+
+        limite = timezone.localdate() + timedelta(days=Medicament.JOURS_AVANT_PEREMPTION)
+        return Medicament.objects.filter(actif=True).filter(
+            Q(quantite_stock__lte=F('seuil_alerte'))
+            | Q(date_peremption__isnull=False, date_peremption__lte=limite)
+        ).distinct().count()
     except Exception:
         return 0
 

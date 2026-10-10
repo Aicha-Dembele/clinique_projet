@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Fournisseurs{% endblock %}
+{% block nav_fournisseurs %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Fournisseurs{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Fournisseurs</li>
+{% endblock %}
+{% block page_actions %}
+{% if 'medicament.manage' in user_permissions %}
+<a href="{% url 'pharmacie:fournisseur_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Nouveau fournisseur</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+
+<div class="card-c mb-3">
+  <form method="get" class="d-flex gap-2 flex-wrap">
+    <input type="text" name="q" value="{{ q }}" class="f-input" style="max-width:320px" placeholder="Nom, contact, téléphone…">
+    <button type="submit" class="btn-c btn-outline-c"><i class="bi bi-search"></i> Rechercher</button>
+    {% if q %}<a href="{% url 'pharmacie:fournisseurs' %}" class="btn-c btn-outline-c">Effacer</a>{% endif %}
+  </form>
+</div>
+
+<div class="card-c">
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Fournisseur</th>
+          <th>Contact</th>
+          <th>Téléphone</th>
+          <th class="text-end">Commandes</th>
+          <th>État</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fournisseurs %}
+        <tr>
+          <td>
+            <div style="font-weight:700">{{ f.nom }}</div>
+            {% if f.adresse %}<div style="font-size:.72rem;color:var(--text-muted)">{{ f.adresse }}</div>{% endif %}
+          </td>
+          <td>{{ f.contact|default:"—" }}</td>
+          <td>{{ f.telephone|default:"—" }}</td>
+          <td class="text-end">{{ f.nb_commandes }}</td>
+          <td>
+            {% if f.actif %}<span class="pill" style="background:rgba(16,185,129,.12);color:#10b981;font-size:.68rem">Actif</span>
+            {% else %}<span class="pill" style="font-size:.68rem">Inactif</span>{% endif %}
+          </td>
+          <td class="text-end">
+            {% if 'medicament.manage' in user_permissions %}
+            <a href="{% url 'pharmacie:fournisseur_modifier' f.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-truck" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucun fournisseur{% if q %} ne correspond à cette recherche{% endif %}.
+            <div style="font-size:.82rem;margin-top:.5rem">C'est chez eux que la clinique achète ses médicaments. Sans fournisseur, une entrée de stock ne dit pas d'où vient la marchandise.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
