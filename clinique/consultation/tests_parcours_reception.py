@@ -135,3 +135,67 @@ class PortesDEntreeTests(TestCase):
         reponse = self.client.get(reverse('dashboard'))
 
         self.assertContains(reponse, reverse('consultation:reception'))
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class OnNEmmeneALaCaisseQueLaCaisseTests(TestCase):
+    """Après un acte payant, on va à la caisse seulement si on TIENT la caisse.
+
+    Le médecin qui prescrit un examen déclenche une facture, mais il ne
+    l'encaisse pas : l'envoyer sur la page de paiement serait un cul-de-sac.
+    La réceptionniste, elle, encaisse — elle doit donc y aller.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        installer_roles()
+
+    def setUp(self):
+        from facturation.models import Tarif as T
+        # Le plan de l'etablissement est fixe : 101 est une chambre VIP.
+        T.objects.create(type_service='hospitalisation', specialite='vip',
+                         nom='Chambre VIP', prix=Decimal('15000'))
+        T.objects.create(type_service='examen', specialite='Radiographie',
+                         nom='Radiographie', prix=Decimal('5000'))
+
+        self.medecin = Medecin.objects.create(
+            nom='House', prenom='G', telephone='1', service='Diag',
+            specialite='Généraliste', role='medecin')
+        self.patient = Patient.objects.create(
+            nom='Traore', prenom='Awa', sexe='Féminin',
+            date_naissance='1990-01-01', adresse='Bamako',
+            telephone='0000', email='a@b.c', numero_urgence='0000')
+
+    def connecter(self, code_role, identifiant, medecin=None):
+        utilisateur = User.objects.create_user(identifiant, password='motdepasse-de-test')
+        Profil.objects.create(user=utilisateur,
+                              role=Role.objects.get(code=code_role), medecin=medecin)
+        self.client.force_login(utilisateur)
+
+    def admettre(self):
+        return self.client.post(reverse('consultation:hospit_ajouter'), {
+            'patient': self.patient.pk, 'medecin': self.medecin.pk,
+            'numero_chambre': '101', 'etat_clinique': 'stable',
+            'date_entree': '2026-12-01', 'nombre_jours': '1',
+        })
+
+    def test_la_receptionniste_qui_admet_va_a_la_caisse(self):
+        self.connecter('receptionniste', 'recept')
+
+        reponse = self.admettre()
+
+        facture = Facture.objects.get(hospitalisation__isnull=False)
+        self.assertRedirects(reponse,
+                             reverse('facturation:detail', args=[facture.pk]))
+
+    def test_le_medecin_qui_admet_reste_dans_son_travail(self):
+        """Il n'encaisse pas : la page de paiement ne lui servirait à rien."""
+        self.connecter('medecin', 'doc', medecin=self.medecin)
+
+        reponse = self.admettre()
+
+        facture = Facture.objects.get(hospitalisation__isnull=False)
+        self.assertNotIn(reverse('facturation:detail', args=[facture.pk]),
+                         reponse.get('Location', ''))
+        self.assertIn(reverse('consultation:hospitalisations'),
+                      reponse.get('Location', ''))

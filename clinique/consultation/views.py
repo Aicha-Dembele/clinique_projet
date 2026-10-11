@@ -28,7 +28,7 @@ from comptes.recherche import termes_q, nouveau_en_tete
 # factures des leur enregistrement, et ne peuvent etre realises qu'une fois la
 # facture reglee. La pharmacie fait exception (cf. facturation/regles.py).
 from facturation.regles import (
-    facturer, blocage, factures_par_acte, etat_paiement, fcfa)
+    facturer, blocage, factures_par_acte, etat_paiement, fcfa, peut_encaisser)
 
 
 def _get_personnel(user, attr):
@@ -212,15 +212,17 @@ def rdv_ajouter(request):
             if facture.est_reglee():
                 messages.success(
                     request,
-                    f'Rendez-vous cree. Rien a encaisser : la prise en charge '
-                    f'couvre la totalite.')
+                    'Rendez-vous cree. Rien a encaisser : la prise en charge '
+                    'couvre la totalite.')
                 return redirect('consultation:rdv_liste')
 
             messages.success(
                 request,
                 f'Rendez-vous cree — FAC-{facture.pk:04d} etablie : '
                 f'{fcfa(facture.montant_restant())} a encaisser avant la consultation.')
-            return redirect('facturation:detail', pk=facture.pk)
+            if peut_encaisser(facture, get_role(request.user)):
+                return redirect('facturation:detail', pk=facture.pk)
+            return redirect('consultation:rdv_liste')
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -689,7 +691,15 @@ def examen_ajouter(request):
             messages.success(
                 request,
                 f'Examen demande — facture FAC-{facture.pk:04d} etablie : '
-                f'{fcfa(facture.part_patient())} a regler avant la realisation.')
+                f'{fcfa(facture.montant_restant())} a regler a la reception '
+                f'avant la realisation.')
+            # Meme regle qu'ailleurs. Aujourd'hui seul le medecin prescrit,
+            # il n'encaisse pas : il reste donc sur sa liste d'examens. Si la
+            # reception recoit un jour ce droit, elle ira droit a la caisse
+            # sans qu'on ait a retoucher ce code.
+            if (not facture.est_reglee()
+                    and peut_encaisser(facture, get_role(request.user))):
+                return redirect('facturation:detail', pk=facture.pk)
             return redirect(f"{reverse('consultation:examens')}?new={ex.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
@@ -1249,8 +1259,13 @@ def hospit_ajouter(request):
             messages.success(
                 request,
                 f'Chambre {h.numero_chambre} reservee — facture FAC-{facture.pk:04d} '
-                f'etablie : {fcfa(facture.part_patient())} a regler pour confirmer '
+                f'etablie : {fcfa(facture.montant_restant())} a regler pour confirmer '
                 f"l'admission.")
+            # On n'emmene a la caisse que celui qui TIENT la caisse : la
+            # receptionniste encaisse, le medecin reste dans son travail.
+            if (not facture.est_reglee()
+                    and peut_encaisser(facture, get_role(request.user))):
+                return redirect('facturation:detail', pk=facture.pk)
             return redirect(f"{reverse('consultation:hospitalisations')}?new={h.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')

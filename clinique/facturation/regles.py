@@ -199,6 +199,17 @@ def factures_de_la_caisse(requete, role):
     return requete.none()
 
 
+def peut_encaisser(facture, role):
+    """Ce rôle tient-il la caisse où cette facture se règle ?
+
+    Sert à décider où emmener quelqu'un après avoir créé un acte payant :
+    on ne l'envoie à la caisse que s'il EST la caisse. Un médecin qui
+    prescrit un examen doit rester dans son travail — la facture qu'il vient
+    de déclencher se règle à la réception, pas chez lui.
+    """
+    return blocage_caisse(facture, role) is None
+
+
 def blocage_caisse(facture, role):
     """None si ce rôle peut encaisser cette facture, sinon le message de refus.
 
