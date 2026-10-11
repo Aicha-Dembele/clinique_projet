@@ -276,8 +276,19 @@ def patient_ajouter(request):
                 assurance_id=request.POST.get('assurance') or None,
                 numero_assure=request.POST.get('numero_assure', ''),
             )
-            messages.success(request, 'Patient ajouté avec succès.')
-            return redirect(f"{reverse('patients:liste')}?new={p.pk}")
+            # Un patient n'est presque jamais enregistré pour rien : il est
+            # là pour être reçu. On enchaîne donc sur la réception, qui fixe
+            # le rendez-vous et encaisse, au lieu de laisser la réceptionniste
+            # dans la liste des patients avec tout à refaire à la main.
+            # « Enregistrer seulement » reste possible via le lien du message.
+            if request.POST.get('sans_suite'):
+                messages.success(request, 'Patient ajouté avec succès.')
+                return redirect(f"{reverse('patients:liste')}?new={p.pk}")
+
+            messages.success(
+                request,
+                f'{p} enregistré. Fixe son rendez-vous et encaisse la consultation.')
+            return redirect(f"{reverse('consultation:reception')}?patient={p.pk}")
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 

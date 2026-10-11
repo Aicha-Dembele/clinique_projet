@@ -205,11 +205,22 @@ def rdv_ajouter(request):
             # tarif de la specialite du medecin. Le medecin ne pourra recevoir
             # le patient qu'une fois cette facture encaissee.
             facture = facturer(rdv.patient, 'rendez_vous', rdv)
+
+            # Le medecin ne pourra pas recevoir le patient tant que la facture
+            # n'est pas reglee : on emmene donc droit a l'encaissement, plutot
+            # que de laisser la facture a retrouver dans la liste.
+            if facture.est_reglee():
+                messages.success(
+                    request,
+                    f'Rendez-vous cree. Rien a encaisser : la prise en charge '
+                    f'couvre la totalite.')
+                return redirect('consultation:rdv_liste')
+
             messages.success(
                 request,
-                f'Rendez-vous cree — facture FAC-{facture.pk:04d} etablie : '
-                f'{fcfa(facture.part_patient())} a encaisser avant la consultation.')
-            return redirect('consultation:rdv_liste')
+                f'Rendez-vous cree — FAC-{facture.pk:04d} etablie : '
+                f'{fcfa(facture.montant_restant())} a encaisser avant la consultation.')
+            return redirect('facturation:detail', pk=facture.pk)
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
@@ -1610,6 +1621,9 @@ def reception(request):
         'patients':   Patient.objects.all().order_by('nom', 'prenom'),
         'medecins':   Medecin.objects.all().order_by('nom'),
         'assurances': Assurance.objects.filter(actif=True),
+        # On arrive parfois ici juste apres avoir cree la fiche : le patient
+        # est alors deja choisi, il ne reste que le rendez-vous et la caisse.
+        'patient_pre': request.GET.get('patient', ''),
     })
 
 

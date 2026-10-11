@@ -36,6 +36,14 @@
 <form method="post" id="form-reception">
   {% csrf_token %}
 
+  {% if patient_pre %}
+  <div class="rappel" style="margin-bottom:1rem">
+    <i class="bi bi-check-circle-fill" style="color:#10b981"></i>
+    La fiche vient d'être créée : le patient est déjà sélectionné ci-dessous.
+    Il ne reste qu'à choisir le médecin et à encaisser.
+  </div>
+  {% endif %}
+
   {# ── 1. Le patient ───────────────────────────────────────── #}
   <div class="form-section">
     <div class="form-section-hdr">
@@ -65,7 +73,7 @@
       <select name="patient" class="f-input f-select">
         <option value="">-- Choisir un patient --</option>
         {% for patient in patients %}
-          <option value="{{ patient.pk }}">{{ patient.nom }} {{ patient.prenom }} — {{ patient.telephone }}</option>
+          <option value="{{ patient.pk }}" {% if patient_pre == patient.pk|stringformat:"s" %}selected{% endif %}>{{ patient.nom }} {{ patient.prenom }} — {{ patient.telephone }}</option>
         {% endfor %}
       </select>
     </div>

@@ -9,7 +9,11 @@
 {% block page_actions %}
 
 {% if is_receptionniste %}
-<a href="{% url 'patients:ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
+{# L'action principale va jusqu'au bout : patient, rendez-vous, encaissement,
+   recu. « Nouveau patient » reste la pour le cas rare d'une fiche ouverte
+   sans visite. #}
+<a href="{% url 'consultation:reception' %}" class="btn-c btn-primary-c"><i class="bi bi-door-open-fill"></i> Réception</a>
+<a href="{% url 'patients:ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
 {% endif %}
 <a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
 {% endblock %}
@@ -121,6 +125,7 @@
     <div class="panel h-100">
       <div class="panel-hdr">
         <div class="panel-title"><i class="bi bi-person-plus" style="color:#10b981"></i> Enregistrement rapide</div>
+        <div style="font-size:.73rem;color:var(--text-muted);font-weight:500;margin-top:.15rem">Enchaîne sur le rendez-vous et l'encaissement</div>
       </div>
       <div class="panel-body">
         <form method="post" action="{% url 'patients:ajouter' %}">
@@ -147,7 +152,8 @@
               <input type="date" name="date_naissance" class="f-input">
             </div>
           </div>
-          <button type="submit" class="btn-c btn-primary-c w-100" style="justify-content:center"><i class="bi bi-person-plus-fill"></i> Enregistrer le patient</button>
+          <button type="submit" class="btn-c btn-primary-c w-100" style="justify-content:center"><i class="bi bi-person-plus-fill"></i> Enregistrer et continuer</button>
+          <button type="submit" name="sans_suite" value="1" class="btn-c btn-outline-c w-100 mt-2" style="justify-content:center"><i class="bi bi-folder-plus"></i> Enregistrer seulement</button>
         </form>
       </div>
     </div>
