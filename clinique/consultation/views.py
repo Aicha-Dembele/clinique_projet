@@ -108,6 +108,113 @@ def _consultations_du_medecin_courant(request, inclure_pk=None):
     return qs.filter(condition).distinct()
 
 
+# Planning du jour
+
+#: Amplitude affichee par defaut, meme quand la journee est vide. Le tableau
+#: s'elargit tout seul si un rendez-vous tombe en dehors : sans cela, un RDV
+#: pris a 19h30 n'apparaitrait nulle part, ce qui est pire qu'une ligne vide.
+PLANNING_HEURE_DEBUT = 8
+PLANNING_HEURE_FIN = 17
+
+
+def jour_demande(request, parametre='jour'):
+    """La date lue dans l'adresse, ou aujourd'hui si elle est illisible."""
+    from datetime import date as date_type
+    try:
+        return date_type.fromisoformat(request.GET.get(parametre, ''))
+    except ValueError:
+        return timezone.localdate()
+
+
+def contexte_planning(request, jour):
+    """Le tableau du jour, pret a etre affiche.
+
+    Sorti de la vue parce que DEUX ecrans s'en servent : la page « Planning
+    du jour », et le formulaire de rendez-vous, ou la reception a besoin de
+    voir les journees avant de choisir un medecin. Une seule source, donc un
+    seul endroit ou corriger.
+
+    Ce que la reception NE voit PAS : le motif, le diagnostic, le dossier.
+    Une case occupee porte le nom du patient et l'heure, rien de plus. Le
+    lien vers la fiche patient n'est pose que pour qui a la permission de
+    l'ouvrir — c'est le gabarit qui en decide, avec `user_permissions`.
+    """
+    from datetime import timedelta
+
+    medecins = Medecin.objects.all().order_by('nom', 'prenom')
+    role = get_role(request.user)
+    if role == 'medecin':
+        # Le medecin ne voit que sa propre colonne : c'est le meme
+        # cloisonnement que partout ailleurs dans le projet.
+        medecin = _get_personnel(request.user, 'medecin')
+        medecins = medecins.filter(pk=medecin.pk) if medecin else medecins.none()
+
+    rdvs = (Rendez_vous.objects
+            .select_related('patient', 'medecin')
+            .filter(date__date=jour, medecin__in=medecins)
+            .order_by('date'))
+
+    # On range chaque rendez-vous dans la case (heure, medecin). Grouper par
+    # HEURE et non par creneau fixe : les rendez-vous existants tombent a
+    # 01h18 ou 19h52, un quadrillage en demi-heures les perdrait.
+    cases = {}
+    for rdv in rdvs:
+        heure = timezone.localtime(rdv.date).hour
+        cases.setdefault((heure, rdv.medecin_id), []).append(rdv)
+
+    # Les lignes affichees : l'amplitude de travail en entier (meme vide,
+    # pour qu'on voie les plages libres), plus les heures hors horaires qui
+    # portent un rendez-vous. Les heures vides hors horaires sont sautees :
+    # un RDV a 01h18 ne doit pas trainer quinze lignes vides derriere lui.
+    heures_occupees = {heure for heure, _ in cases}
+    heures = sorted(
+        set(range(PLANNING_HEURE_DEBUT, PLANNING_HEURE_FIN + 1)) | heures_occupees
+    )
+
+    lignes = []
+    precedente = None
+    for heure in heures:
+        lignes.append({
+            'heure': f'{heure:02d}:00',
+            # Vrai quand on vient de sauter des heures vides : le gabarit
+            # marque la coupure, sinon le tableau ment sur la continuite.
+            'apres_saut': precedente is not None and heure > precedente + 1,
+            'cellules': [{'medecin': m, 'rdvs': cases.get((heure, m.pk), [])}
+                         for m in medecins],
+        })
+        precedente = heure
+
+    # Le compteur par medecin, affiche en en-tete de colonne : c'est lui qui
+    # repond d'un coup d'oeil a « qui peut prendre ce patient ? ».
+    charge = {m.pk: 0 for m in medecins}
+    for rdv in rdvs:
+        if rdv.statut != 'annule':
+            charge[rdv.medecin_id] = charge.get(rdv.medecin_id, 0) + 1
+
+    colonnes = [{'medecin': m, 'nb': charge.get(m.pk, 0)} for m in medecins]
+
+    # Rien n'est pose ici pour le dossier medical : le gabarit decide seul
+    # d'afficher le lien, avec `user_permissions` que le context processor
+    # pose deja sur toutes les pages — la meme source que le menu de base.html.
+    return {
+        'jour': jour,
+        'aujourdhui': timezone.localdate(),
+        'jour_precedent': (jour - timedelta(days=1)).isoformat(),
+        'jour_suivant': (jour + timedelta(days=1)).isoformat(),
+        'colonnes': colonnes,
+        'lignes': lignes,
+        'nb_rdv': rdvs.count(),
+        'est_medecin': role == 'medecin',
+    }
+
+
+@permission_required('rdv.view')
+def planning_jour(request):
+    """La page « Planning du jour » : le tableau, et rien d'autre."""
+    return render(request, 'consultation/planning_jour.html',
+                  contexte_planning(request, jour_demande(request)))
+
+
 # Rendez-vous
 
 @permission_required('rdv.view')
@@ -226,11 +333,32 @@ def rdv_ajouter(request):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    return render(request, 'consultation/rdv_form.html', {
+    # Le planning s'affiche sous le formulaire : la reception voit la journee
+    # avant de choisir le medecin, au lieu de reserver a l'aveugle puis de
+    # decouvrir le conflit.
+    contexte = contexte_planning(request, jour_demande(request))
+    contexte.update({
         'patients': Patient.objects.all().order_by('nom'),
         'medecins': Medecin.objects.all().order_by('nom'),
         'action': 'Ajouter',
+        'saisi': _saisie_conservee(request),
     })
+    return render(request, 'consultation/rdv_form.html', contexte)
+
+
+def _saisie_conservee(request, rdv=None):
+    """Ce qui doit rester coche quand on change le jour du planning.
+
+    Consulter le planning recharge la page (`?jour=`). Sans cela, la
+    reception perdrait le patient et le medecin qu'elle venait de choisir a
+    chaque coup d'oeil sur une autre journee.
+    """
+    return {
+        'patient': request.GET.get('patient') or (str(rdv.patient_id) if rdv else ''),
+        'medecin': request.GET.get('medecin') or (str(rdv.medecin_id) if rdv else ''),
+        'date': request.GET.get('date') or (
+            timezone.localtime(rdv.date).strftime('%Y-%m-%dT%H:%M') if rdv else ''),
+    }
 
 
 @role_required('admin', 'receptionniste')
@@ -252,12 +380,19 @@ def rdv_modifier(request, pk):
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
-    return render(request, 'consultation/rdv_form.html', {
+    # Par defaut on montre la journee du rendez-vous qu'on modifie : c'est
+    # celle qu'on veut verifier avant de le deplacer.
+    contexte = contexte_planning(
+        request, jour_demande(request) if 'jour' in request.GET
+        else timezone.localtime(rdv.date).date())
+    contexte.update({
         'rdv': rdv,
         'patients': Patient.objects.all().order_by('nom'),
         'medecins': Medecin.objects.all().order_by('nom'),
         'action': 'Modifier',
+        'saisi': _saisie_conservee(request, rdv),
     })
+    return render(request, 'consultation/rdv_form.html', contexte)
 
 
 @role_required('admin', 'receptionniste')

@@ -16,7 +16,14 @@
 .form-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.2; }
 .form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
 .req-mark { color: #ef4444; }
+
+/* Le planning sous le formulaire : un bandeau pour l'annoncer. */
+.pl-aide { display: flex; align-items: flex-start; gap: .6rem; margin: 1.6rem 0 .8rem; }
+.pl-aide-ico { width: 34px; height: 34px; border-radius: .6rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; color: #14b8a6; background: rgba(20,184,166,.12); }
+.pl-aide-titre { font-size: .95rem; font-weight: 800; color: var(--text-primary); line-height: 1.25; }
+.pl-aide-sub { font-size: .76rem; color: var(--text-muted); margin-top: 1px; }
 </style>
+{% include "consultation/_planning_styles.html" %}
 {% endblock %}
 {% block content %}
 <form method="post">
@@ -36,7 +43,7 @@
         <select name="patient" class="f-input f-select" required>
           <option value="">-- Choisir un patient --</option>
           {% for patient in patients %}
-          <option value="{{ patient.pk }}" {% if rdv and rdv.patient_id == patient.pk %}selected{% endif %}>
+          <option value="{{ patient.pk }}" {% if saisi.patient == patient.pk|stringformat:"s" %}selected{% endif %}>
             {{ patient.nom }} {{ patient.prenom }}
           </option>
           {% endfor %}
@@ -47,7 +54,7 @@
         <select name="medecin" class="f-input f-select" required>
           <option value="">-- Choisir un médecin --</option>
           {% for medecin in medecins %}
-          <option value="{{ medecin.pk }}" {% if rdv and rdv.medecin_id == medecin.pk %}selected{% endif %}>
+          <option value="{{ medecin.pk }}" {% if saisi.medecin == medecin.pk|stringformat:"s" %}selected{% endif %}>
             Dr. {{ medecin.nom }} {{ medecin.prenom }}{% if medecin.specialite %} — {{ medecin.specialite }}{% endif %}
           </option>
           {% endfor %}
@@ -67,7 +74,7 @@
     <div class="row g-3">
       <div class="col-12 col-md-6">
         <label class="f-label">Date et heure <span class="req-mark">*</span></label>
-        <input type="datetime-local" name="date" class="f-input" value="{% if rdv %}{{ rdv.date|date:'Y-m-d\TH:i' }}{% endif %}" required>
+        <input type="datetime-local" name="date" class="f-input" value="{{ saisi.date }}" required>
       </div>
       <div class="col-12 col-md-6">
         <label class="f-label">Statut</label>
@@ -85,4 +92,47 @@
     <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> {{ action }}</button>
   </div>
 </form>
+
+{% comment %}
+  Le planning est volontairement APRES </form> : il contient son propre
+  petit formulaire GET (le choix du jour), et le HTML interdit d'imbriquer
+  un formulaire dans un autre — le navigateur casserait l'envoi du
+  rendez-vous.
+{% endcomment %}
+<div class="pl-aide">
+  <span class="pl-aide-ico"><i class="bi bi-calendar3-week"></i></span>
+  <div>
+    <div class="pl-aide-titre">Qui est disponible ce jour-là ?</div>
+    <div class="pl-aide-sub">
+      Le planning des médecins pour la date choisie. Change la date ci-dessous
+      pour comparer une autre journée avant de décider.
+    </div>
+  </div>
+</div>
+
+{% include "consultation/_planning_tableau.html" %}
+
+<script>
+/* Changer le jour du planning recharge la page. On emporte donc le patient,
+   le medecin et l'heure deja choisis, sinon la reception les reperd a chaque
+   coup d'oeil sur une autre journee ; la vue les relit dans `saisi`.
+   Sans JavaScript, la page reste utilisable : seul le report est perdu. */
+(function () {
+  var jourForm = document.querySelector('.pl-nav form');
+  var rdvForm  = document.querySelector('form[method="post"]');
+  if (!jourForm || !rdvForm) return;
+
+  jourForm.addEventListener('submit', function () {
+    ['patient', 'medecin', 'date'].forEach(function (nom) {
+      var champ = rdvForm.elements[nom];
+      if (!champ || !champ.value) return;
+      var cache = document.createElement('input');
+      cache.type = 'hidden';
+      cache.name = nom;
+      cache.value = champ.value;
+      jourForm.appendChild(cache);
+    });
+  });
+})();
+</script>
 {% endblock %}

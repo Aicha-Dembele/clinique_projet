@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg page-rdv-bg{% endblock %}
+{% block title %}Planning du jour{% endblock %}
+{% block nav_planning %}active{% endblock %}
+{% block page_title %}Planning du jour{% endblock %}
+
+{% block extra_css %}{% include "consultation/_planning_styles.html" %}{% endblock %}
+
+{% block content %}
+  {# Page autonome : on y propose le bouton « Nouveau rendez-vous ». #}
+  {% include "consultation/_planning_tableau.html" with planning_autonome=True %}
+{% endblock %}

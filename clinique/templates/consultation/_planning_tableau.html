@@ -1,0 +1,130 @@
+{% comment %}
+  Le tableau du planning : heures en lignes, medecins en colonnes.
+  Partage par « Planning du jour » et le formulaire de rendez-vous.
+  Contexte attendu : jour, aujourdhui, jour_precedent, jour_suivant,
+  colonnes, lignes, nb_rdv, est_medecin (voir contexte_planning()).
+
+  Les styles vivent dans _planning_styles.html, a inclure dans le bloc
+  extra_css de la page qui se sert de ce tableau.
+{% endcomment %}
+
+<div class="pl-wrap">
+
+  <div class="pl-nav">
+    <div class="d-flex align-items-center gap-2">
+      <a class="pl-nav-btn" href="?jour={{ jour_precedent }}" title="Jour précédent"><i class="bi bi-chevron-left"></i></a>
+      <span class="pl-nav-title">{{ jour|date:"l j F Y" }}</span>
+      <a class="pl-nav-btn" href="?jour={{ jour_suivant }}" title="Jour suivant"><i class="bi bi-chevron-right"></i></a>
+      {% if jour != aujourdhui %}
+        {# ?jour= et non l'adresse de la page : le tableau reste la ou il est. #}
+        <a class="pl-today-btn" href="?jour={{ aujourdhui|date:'Y-m-d' }}">Aujourd'hui</a>
+      {% endif %}
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      {% comment %}
+        Ce petit formulaire GET doit rester HORS de tout autre formulaire :
+        le HTML interdit les formulaires imbriques, et le navigateur casserait
+        l'envoi du formulaire parent. Sur la page de rendez-vous, le tableau
+        est donc place apres la balise </form>.
+      {% endcomment %}
+      <form method="get" class="d-flex align-items-center gap-2">
+        <input type="date" name="jour" value="{{ jour|date:'Y-m-d' }}" class="pl-date-input">
+        <button type="submit" class="pl-today-btn">Aller</button>
+      </form>
+      {% if planning_autonome and 'rdv.add' in user_permissions %}
+        <a class="btn btn-primary btn-sm" href="{% url 'consultation:rdv_ajouter' %}">
+          <i class="bi bi-plus-lg"></i> Nouveau rendez-vous
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if colonnes %}
+    <div class="pl-scroll">
+      <table class="pl-grid">
+        <thead>
+          <tr>
+            <th class="pl-h-col"><span style="font-size:.7rem;color:var(--text-muted);font-weight:700">HEURE</span></th>
+            {% for col in colonnes %}
+              <th>
+                <div class="pl-medecin-nom">Dr. {{ col.medecin.nom }} {{ col.medecin.prenom }}</div>
+                <div class="pl-medecin-spe">{{ col.medecin.specialite }}</div>
+                {% if col.nb %}
+                  <span class="pl-charge pl-charge-n">{{ col.nb }} rendez-vous</span>
+                {% else %}
+                  <span class="pl-charge pl-charge-0">Journée libre</span>
+                {% endif %}
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for ligne in lignes %}
+            {% if ligne.apres_saut %}
+              <tr class="pl-saut">
+                <td colspan="{{ colonnes|length|add:1 }}">heures sans rendez-vous</td>
+              </tr>
+            {% endif %}
+            <tr>
+              <td class="pl-heure">{{ ligne.heure }}</td>
+              {% for cellule in ligne.cellules %}
+                <td class="pl-cell">
+                  {% for rdv in cellule.rdvs %}
+                    {% if 'dossier.view' in user_permissions %}
+                      {# Le medecin (et l'admin) peuvent ouvrir le patient. #}
+                      <a class="pl-rdv pl-rdv-{{ rdv.statut }}" href="{% url 'patients:detail' rdv.patient.pk %}">
+                        <span class="pl-rdv-heure">{{ rdv.date|date:"H:i" }}</span>
+                        <span class="pl-rdv-patient">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</span>
+                      </a>
+                    {% else %}
+                      {% comment %}
+                        La reception voit QUI et QUAND. Rien de medical, et
+                        aucun lien a suivre : c'est tout ce qu'il lui faut
+                        pour placer le prochain patient.
+                        {# ... #} ne vaut que sur UNE ligne : sur plusieurs,
+                        Django affiche le commentaire au lieu de l'ignorer.
+                      {% endcomment %}
+                      <span class="pl-rdv pl-rdv-{{ rdv.statut }}">
+                        <span class="pl-rdv-heure">{{ rdv.date|date:"H:i" }}</span>
+                        <span class="pl-rdv-patient">{{ rdv.patient.nom }} {{ rdv.patient.prenom }}</span>
+                      </span>
+                    {% endif %}
+                  {% empty %}
+                    <span class="pl-libre">libre</span>
+                  {% endfor %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="pl-vide">
+      <i class="bi bi-person-badge"></i>
+      {% if est_medecin %}
+        Votre fiche médecin n'est pas reliée à votre compte : le planning ne
+        peut pas savoir quels rendez-vous sont les vôtres.
+      {% else %}
+        Aucun médecin enregistré.
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+
+{% if colonnes and not nb_rdv %}
+  <p class="pl-note">
+    <i class="bi bi-calendar-x"></i>
+    Aucun rendez-vous ce jour-là : toutes les plages sont disponibles.
+  </p>
+{% endif %}
+
+{% if not est_medecin and 'dossier.view' not in user_permissions %}
+  <p class="pl-note">
+    <i class="bi bi-shield-lock"></i>
+    Ce planning indique qui est attendu et à quelle heure. Le motif de la
+    visite et le dossier médical restent entre le patient et son médecin.
+  </p>
+{% endif %}

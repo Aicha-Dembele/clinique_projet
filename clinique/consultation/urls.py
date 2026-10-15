@@ -7,6 +7,9 @@ urlpatterns = [
     # Rendez-vous
     # L'accueil : patient, rendez-vous et encaissement sur un seul écran.
     path('reception/', views.reception, name='reception'),
+    # Le tableau du jour : qui recoit qui, medecin par medecin.
+    path('planning/', views.planning_jour, name='planning_jour'),
+
     path('rdv/', views.rdv_liste, name='rdv_liste'),
     path('rdv/ajouter/', views.rdv_ajouter, name='rdv_ajouter'),
     path('rdv/<int:pk>/modifier/', views.rdv_modifier, name='rdv_modifier'),
