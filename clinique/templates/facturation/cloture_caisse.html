@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block body_class %}page-facturation-bg{% endblock %}
+{% block title %}Clôture de caisse{% endblock %}
+{% block nav_cloture %}active{% endblock %}
+{% block page_title %}Clôture de caisse{% endblock %}
+{% block page_heading %}Arrêter {{ caisse_libelle|lower }}{% endblock %}
+
+{% block extra_css %}<style>
+.cc-carte { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.4rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.cc-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.2rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.cc-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.cc-titre { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.cc-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+
+.cc-ligne { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid var(--card-border); }
+.cc-ligne:last-child { border-bottom: none; }
+.cc-ligne-nom { font-size: .88rem; color: var(--text-secondary); }
+.cc-ligne-val { font-size: 1rem; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cc-ligne-sous { font-size: .73rem; color: var(--text-muted); margin-top: .15rem; }
+
+.cc-total { background: rgba(13,148,136,.08); margin: .6rem -1.6rem -1.4rem; padding: .9rem 1.6rem; border-radius: 0 0 1.1rem 1.1rem; }
+.cc-total .cc-ligne { border-bottom: none; padding: 0; }
+.cc-total .cc-ligne-val { font-size: 1.25rem; color: var(--primary); }
+
+.cc-trace { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .67rem; font-weight: 800; background: rgba(16,185,129,.14); color: #059669; margin-left: .4rem; }
+
+.cc-ecart { margin-top: .9rem; padding: .85rem 1.1rem; border-radius: .7rem; font-size: .88rem; line-height: 1.5; display: none; }
+.cc-ecart.juste   { background: rgba(16,185,129,.1); border-left: 3px solid #10b981; display: block; }
+.cc-ecart.manque  { background: rgba(239,68,68,.1);  border-left: 3px solid #ef4444; display: block; }
+.cc-ecart.trop    { background: rgba(245,158,11,.1); border-left: 3px solid #f59e0b; display: block; }
+.cc-ecart-val { font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.cc-note { font-size: .78rem; color: var(--text-muted); display: flex; align-items: flex-start; gap: .45rem; margin-top: .9rem; line-height: 1.55; }
+.cc-vide { padding: 2.4rem 1.5rem; text-align: center; color: var(--text-muted); }
+.cc-vide i { font-size: 2rem; opacity: .35; display: block; margin-bottom: .6rem; }
+</style>{% endblock %}
+
+{% block content %}
+
+{% if deux_caisses %}
+  <div class="mb-3 d-flex gap-2">
+    <a class="btn-c {% if caisse == 'reception' %}btn-primary-c{% else %}btn-outline-c{% endif %} btn-sm"
+       href="?caisse=reception">Réception</a>
+    <a class="btn-c {% if caisse == 'pharmacie' %}btn-primary-c{% else %}btn-outline-c{% endif %} btn-sm"
+       href="?caisse=pharmacie">Pharmacie</a>
+  </div>
+{% endif %}
+
+{% if not etat.nb %}
+
+  <div class="cc-carte">
+    <div class="cc-vide">
+      <i class="bi bi-check2-circle"></i>
+      Aucun paiement à clôturer sur cette caisse.
+      {% if derniere %}
+        <div class="mt-2" style="font-size:.8rem">
+          Dernière clôture : {{ derniere.date_cloture|date:"d/m/Y à H:i" }}
+          {% if derniere.cloturee_par %} par {{ derniere.cloturee_par.username }}{% endif %}.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+{% else %}
+
+  <div class="cc-carte">
+    <div class="cc-hdr">
+      <span class="cc-ico" style="color:#0d9488;background:rgba(13,148,136,.12)"><i class="bi bi-calculator"></i></span>
+      <div>
+        <div class="cc-titre">Ce que la caisse a encaissé</div>
+        <div class="cc-sub">
+          {{ etat.nb }} paiement{{ etat.nb|pluralize }}
+          {% if derniere %}depuis la clôture du {{ derniere.date_cloture|date:"d/m/Y à H:i" }}{% else %}depuis l'ouverture{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="cc-ligne">
+      <div>
+        <div class="cc-ligne-nom">Espèces</div>
+        <div class="cc-ligne-sous">À compter dans le tiroir</div>
+      </div>
+      <div class="cc-ligne-val">{{ etat.especes|floatformat:0 }} FCFA</div>
+    </div>
+
+    <div class="cc-ligne">
+      <div>
+        <div class="cc-ligne-nom">
+          SAMA Money <span class="cc-trace">TRACÉ</span>
+        </div>
+        <div class="cc-ligne-sous">Électronique — rien à compter, aucun écart possible</div>
+      </div>
+      <div class="cc-ligne-val">{{ etat.sama|floatformat:0 }} FCFA</div>
+    </div>
+
+    <div class="cc-total">
+      <div class="cc-ligne">
+        <div class="cc-ligne-nom"><strong>Total encaissé</strong></div>
+        <div class="cc-ligne-val">{{ etat.total|floatformat:0 }} FCFA</div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" id="form-cloture">
+    {% csrf_token %}
+    {% if deux_caisses %}<input type="hidden" name="caisse" value="{{ caisse }}">{% endif %}
+
+    <div class="cc-carte">
+      <div class="cc-hdr">
+        <span class="cc-ico" style="color:#f59e0b;background:rgba(245,158,11,.12)"><i class="bi bi-cash-stack"></i></span>
+        <div>
+          <div class="cc-titre">Comptez le tiroir</div>
+          <div class="cc-sub">Saisissez ce que vous trouvez réellement, pas ce qui est attendu</div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="f-label">Fond de caisse du matin</label>
+          <input type="number" name="fond_de_caisse" id="fond" class="f-input"
+                 value="0" min="0" step="1" oninput="calculer()">
+          <p class="f-help">La monnaie déposée avant d'ouvrir. Elle doit s'y retrouver.</p>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="f-label">Espèces comptées <span style="color:#ef4444">*</span></label>
+          <input type="number" name="especes_comptees" id="compte" class="f-input"
+                 min="0" step="1" required oninput="calculer()" autofocus>
+          <p class="f-help">Le total des billets et pièces dans le tiroir.</p>
+        </div>
+      </div>
+
+      <div class="cc-ecart" id="bloc-ecart"></div>
+
+      <div class="mt-3" id="bloc-commentaire" style="display:none">
+        <label class="f-label">
+          Explication de l'écart <span style="color:#ef4444">*</span>
+        </label>
+        <textarea name="commentaire" id="commentaire" class="f-input" rows="2"
+                  placeholder="ex. Monnaie rendue en trop à un patient, erreur corrigée le lendemain"></textarea>
+        <p class="f-help">
+          Un écart non commenté n'est pas une clôture, c'est un trou.
+          Le serveur refusera sans explication.
+        </p>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+      <a href="{% url 'facturation:paiements' %}" class="btn-c btn-outline-c">
+        <i class="bi bi-x-lg"></i> Annuler
+      </a>
+      <button type="submit" class="btn-c btn-primary-c">
+        <i class="bi bi-lock"></i> Arrêter la caisse
+      </button>
+    </div>
+  </form>
+
+{% endif %}
+
+{% if differes %}
+  <div class="cc-carte">
+    <div class="cc-hdr">
+      <span class="cc-ico" style="color:#ef4444;background:rgba(239,68,68,.12)"><i class="bi bi-exclamation-octagon"></i></span>
+      <div>
+        <div class="cc-titre">Soins accordés sans paiement</div>
+        <div class="cc-sub">{{ differes|length }} dossier{{ differes|length|pluralize }} — {{ total_differe|floatformat:0 }} FCFA différés</div>
+      </div>
+    </div>
+    <p class="cc-note" style="margin-top:0">
+      <i class="bi bi-info-circle"></i>
+      Ces soins <strong>ne créent aucun écart de caisse</strong> : ils n'ont
+      produit aucun paiement, donc rien n'est attendu dans le tiroir. Ils
+      expliquent une recette basse sans qu'il manque un franc.
+    </p>
+    <ul style="margin:.5rem 0 0;padding-left:1.1rem;font-size:.84rem;line-height:1.8;color:var(--text-secondary)">
+      {% for d in differes %}
+        <li>{{ d.facture.patient }} — {{ d.montant_differe|floatformat:0 }} FCFA
+          <span class="discret">({{ d.motif_complet|truncatewords:6 }})</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<script>
+/* L'écart se calcule sous les yeux du caissier, pendant qu'il compte.
+   La règle est tenue côté serveur de toute façon : sans JavaScript, un
+   écart non commenté est refusé à l'envoi. */
+function calculer() {
+  var attenduEspeces = {{ etat.especes|default:0|floatformat:"0u" }};
+  var fond = parseInt(document.getElementById('fond').value) || 0;
+  var compte = document.getElementById('compte').value;
+  var bloc = document.getElementById('bloc-ecart');
+  var blocComm = document.getElementById('bloc-commentaire');
+  var comm = document.getElementById('commentaire');
+
+  if (compte === '') {
+    bloc.className = 'cc-ecart';
+    bloc.innerHTML = '';
+    blocComm.style.display = 'none';
+    comm.required = false;
+    return;
+  }
+
+  var attendu = attenduEspeces + fond;
+  var ecart = (parseInt(compte) || 0) - attendu;
+  var fmt = function (n) { return Math.abs(n).toLocaleString('fr-FR'); };
+
+  if (ecart === 0) {
+    bloc.className = 'cc-ecart juste';
+    bloc.innerHTML = '<i class="bi bi-check-circle-fill"></i> '
+      + 'Le compte est juste — ' + fmt(attendu) + ' FCFA attendus, '
+      + fmt(attendu) + ' FCFA comptés.';
+  } else if (ecart < 0) {
+    bloc.className = 'cc-ecart manque';
+    bloc.innerHTML = '<span class="cc-ecart-val">Il manque ' + fmt(ecart)
+      + ' FCFA</span><br>' + fmt(attendu) + ' FCFA attendus, '
+      + fmt(attendu + ecart) + ' FCFA comptés.';
+  } else {
+    bloc.className = 'cc-ecart trop';
+    bloc.innerHTML = '<span class="cc-ecart-val">Il y a ' + fmt(ecart)
+      + ' FCFA en trop</span><br>' + fmt(attendu) + ' FCFA attendus, '
+      + fmt(attendu + ecart) + ' FCFA comptés.';
+  }
+
+  blocComm.style.display = (ecart === 0) ? 'none' : 'block';
+  comm.required = (ecart !== 0);
+}
+</script>
+{% endblock %}

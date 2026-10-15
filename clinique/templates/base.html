@@ -1960,6 +1960,11 @@
       <i class="bi bi-cash-coin"></i> Paiements
     </a>
     {% endif %}
+    {% if 'caisse.cloturer' in user_permissions %}
+    <a href="{% url 'facturation:clotures' %}" class="sb-link {% block nav_cloture %}{% endblock %}">
+      <i class="bi bi-safe"></i> Clôture de caisse
+    </a>
+    {% endif %}
     {% if 'tarif.view' in user_permissions %}
     <a href="{% url 'facturation:tarifs' %}" class="sb-link {% block nav_tarifs %}{% endblock %}">
       <i class="bi bi-tags-fill"></i> Tarifs

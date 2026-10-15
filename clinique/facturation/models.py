@@ -548,6 +548,12 @@ class Paiement(models.Model):
     mode_paiement  = models.CharField(max_length=20, choices=MODE_CHOICES)
     date           = models.DateTimeField(auto_now_add=True)
     note           = models.CharField(max_length=200, blank=True, default='')
+    #: La clôture qui couvre ce paiement. Vide tant que la caisse n'a pas été
+    #: arrêtée. C'est ce lien qui empêche de compter deux fois : un paiement
+    #: appartient à une clôture, et à une seule.
+    cloture = models.ForeignKey(
+        'ClotureCaisse', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='paiements', verbose_name="clôture de caisse")
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -666,3 +672,156 @@ class Derogation(models.Model):
     def montant_differe(self):
         """Ce qui reste à récupérer auprès du patient ou de sa famille."""
         return self.facture.montant_restant()
+
+
+class ClotureCaisse(models.Model):
+    """Arrêter la caisse : compter ce qu'il y a, et le confronter à ce qu'il
+    devrait y avoir.
+
+    Sans clôture, personne ne peut répondre à « où est passé l'argent ? » :
+    les rapports mensuels additionnent des paiements enregistrés, ils ne
+    disent rien du tiroir.
+
+    L'ARGENT ÉLECTRONIQUE NE SE COMPTE PAS
+    SAMA Money est tracé : la clinique sait au centime près ce qui est passé,
+    et un écart y est impossible. Les espèces, elles, sont dans un tiroir —
+    c'est là, et seulement là, qu'un écart peut naître. La clôture traite donc
+    les deux différemment : on totalise le SAMA, on COMPTE les espèces.
+
+    UNE CLÔTURE APPARTIENT À UNE CAISSE, PAS À UNE PERSONNE
+    Deux réceptionnistes se relaient sur le même tiroir. Chaque clôture
+    ramasse tous les paiements de sa caisse non encore clôturés : les
+    changements d'équipe sont gérés sans rien prévoir de spécial.
+    """
+
+    CAISSE_CHOICES = [
+        ('reception', 'Caisse de la réception'),
+        ('pharmacie', 'Comptoir de la pharmacie'),
+    ]
+
+    caisse = models.CharField("caisse", max_length=20, choices=CAISSE_CHOICES)
+    cloturee_par = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True,
+        related_name='clotures', verbose_name="clôturée par")
+    date_cloture = models.DateTimeField("clôturée le", auto_now_add=True)
+
+    #: La monnaie déposée dans le tiroir avant d'ouvrir. Elle doit s'y
+    #: retrouver le soir : sans elle, l'arithmétique est fausse.
+    fond_de_caisse = models.DecimalField(
+        "fond de caisse", max_digits=10, decimal_places=2, default=0)
+
+    # Les trois montants sont FIGÉS à la clôture. Ce sont les chiffres de ce
+    # moment précis : si un paiement est corrigé plus tard, la clôture déjà
+    # signée ne doit pas changer rétroactivement.
+    total_especes = models.DecimalField(
+        "espèces encaissées", max_digits=12, decimal_places=2, default=0)
+    total_sama = models.DecimalField(
+        "SAMA Money encaissé", max_digits=12, decimal_places=2, default=0)
+    especes_comptees = models.DecimalField(
+        "espèces comptées dans le tiroir", max_digits=12, decimal_places=2,
+        default=0)
+    ecart = models.DecimalField(
+        "écart", max_digits=12, decimal_places=2, default=0,
+        help_text="Négatif : il manque. Positif : il y a trop.")
+    nb_paiements = models.IntegerField("paiements clôturés", default=0)
+
+    commentaire = models.TextField(
+        "explication de l'écart", blank=True, default='',
+        help_text="Obligatoire dès que l'écart n'est pas nul.")
+
+    class Meta:
+        verbose_name = "clôture de caisse"
+        verbose_name_plural = "clôtures de caisse"
+        ordering = ['-date_cloture']
+
+    def __str__(self):
+        return (f"{self.get_caisse_display()} — "
+                f"{self.date_cloture:%d/%m/%Y %H:%M}")
+
+    # --- avant la clôture : ce que la caisse devrait contenir ---
+
+    @classmethod
+    def paiements_en_attente(cls, caisse):
+        """Les paiements de cette caisse qui n'ont encore été clôturés par personne.
+
+        C'est ce découpage qui garantit qu'un paiement n'est jamais compté
+        deux fois ni oublié : il appartient à une clôture, et à une seule.
+        """
+        qs = Paiement.objects.filter(cloture__isnull=True).select_related('facture')
+        if caisse == 'pharmacie':
+            return qs.filter(facture__ordonnance__isnull=False)
+        return qs.filter(facture__ordonnance__isnull=True)
+
+    @classmethod
+    def apercu(cls, caisse):
+        """Ce qu'on attend dans le tiroir, avant que le caissier ne compte."""
+        paiements = list(cls.paiements_en_attente(caisse))
+        especes = sum((p.montant for p in paiements
+                       if p.mode_paiement == 'cash'), Decimal('0'))
+        sama = sum((p.montant for p in paiements
+                    if p.mode_paiement == 'sama_money'), Decimal('0'))
+        return {
+            'paiements': paiements,
+            'nb': len(paiements),
+            'especes': especes,
+            'sama': sama,
+            'total': especes + sama,
+            'depuis': paiements[-1].date if paiements else None,
+        }
+
+    # --- la clôture elle-même ---
+
+    @classmethod
+    def cloturer(cls, caisse, utilisateur, especes_comptees,
+                 fond_de_caisse=0, commentaire=''):
+        """Arrête la caisse et y rattache les paiements qu'elle couvre.
+
+        Refuse une clôture vide : il n'y a rien à arrêter, et une clôture
+        sans paiement ne dit rien à personne.
+        """
+        etat = cls.apercu(caisse)
+        if not etat['nb']:
+            raise ValueError(
+                "Aucun paiement à clôturer sur cette caisse depuis la "
+                "dernière clôture.")
+
+        especes_comptees = Decimal(especes_comptees or 0)
+        fond = Decimal(fond_de_caisse or 0)
+        attendu = fond + etat['especes']
+        ecart = especes_comptees - attendu
+
+        if ecart != 0 and not (commentaire or '').strip():
+            raise ValueError(
+                f"L'écart de {ecart:+,.0f} FCFA doit être expliqué avant de "
+                f"clôturer. Un écart non commenté n'est pas une clôture, "
+                f"c'est un trou.".replace(',', ' '))
+
+        cloture = cls.objects.create(
+            caisse=caisse,
+            cloturee_par=utilisateur,
+            fond_de_caisse=fond,
+            total_especes=etat['especes'],
+            total_sama=etat['sama'],
+            especes_comptees=especes_comptees,
+            ecart=ecart,
+            nb_paiements=etat['nb'],
+            commentaire=(commentaire or '').strip(),
+        )
+        # On rattache les paiements APRÈS création : ils sont désormais
+        # couverts, et la prochaine clôture ne les reprendra pas.
+        Paiement.objects.filter(
+            pk__in=[p.pk for p in etat['paiements']]).update(cloture=cloture)
+        return cloture
+
+    # --- lecture ---
+
+    def especes_attendues(self):
+        """Fond de caisse + espèces encaissées : ce qui devait être compté."""
+        return self.fond_de_caisse + self.total_especes
+
+    def est_juste(self):
+        return self.ecart == 0
+
+    def manque(self):
+        """Vrai quand il manque de l'argent — le cas qui doit alerter."""
+        return self.ecart < 0

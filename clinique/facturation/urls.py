@@ -16,6 +16,10 @@ urlpatterns = [
     path('paiements/export/',             views.paiements_export,   name='paiements_export'),
     path('paiements/ajouter/',            views.paiement_ajouter,   name='paiement_ajouter'),
     path('paiements/sama-money/',        views.paiement_sama_money, name='paiement_sama_money'),
+
+    # Arreter la caisse : compter le tiroir, et assumer l'ecart.
+    path('caisse/cloture/',               views.cloture_caisse,     name='cloture_caisse'),
+    path('caisse/clotures/',              views.clotures,           name='clotures'),
     path('paiements/<int:pk>/modifier/',  views.paiement_modifier,  name='paiement_modifier'),
     path('paiements/<int:pk>/supprimer/', views.paiement_supprimer, name='paiement_supprimer'),
     path('paiements/<int:pk>/recu/',      views.paiement_recu,      name='paiement_recu'),

@@ -4,9 +4,11 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Sum, Q
 from django.utils.http import urlencode
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
-from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
+from comptes.models import JournalAudit
+from .models import (
+    Facture, LigneFacture, Paiement, Tarif, Assurance, ClotureCaisse)
 from . import sama
 from patients.models import Patient
 from comptes.decorators import role_required, permission_required, get_role
@@ -1081,4 +1083,107 @@ def assurance_supprimer(request, pk):
     return render(request, 'partials/confirmer_suppression.html', {
         'objet':      f'Assurance "{assurance.nom}" ({assurance.taux_prise_en_charge:.0f} %)',
         'retour_url': '/facturation/assurances/',
+    })
+
+# ── Clôture de caisse ────────────────────────────────────────────
+#
+# Arrêter la caisse, c'est compter ce qu'il y a et le confronter à ce qu'il
+# devrait y avoir. Les rapports mensuels additionnent des paiements
+# enregistrés ; ils ne disent rien du tiroir.
+#
+# L'argent électronique ne se compte pas : SAMA Money est tracé, un écart y
+# est impossible. On totalise le SAMA, on COMPTE les espèces.
+
+
+def _ma_caisse(request):
+    """La caisse que ce rôle tient. None s'il n'en tient aucune."""
+    caisses = caisses_du_role(get_role(request.user))
+    if not caisses:
+        return None
+    # L'administrateur tient les deux : il choisit laquelle il arrête.
+    if len(caisses) > 1:
+        demandee = request.GET.get('caisse') or request.POST.get('caisse')
+        if demandee in caisses:
+            return demandee
+        return CAISSE_RECEPTION
+    return next(iter(caisses))
+
+
+@permission_required('caisse.cloturer')
+def cloture_caisse(request):
+    """Compter le tiroir et arrêter la caisse."""
+    caisse = _ma_caisse(request)
+    if caisse is None:
+        messages.error(request, "Vous ne tenez aucune caisse.")
+        return redirect('facturation:paiements')
+
+    if request.method == 'POST':
+        try:
+            cloture = ClotureCaisse.cloturer(
+                caisse=caisse,
+                utilisateur=request.user,
+                especes_comptees=Decimal(request.POST.get('especes_comptees') or 0),
+                fond_de_caisse=Decimal(request.POST.get('fond_de_caisse') or 0),
+                commentaire=request.POST.get('commentaire', ''),
+            )
+            JournalAudit.enregistrer(
+                request.user, 'creation', cloture,
+                details=(f'Cloture {cloture.get_caisse_display()} — '
+                         f'{cloture.nb_paiements} paiements, '
+                         f'ecart {cloture.ecart:+.0f} FCFA'))
+
+            if cloture.est_juste():
+                messages.success(
+                    request,
+                    f'Caisse arrêtée — {cloture.nb_paiements} paiements, '
+                    f'le compte est juste.')
+            else:
+                messages.warning(
+                    request,
+                    f'Caisse arrêtée avec un écart de '
+                    f'{_fmt(abs(cloture.ecart))} FCFA '
+                    f'({"manquant" if cloture.manque() else "en trop"}). '
+                    f'L\'explication est enregistrée.')
+            return redirect('facturation:clotures')
+        except (ValueError, InvalidOperation) as e:
+            messages.error(request, f'{e}')
+
+    etat = ClotureCaisse.apercu(caisse)
+    derniere = (ClotureCaisse.objects.filter(caisse=caisse).first())
+
+    # Les soins accordés sans paiement ne créent AUCUN écart : ils ne
+    # produisent pas de paiement, donc rien n'est attendu dans le tiroir.
+    # On les montre quand même — c'est ce qui explique une recette basse
+    # sans qu'il manque un franc.
+    from .models import Derogation
+    differes = [d for d in Derogation.objects.select_related('facture__patient')
+                if d.est_active()]
+
+    return render(request, 'facturation/cloture_caisse.html', {
+        'caisse': caisse,
+        'caisse_libelle': dict(ClotureCaisse.CAISSE_CHOICES)[caisse],
+        'etat': etat,
+        'derniere': derniere,
+        'differes': differes,
+        'total_differe': sum((d.montant_differe() for d in differes), Decimal('0')),
+        'deux_caisses': len(caisses_du_role(get_role(request.user))) > 1,
+    })
+
+
+@permission_required('caisse.cloturer')
+def clotures(request):
+    """L'historique des clôtures : qui a compté quoi, et ce qui manquait."""
+    qs = ClotureCaisse.objects.select_related('cloturee_par')
+
+    # Chaque caissier relit sa propre caisse ; l'administrateur voit tout,
+    # c'est le sens même d'un contrôle.
+    caisses = caisses_du_role(get_role(request.user))
+    if len(caisses) == 1:
+        qs = qs.filter(caisse=next(iter(caisses)))
+
+    liste = list(qs[:100])
+    return render(request, 'facturation/clotures.html', {
+        'clotures': liste,
+        'nb_ecarts': sum(1 for c in liste if not c.est_juste()),
+        'total_manquant': sum((c.ecart for c in liste if c.manque()), Decimal('0')),
     })

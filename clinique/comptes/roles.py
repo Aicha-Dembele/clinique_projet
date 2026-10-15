@@ -66,6 +66,8 @@ PERMISSIONS = [
     ('paiement.change', 'Modifier un paiement'),
     ('paiement.delete', 'Supprimer un paiement'),
 
+    ('caisse.cloturer', 'Arreter et compter sa caisse'),
+
     ('tarif.view', 'Consulter les tarifs'),
     ('tarif.add', 'Ajouter un tarif'),
     ('tarif.manage', 'Gerer les tarifs (modifier, supprimer)'),
@@ -118,6 +120,7 @@ ROLE_PERMISSIONS = {
         'facture.view', 'facture.add', 'facture.change',
         'paiement.view', 'paiement.add', 'paiement.change',
         'tarif.view', 'tarif.add',
+        'caisse.cloturer',
         # PAS de permission de pharmacie. Le stock, le catalogue des
         # medicaments, les fournisseurs et les commandes sont le metier du
         # pharmacien, pas celui de l'accueil. La reception tient sa caisse
@@ -137,6 +140,7 @@ ROLE_PERMISSIONS = {
         # quoi »), jamais une consultation.
         'facture.view',
         'paiement.view', 'paiement.add',
+        'caisse.cloturer',
     ],
 }
 

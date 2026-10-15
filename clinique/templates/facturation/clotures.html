@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block body_class %}page-facturation-bg{% endblock %}
+{% block title %}Clôtures de caisse{% endblock %}
+{% block nav_cloture %}active{% endblock %}
+{% block page_title %}Clôtures de caisse{% endblock %}
+{% block page_heading %}Historique des clôtures{% endblock %}
+
+{% block extra_css %}<style>
+.cl-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .9rem; margin-bottom: 1.3rem; }
+.cl-chiffre { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.1rem 1.3rem; box-shadow: var(--shadow-sm); }
+.cl-chiffre .valeur { font-size: 1.55rem; font-weight: 800; color: var(--text-primary); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cl-chiffre .intitule { font-size: .75rem; color: var(--text-muted); margin-top: .25rem; }
+.cl-chiffre.alerte { border-left: 3px solid #ef4444; }
+.cl-chiffre.alerte .valeur { color: #ef4444; }
+
+.cl-carte { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; overflow: hidden; box-shadow: var(--shadow-sm); }
+.cl-ligne { padding: 1rem 1.3rem; border-bottom: 1px solid var(--card-border); }
+.cl-ligne:last-child { border-bottom: none; }
+.cl-ligne.ecart { background: rgba(239,68,68,.045); }
+
+.cl-entete { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.cl-quand { font-size: .93rem; font-weight: 800; color: var(--text-primary); }
+.cl-qui { font-size: .78rem; color: var(--text-muted); margin-top: .15rem; }
+
+.cl-verdict { font-size: .95rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cl-verdict.juste  { color: #059669; }
+.cl-verdict.manque { color: #ef4444; }
+.cl-verdict.trop   { color: #b45309; }
+
+.cl-detail { font-size: .78rem; color: var(--text-muted); margin-top: .5rem; line-height: 1.7; }
+.cl-detail strong { color: var(--text-secondary); }
+.cl-comm { margin-top: .5rem; padding: .6rem .85rem; border-radius: .55rem; background: rgba(148,163,184,.1); border-left: 3px solid var(--text-muted); font-size: .83rem; line-height: 1.5; color: var(--text-secondary); }
+
+.cl-vide { padding: 2.8rem 1.5rem; text-align: center; color: var(--text-muted); }
+.cl-vide i { font-size: 2.1rem; opacity: .35; display: block; margin-bottom: .7rem; }
+.cl-note { font-size: .78rem; color: var(--text-muted); display: flex; align-items: flex-start; gap: .45rem; margin-top: .9rem; line-height: 1.55; }
+</style>{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'facturation:cloture_caisse' %}" class="btn-c btn-primary-c">
+    <i class="bi bi-lock"></i> Arrêter ma caisse
+  </a>
+</div>
+
+<div class="cl-chiffres">
+  <div class="cl-chiffre">
+    <div class="valeur">{{ clotures|length }}</div>
+    <div class="intitule">Clôture{{ clotures|length|pluralize }} enregistrée{{ clotures|length|pluralize }}</div>
+  </div>
+  <div class="cl-chiffre {% if nb_ecarts %}alerte{% endif %}">
+    <div class="valeur">{{ nb_ecarts }}</div>
+    <div class="intitule">Avec un écart</div>
+  </div>
+  <div class="cl-chiffre {% if total_manquant %}alerte{% endif %}">
+    <div class="valeur">{{ total_manquant|floatformat:0 }}</div>
+    <div class="intitule">FCFA manquants au total</div>
+  </div>
+</div>
+
+<div class="cl-carte">
+  {% for c in clotures %}
+    <div class="cl-ligne {% if not c.est_juste %}ecart{% endif %}">
+      <div class="cl-entete">
+        <div>
+          <div class="cl-quand">{{ c.date_cloture|date:"d/m/Y à H:i" }}</div>
+          <div class="cl-qui">
+            {{ c.get_caisse_display }}
+            {% if c.cloturee_par %} — comptée par {{ c.cloturee_par.username }}{% endif %}
+          </div>
+        </div>
+        <div>
+          {% if c.est_juste %}
+            <span class="cl-verdict juste"><i class="bi bi-check-circle-fill"></i> Juste</span>
+          {% elif c.manque %}
+            <span class="cl-verdict manque">{{ c.ecart|floatformat:0 }} FCFA</span>
+          {% else %}
+            <span class="cl-verdict trop">+{{ c.ecart|floatformat:0 }} FCFA</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="cl-detail">
+        {{ c.nb_paiements }} paiement{{ c.nb_paiements|pluralize }} —
+        <strong>{{ c.total_especes|floatformat:0 }} FCFA</strong> en espèces,
+        <strong>{{ c.total_sama|floatformat:0 }} FCFA</strong> en SAMA Money
+        {% if c.fond_de_caisse %}<br>Fond de caisse : {{ c.fond_de_caisse|floatformat:0 }} FCFA{% endif %}
+        <br>Attendu dans le tiroir : {{ c.especes_attendues|floatformat:0 }} FCFA —
+        compté : {{ c.especes_comptees|floatformat:0 }} FCFA
+      </div>
+
+      {% if c.commentaire %}
+        <div class="cl-comm"><strong>Explication :</strong> {{ c.commentaire }}</div>
+      {% endif %}
+    </div>
+  {% empty %}
+    <div class="cl-vide">
+      <i class="bi bi-safe"></i>
+      Aucune caisse n'a encore été arrêtée.
+    </div>
+  {% endfor %}
+</div>
+
+<p class="cl-note">
+  <i class="bi bi-shield-check"></i>
+  Les montants d'une clôture sont figés au moment où elle est signée : si un
+  paiement est corrigé plus tard, la clôture déjà enregistrée ne change pas.
+  Et un écart n'est jamais masqué — il porte le nom de celui qui a compté et
+  l'explication qu'il a donnée.
+</p>
+
+{% endblock %}
