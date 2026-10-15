@@ -247,6 +247,72 @@ class Ordonnance(models.Model):
         return f"Ordonnance {self.consultation}"
         
 
+class Operation(models.Model):
+    """Une intervention chirurgicale : césarienne, appendicectomie, hernie…
+
+    Construite sur le même patron qu'`ExamenMedical` : un acte médical qui
+    appartient au dossier du patient, porte son propre tarif, et donc sa
+    propre facture. L'assurance s'applique dessus séparément, comme sur
+    chaque prestation.
+
+    Elle suit le protocole de la clinique : **on paie avant d'être opéré**
+    (voir ACTES_PREPAYES dans facturation/regles.py). L'exception reste
+    l'admission d'urgence, qui lève le blocage sans effacer la dette — une
+    césarienne en urgence vitale n'attend pas que la famille trouve
+    200 000 FCFA.
+    """
+
+    STATUT_CHOICES = [
+        ('programmee', 'Programmée'),
+        ('en_cours',   'En cours'),
+        ('terminee',   'Terminée'),
+        ('annulee',    'Annulée'),
+    ]
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE,
+                                related_name='operations')
+    dossier = models.ForeignKey(DossierMedical, on_delete=models.CASCADE,
+                                related_name='operations', null=True, blank=True)
+    #: Le chirurgien qui opère. C'est lui qui devient propriétaire du dossier
+    #: si le patient n'en avait pas encore.
+    chirurgien = models.ForeignKey("personnel.Medecin", on_delete=models.SET_NULL,
+                                   null=True, blank=True,
+                                   related_name='operations',
+                                   verbose_name='chirurgien')
+    #: Doit correspondre à la `specialite` d'un Tarif de type « operation »
+    #: pour que le prix soit trouvé — même convention que type_examen.
+    type_operation = models.CharField("type d'intervention", max_length=100)
+    motif = models.CharField(max_length=255, blank=True, default='')
+    date = models.DateField("date de l'intervention", null=True, blank=True)
+    #: Ce que le chirurgien consigne après l'intervention.
+    compte_rendu = models.TextField("compte rendu opératoire",
+                                    blank=True, default='')
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES,
+                              default='programmee')
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "opération"
+        verbose_name_plural = "opérations"
+        ordering = ['-date', '-pk']
+
+    def get_tarif(self):
+        """Le prix de cette intervention, selon la grille des tarifs."""
+        try:
+            return Tarif.objects.get(type_service='operation',
+                                     specialite=self.type_operation)
+        except Tarif.DoesNotExist:
+            return Tarif.objects.filter(type_service='operation').first()
+
+    def save(self, *args, **kwargs):
+        if not self.dossier_id:
+            self.dossier = get_or_create_dossier(self.patient, self.chirurgien)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.type_operation} — {self.patient}"
+
+
 class Hospitalisation(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     medecin = models.ForeignKey("personnel.Medecin", on_delete=models.CASCADE)
@@ -262,22 +328,57 @@ class Hospitalisation(models.Model):
     etat_clinique = models.CharField(max_length=20, choices=ETAT_CHOICES, default='stable')
 
     # Nombre maximum de patients qu'une chambre peut accueillir selon son type.
-    CAPACITE_CHAMBRE = {'simple': 6, 'double': 2, 'vip': 1}
+    # Une chambre d'urgence n'en accueille qu'un : il faut la place pour
+    # l'équipe autour du lit et pour le matériel.
+    CAPACITE_CHAMBRE = {'simple': 6, 'double': 2, 'vip': 1, 'urgence': 1}
+
+    #: Ce qui équipe une chambre d'urgence, et la distingue d'une chambre VIP
+    #: qui serait simplement vide. Affiché à l'affectation.
+    MATERIEL_URGENCE = (
+        "Oxygène mural, aspirateur de mucosités, scope de surveillance, "
+        "chariot d'urgence et défibrillateur à proximité immédiate."
+    )
 
     @classmethod
     def plan_chambres(cls):
-        """Inventaire fixe de l'établissement : 40 chambres typées (numéro, type).
+        """Inventaire fixe de l'établissement : 30 chambres typées (numéro, type).
 
-        - 10 VIP    : 101-110            (1 patient)
-        - 12 doubles : 201-210, 301-302  (2 patients)
-        - 18 simples : 303-310, 401-410  (6 patients)
+        -  4 urgence : 001-004  (1 patient)  — au rez-de-chaussée
+        -  6 VIP     : 101-106  (1 patient)
+        -  8 doubles : 201-208  (2 patients)
+        - 12 simples : 301-312  (6 patients)
+
+        Les chambres d'urgence portent des numéros en 0xx parce qu'elles sont
+        au REZ-DE-CHAUSSÉE, les plus proches de l'entrée : on n'y monte pas un
+        blessé par l'escalier. Elles sont réservées aux patients en état
+        critique (voir `blocage_chambre_urgence`).
         """
-        vip = [str(100 + i) for i in range(1, 11)]
-        double = [str(200 + i) for i in range(1, 11)] + ['301', '302']
-        simple = [str(300 + i) for i in range(3, 11)] + [str(400 + i) for i in range(1, 11)]
-        return ([(n, 'vip') for n in vip]
+        urgence = [f'00{i}' for i in range(1, 5)]
+        vip = [str(100 + i) for i in range(1, 7)]
+        double = [str(200 + i) for i in range(1, 9)]
+        simple = [str(300 + i) for i in range(1, 13)]
+        return ([(n, 'urgence') for n in urgence]
+                + [(n, 'vip') for n in vip]
                 + [(n, 'double') for n in double]
                 + [(n, 'simple') for n in simple])
+
+    @classmethod
+    def blocage_chambre_urgence(cls, type_chambre, etat_clinique):
+        """Refuse une chambre d'urgence à un patient qui n'en relève pas.
+
+        Ces quatre chambres sont le dernier recours de l'établissement : si
+        elles sont occupées par des séjours ordinaires, le blessé qui arrive
+        à trois heures du matin n'a nulle part où aller. L'état clinique
+        « critique » est ce qui définit médicalement l'urgence — c'est donc
+        lui qui ouvre la porte.
+        """
+        if (type_chambre or '').strip().lower() != 'urgence':
+            return None
+        if (etat_clinique or '').strip().lower() == 'critique':
+            return None
+        return ("Les chambres d'urgence (001 à 004) sont réservées aux patients "
+                "en état critique. Pour un séjour ordinaire, choisissez une "
+                "chambre simple, double ou VIP.")
 
     @classmethod
     def type_pour_numero(cls, numero):

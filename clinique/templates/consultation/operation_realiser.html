@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg{% endblock %}
+{% block title %}{{ operation.type_operation }}{% endblock %}
+{% block nav_operations %}active{% endblock %}
+{% block page_title %}Bloc opératoire{% endblock %}
+{% block page_heading %}{{ operation.type_operation }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:operations' %}">Opérations</a></li>
+  <li class="breadcrumb-item active">Compte rendu</li>
+{% endblock %}
+
+{% block extra_css %}<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.2rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+
+.op-refus { display: flex; align-items: flex-start; gap: .7rem; padding: 1rem 1.2rem; border-radius: .9rem; background: rgba(239,68,68,.1); border-left: 4px solid #ef4444; margin-bottom: 1.1rem; }
+.op-refus i { font-size: 1.2rem; color: #ef4444; margin-top: .1rem; }
+.op-refus-titre { font-weight: 800; color: var(--text-primary); font-size: .93rem; }
+.op-refus-texte { font-size: .85rem; color: var(--text-secondary); line-height: 1.55; margin-top: .25rem; }
+
+.op-fiche { font-size: .85rem; color: var(--text-secondary); line-height: 1.75; }
+.op-fiche strong { color: var(--text-primary); }
+</style>{% endblock %}
+
+{% block content %}
+
+{% if refus %}
+  <div class="op-refus">
+    <i class="bi bi-lock-fill"></i>
+    <div>
+      <div class="op-refus-titre">Le bloc est fermé tant que ce n'est pas réglé</div>
+      <div class="op-refus-texte">
+        {{ refus }}
+        {% if 'paiement.add' in user_permissions and paiement.facture %}
+          <br>
+          <a class="btn-c btn-primary-c btn-sm mt-2"
+             href="{% url 'facturation:paiement_ajouter' %}?facture={{ paiement.facture.pk }}">
+            <i class="bi bi-cash-coin"></i> Encaisser maintenant
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="form-section">
+  <div class="form-section-hdr">
+    <span class="form-section-ico" style="color:#3b82f6;background:rgba(59,130,246,.12)"><i class="bi bi-clipboard2-pulse"></i></span>
+    <div>
+      <div class="form-section-title">L'intervention</div>
+      <div class="form-section-sub">{{ operation.get_statut_display }}</div>
+    </div>
+  </div>
+
+  <div class="op-fiche">
+    <strong>{{ operation.patient }}</strong><br>
+    {{ operation.type_operation }}
+    {% if operation.date %} — prévue le {{ operation.date|date:"d/m/Y" }}{% endif %}<br>
+    {% if operation.chirurgien %}
+      Chirurgien : Dr. {{ operation.chirurgien.nom }} {{ operation.chirurgien.prenom }}<br>
+    {% endif %}
+    {% if operation.motif %}Indication : {{ operation.motif }}<br>{% endif %}
+    {% if paiement.facture %}
+      FAC-{{ paiement.facture.pk|stringformat:"04d" }} — {{ paiement.libelle }}
+    {% endif %}
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-pencil-square"></i></span>
+      <div>
+        <div class="form-section-title">Compte rendu opératoire</div>
+        <div class="form-section-sub">Ce que le chirurgien consigne après l'intervention</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="f-label">Compte rendu</label>
+        <textarea name="compte_rendu" class="f-input" rows="8"
+                  {% if refus %}disabled{% endif %}
+                  placeholder="Déroulement, constatations, suites immédiates…">{{ operation.compte_rendu }}</textarea>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Statut</label>
+        <select name="statut" class="f-input f-select" {% if refus %}disabled{% endif %}>
+          {% for code, libelle in operation.STATUT_CHOICES %}
+            <option value="{{ code }}" {% if operation.statut == code %}selected{% endif %}>{{ libelle }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:operations' %}" class="btn-c btn-outline-c">
+      <i class="bi bi-arrow-left"></i> Retour
+    </a>
+    {% if not refus %}
+      <button type="submit" class="btn-c btn-primary-c">
+        <i class="bi bi-check-lg"></i> Enregistrer le compte rendu
+      </button>
+    {% endif %}
+  </div>
+</form>
+
+{% endblock %}

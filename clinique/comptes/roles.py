@@ -39,6 +39,10 @@ PERMISSIONS = [
     ('examen.change', 'Modifier un examen'),
     ('examen.delete', 'Supprimer un examen'),
 
+    ('operation.view', 'Consulter les operations'),
+    ('operation.add', 'Programmer une operation'),
+    ('operation.realiser', 'Realiser une operation et consigner le compte rendu'),
+
     ('resultat.view', 'Consulter les resultats'),
     ('resultat.add', 'Enregistrer des resultats'),
     ('resultat.transmettre', 'Transmettre les resultats au medecin'),
@@ -87,6 +91,7 @@ ROLE_PERMISSIONS = {
         'diagnostic.add',
         'ordonnance.view', 'ordonnance.add', 'ordonnance.delete',
         'examen.view', 'examen.demander',
+        'operation.view', 'operation.add', 'operation.realiser',
         'resultat.view',
         'traitement.view', 'traitement.add',
         'hospitalisation.view', 'hospitalisation.add',
@@ -109,6 +114,7 @@ ROLE_PERMISSIONS = {
         'patient.view', 'patient.add', 'patient.change',
         'rdv.view', 'rdv.add', 'rdv.change', 'rdv.delete',
         'hospitalisation.view', 'hospitalisation.add', 'hospitalisation.change',
+        'operation.view',
         'facture.view', 'facture.add', 'facture.change',
         'paiement.view', 'paiement.add', 'paiement.change',
         'tarif.view', 'tarif.add',

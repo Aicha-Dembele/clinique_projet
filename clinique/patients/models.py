@@ -12,6 +12,14 @@ class Patient(models.Model):
     photo = models.ImageField(upload_to='patients/photos/', null=True, blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
 
+    # Admission d'urgence : un blessé inconscient n'a ni nom, ni adresse, ni
+    # e-mail. On l'enregistre quand même, sous une identité provisoire, et ce
+    # drapeau dit partout que ces informations restent à compléter — à ne pas
+    # confondre avec une fiche mal remplie.
+    identite_provisoire = models.BooleanField(
+        "identité provisoire", default=False,
+        help_text="Patient admis en urgence sans pouvoir être identifié.")
+
     # Assurance maladie du patient (ex : AMO). Appliquée automatiquement
     # à ses factures, où le taux/l'assurance restent modifiables.
     assurance = models.ForeignKey(

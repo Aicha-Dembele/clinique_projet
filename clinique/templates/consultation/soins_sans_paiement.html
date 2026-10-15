@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg{% endblock %}
+{% block title %}Soins accordés sans paiement{% endblock %}
+{% block nav_urgence %}active{% endblock %}
+{% block page_title %}Soins accordés sans paiement{% endblock %}
+{% block page_heading %}Soins accordés sans paiement{% endblock %}
+
+{% block extra_css %}<style>
+.ssp-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .9rem; margin-bottom: 1.3rem; }
+.ssp-chiffre { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.1rem 1.3rem; box-shadow: var(--shadow-sm); }
+.ssp-chiffre .valeur { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ssp-chiffre .intitule { font-size: .75rem; color: var(--text-muted); margin-top: .25rem; }
+.ssp-chiffre.alerte { border-left: 3px solid #ef4444; }
+.ssp-chiffre.alerte .valeur { color: #ef4444; }
+
+.ssp-carte { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 1.2rem; }
+.ssp-carte h2 { font-size: 1rem; font-weight: 800; color: var(--text-primary); padding: 1rem 1.3rem; margin: 0; border-bottom: 1px solid var(--card-border); }
+
+.ssp-ligne { padding: 1rem 1.3rem; border-bottom: 1px solid var(--card-border); }
+.ssp-ligne:last-child { border-bottom: none; }
+.ssp-entete { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.ssp-patient { font-size: .95rem; font-weight: 800; color: var(--text-primary); }
+.ssp-du { font-size: 1.05rem; font-weight: 800; color: #ef4444; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ssp-motif { font-size: .86rem; color: var(--text-secondary); line-height: 1.5; margin: .45rem 0 .3rem; }
+.ssp-meta { font-size: .76rem; color: var(--text-muted); line-height: 1.6; }
+.ssp-meta strong { color: var(--text-secondary); }
+.ssp-actions { margin-top: .65rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.ssp-provisoire { display: inline-block; padding: .1rem .45rem; border-radius: 999px; font-size: .67rem; font-weight: 800; background: rgba(245,158,11,.16); color: #b45309; margin-left: .35rem; }
+
+.ssp-vide { padding: 2.6rem 1.5rem; text-align: center; color: var(--text-muted); }
+.ssp-vide i { font-size: 2.1rem; opacity: .35; display: block; margin-bottom: .7rem; }
+
+.ssp-note { font-size: .78rem; color: var(--text-muted); display: flex; align-items: flex-start; gap: .45rem; margin-top: .9rem; line-height: 1.55; }
+</style>{% endblock %}
+
+{% block content %}
+
+<div class="ssp-chiffres">
+  <div class="ssp-chiffre {% if en_cours %}alerte{% endif %}">
+    <div class="valeur">{{ en_cours|length }}</div>
+    <div class="intitule">Soin{{ en_cours|length|pluralize }} en attente de règlement</div>
+  </div>
+  <div class="ssp-chiffre {% if total_differe %}alerte{% endif %}">
+    <div class="valeur">{{ total_differe|floatformat:0 }}</div>
+    <div class="intitule">FCFA différés</div>
+  </div>
+  <div class="ssp-chiffre">
+    <div class="valeur">{{ a_identifier }}</div>
+    <div class="intitule">Identité{{ a_identifier|pluralize:"s" }} à compléter</div>
+  </div>
+</div>
+
+<div class="ssp-carte">
+  <h2>En attente de règlement</h2>
+  {% for d in en_cours %}
+    <div class="ssp-ligne">
+      <div class="ssp-entete">
+        <div class="ssp-patient">
+          {{ d.facture.patient }}
+          {% if d.facture.patient.identite_provisoire %}
+            <span class="ssp-provisoire">IDENTITÉ PROVISOIRE</span>
+          {% endif %}
+        </div>
+        <div class="ssp-du">{{ d.montant_differe|floatformat:0 }} FCFA</div>
+      </div>
+
+      <p class="ssp-motif">{{ d.motif_complet }}</p>
+
+      <div class="ssp-meta">
+        Admis le {{ d.date|date:"d/m/Y à H:i" }}
+        {% if d.accordee_par %} par {{ d.accordee_par.username }}{% endif %}
+        — FAC-{{ d.facture.pk|stringformat:"04d" }}
+        {% if d.accompagnant_complet or d.accompagnant_telephone %}
+          <br>À rappeler : <strong>{{ d.accompagnant_complet|default:"accompagnant" }}</strong>
+          {% if d.accompagnant_telephone %} — {{ d.accompagnant_telephone }}{% endif %}
+        {% else %}
+          <br><em>Aucun accompagnant enregistré.</em>
+        {% endif %}
+      </div>
+
+      <div class="ssp-actions">
+        {% if 'paiement.add' in user_permissions %}
+          <a class="btn-c btn-primary-c btn-sm"
+             href="{% url 'facturation:paiement_ajouter' %}?facture={{ d.facture.pk }}">
+            <i class="bi bi-cash-coin"></i> Encaisser
+          </a>
+        {% endif %}
+        {% if d.facture.patient.identite_provisoire and 'patient.change' in user_permissions %}
+          <a class="btn-c btn-outline-c btn-sm"
+             href="{% url 'patients:modifier' d.facture.patient.pk %}">
+            <i class="bi bi-person-check"></i> Compléter l'identité
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="ssp-vide">
+      <i class="bi bi-check2-circle"></i>
+      Aucun soin en attente de règlement.
+    </div>
+  {% endfor %}
+</div>
+
+{% if reglees %}
+  <div class="ssp-carte">
+    <h2>Régularisés</h2>
+    {% for d in reglees %}
+      <div class="ssp-ligne">
+        <div class="ssp-entete">
+          <div class="ssp-patient">{{ d.facture.patient }}</div>
+          <span class="etiquette etiquette-ok">Réglé</span>
+        </div>
+        <div class="ssp-meta">
+          Admis le {{ d.date|date:"d/m/Y" }} — FAC-{{ d.facture.pk|stringformat:"04d" }}
+          — {{ d.motif_complet|truncatewords:12 }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<p class="ssp-note">
+  <i class="bi bi-shield-check"></i>
+  Une dérogation d'urgence ne supprime pas la dette, elle la reporte. Chaque
+  admission porte le nom de celui qui l'a accordée et le motif invoqué, et
+  reste inscrite ici jusqu'au règlement complet.
+</p>
+
+{% endblock %}

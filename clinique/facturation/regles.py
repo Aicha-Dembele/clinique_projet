@@ -33,6 +33,7 @@ from .models import Facture
 ACTES_PREPAYES = {
     'rendez_vous':     'la consultation',
     'examen':          "l'examen",
+    'operation':       "l'opération",
     'hospitalisation': "l'hospitalisation",
 }
 
@@ -57,9 +58,9 @@ def _db(acte):
 def facture_de(lien, acte):
     """Facture rattachée à cet acte, ou None.
 
-    `lien` est le nom du champ de Facture : 'rendez_vous', 'examen' ou
-    'hospitalisation'. On prend la dernière créée : en cas de doublon
-    accidentel, c'est celle-là qui fait foi.
+    `lien` est le nom du champ de Facture : 'rendez_vous', 'examen',
+    'operation' ou 'hospitalisation'. On prend la dernière créée : en cas de
+    doublon accidentel, c'est celle-là qui fait foi.
     """
     if acte is None or acte.pk is None:
         return None
@@ -144,12 +145,23 @@ def blocage(lien, acte):
                 f"passez d'abord par la réception.")
 
     if not facture.est_reglee():
+        # Admission d'urgence : le soin passe avant l'encaissement. La dette
+        # n'est pas effacée pour autant — la facture reste due et reparaît
+        # dans « Soins accordés sans paiement » jusqu'à son règlement.
+        if _derogee(facture):
+            return None
+
         return (f"FAC-{facture.pk:04d} n'est pas réglée — il reste "
                 f"{fcfa(facture.montant_restant())} à encaisser sur "
                 f"{fcfa(facture.part_patient())} à la charge du patient. "
                 f"{nom.capitalize()} ne peut pas être réalisé avant le paiement.")
 
     return None
+
+
+def _derogee(facture):
+    """Cette facture porte-t-elle une dérogation d'urgence ?"""
+    return hasattr(facture, 'derogation')
 
 
 # ── Qui encaisse quoi : deux caisses séparées ────────────────────

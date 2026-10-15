@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib import messages
@@ -13,6 +15,7 @@ from .models import (
     ExamenMedical,
     ResultatExamen,
     Ordonnance,
+    Operation,
     Hospitalisation,
     Traitement,
     AdministrationTraitement,
@@ -28,7 +31,8 @@ from comptes.recherche import termes_q, nouveau_en_tete
 # factures des leur enregistrement, et ne peuvent etre realises qu'une fois la
 # facture reglee. La pharmacie fait exception (cf. facturation/regles.py).
 from facturation.regles import (
-    facturer, blocage, factures_par_acte, etat_paiement, fcfa, peut_encaisser)
+    facturer, blocage, facture_de, factures_par_acte, etat_paiement, fcfa,
+    peut_encaisser)
 
 
 def _get_personnel(user, attr):
@@ -1305,13 +1309,14 @@ def hospitalisations(request):
         'service_filtre':   service_filtre,
         'q':                q,
         'etages':           etages,
-        'total_chambres':   40,
+        'total_chambres':   30,
     })
 
 
 def _nom_chambre(type_chambre):
-    """Libellé lisible d'un type de chambre (VIP / Double / Simple)."""
-    return {'vip': 'VIP', 'double': 'Double', 'simple': 'Simple'}.get(
+    """Libellé lisible d'un type de chambre (urgence / VIP / Double / Simple)."""
+    return {'vip': 'VIP', 'double': 'Double', 'simple': 'Simple',
+            'urgence': "d'urgence"}.get(
         (type_chambre or '').strip().lower(), (type_chambre or '').capitalize())
 
 
@@ -1331,7 +1336,7 @@ def _chambre_pleine(numero_chambre, type_chambre, exclure_pk=None):
 
 
 def _chambres_context(exclure_pk=None):
-    """Liste des 40 chambres du plan avec leur occupation, pour le menu déroulant du formulaire."""
+    """Liste des 30 chambres du plan avec leur occupation, pour le menu déroulant du formulaire."""
     chambres = []
     for numero, type_ in Hospitalisation.plan_chambres():
         cap = Hospitalisation.capacite_pour(type_)
@@ -1371,7 +1376,9 @@ def hospit_ajouter(request):
         if not type_chambre:
             erreur = f"La chambre {numero} n'existe pas dans le plan de l'établissement."
         else:
-            erreur = _chambre_pleine(numero, type_chambre)
+            erreur = (Hospitalisation.blocage_chambre_urgence(
+                          type_chambre, request.POST.get('etat_clinique'))
+                      or _chambre_pleine(numero, type_chambre))
         if erreur:
             messages.error(request, erreur)
             return render(request, 'consultation/hospit_form.html',
@@ -1417,7 +1424,10 @@ def hospit_modifier(request, pk):
         if not type_chambre:
             erreur = f"La chambre {numero} n'existe pas dans le plan de l'établissement."
         else:
-            erreur = _chambre_pleine(numero, type_chambre, exclure_pk=hospit.pk)
+            erreur = (Hospitalisation.blocage_chambre_urgence(
+                          type_chambre, request.POST.get('etat_clinique'))
+                      or _chambre_pleine(numero, type_chambre,
+                                         exclure_pk=hospit.pk))
         if erreur:
             messages.error(request, erreur)
             return render(request, 'consultation/hospit_form.html',
@@ -1774,6 +1784,293 @@ def reception(request):
         # On arrive parfois ici juste apres avoir cree la fiche : le patient
         # est alors deja choisi, il ne reste que le rendez-vous et la caisse.
         'patient_pre': request.GET.get('patient', ''),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Le bloc opératoire
+#
+#  Une opération suit exactement le protocole des autres actes : elle est
+#  facturée dès sa programmation, à son tarif, et ne peut être RÉALISÉE
+#  qu'une fois la facture réglée. L'exception reste l'admission d'urgence,
+#  qui lève le blocage sans effacer la dette — une césarienne vitale
+#  n'attend pas que la famille trouve 200 000 FCFA.
+# ─────────────────────────────────────────────────────────────────
+
+@permission_required('operation.view')
+def operations(request):
+    """Le programme opératoire, avec l'état de paiement de chaque acte."""
+    qs = (Operation.objects
+          .select_related('patient', 'chirurgien')
+          .order_by('-date', '-pk'))
+
+    # Un chirurgien ne voit que ses propres interventions : même
+    # cloisonnement que pour les traitements et les ordonnances.
+    if get_role(request.user) == 'medecin':
+        medecin = _get_personnel(request.user, 'medecin')
+        qs = qs.filter(chirurgien=medecin) if medecin else qs.none()
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom',
+                                'type_operation', 'motif'))
+
+    liste = list(qs[:200])
+    etats = factures_par_acte('operation', liste)
+
+    return render(request, 'consultation/operations.html', {
+        'operations': [{'operation': o, 'paiement': etats.get(o.pk)} for o in liste],
+        'q': q,
+        'nouveau': request.GET.get('new'),
+    })
+
+
+@permission_required('operation.add')
+def operation_ajouter(request):
+    """Programmer une intervention. La facture part avec, comme partout."""
+    if request.method == 'POST':
+        try:
+            chirurgien_id = request.POST.get('chirurgien') or None
+            if not chirurgien_id:
+                medecin = _get_personnel(request.user, 'medecin')
+                chirurgien_id = medecin.id if medecin else None
+
+            type_operation = (request.POST.get('type_operation') or '').strip()
+            if not type_operation:
+                raise ValueError("Précisez le type d'intervention.")
+
+            operation = Operation.objects.create(
+                patient_id=request.POST['patient'],
+                chirurgien_id=chirurgien_id,
+                type_operation=type_operation,
+                motif=request.POST.get('motif', ''),
+                date=request.POST.get('date') or None,
+            )
+            facture = facturer(operation.patient, 'operation', operation)
+
+            messages.success(
+                request,
+                f'Intervention programmée — FAC-{facture.pk:04d} établie : '
+                f'{fcfa(facture.montant_restant())} à régler à la réception '
+                f'avant le passage au bloc.')
+
+            if (not facture.est_reglee()
+                    and peut_encaisser(facture, get_role(request.user))):
+                return redirect('facturation:detail', pk=facture.pk)
+            return redirect(
+                f"{reverse('consultation:operations')}?new={operation.pk}")
+        except Exception as e:
+            messages.error(request, f'Erreur : {e}')
+
+    from facturation.models import Tarif
+    return render(request, 'consultation/operation_form.html', {
+        'patients': _patients_du_medecin_courant(request),
+        'chirurgiens': Medecin.objects.all().order_by('nom'),
+        'tarifs': Tarif.objects.filter(type_service='operation').order_by('specialite'),
+        'action': 'Programmer',
+    })
+
+
+@permission_required('operation.realiser')
+def operation_realiser(request, pk):
+    """Consigner le compte rendu : c'est ici que le blocage s'applique.
+
+    On programme et on facture librement ; c'est le passage au bloc qui est
+    conditionné au paiement. Une intervention admise en urgence passe quand
+    même — `blocage()` tient compte de la dérogation.
+    """
+    # Même convention que partout dans le projet : on ne charge jamais un
+    # objet par son seul numéro, on remonte au propriétaire. L'intervention
+    # d'un confrère donne une 404, pas une page d'erreur bavarde.
+    qs = Operation.objects.select_related('patient', 'chirurgien')
+    if get_role(request.user) == 'medecin':
+        medecin = _get_personnel(request.user, 'medecin')
+        qs = qs.filter(chirurgien=medecin) if medecin else qs.none()
+    operation = get_object_or_404(qs, pk=pk)
+
+    refus = blocage('operation', operation)
+
+    if request.method == 'POST':
+        if refus:
+            messages.error(request, refus)
+        else:
+            operation.compte_rendu = request.POST.get('compte_rendu', '')
+            operation.statut = request.POST.get('statut', 'terminee')
+            operation.save()
+            JournalAudit.enregistrer(
+                request.user, 'modification', operation,
+                details=f'Compte rendu operatoire — {operation.type_operation}')
+            messages.success(request, 'Compte rendu enregistré.')
+            return redirect('consultation:operations')
+
+    return render(request, 'consultation/operation_realiser.html', {
+        'operation': operation,
+        'refus': refus,
+        'paiement': etat_paiement(facture_de('operation', operation)),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Admission d'urgence
+#
+#  La règle de la clinique est « on paie avant d'être soigné ». Elle n'a pas
+#  de sens face à un blessé : on admet d'abord, on encaisse quand un proche
+#  arrive. Deux obstacles levés ici, et un seul ajouté.
+#
+#  1. L'IDENTITÉ. Huit champs sont obligatoires pour créer un patient, dont
+#     l'adresse e-mail. Un homme inconscient amené par des passants n'en a
+#     aucun. On l'enregistre donc sous une identité PROVISOIRE, à compléter.
+#
+#  2. LE PAIEMENT. Une Derogation suspend le blocage pour cette facture.
+#     Elle ne l'efface pas : la facture reste due.
+#
+#  3. CE QU'ON EXIGE EN ÉCHANGE : un motif. Sans lui, pas d'admission
+#     d'urgence. C'est la seule barrière, et elle ne coûte aucune seconde.
+# ─────────────────────────────────────────────────────────────────
+
+@role_required('admin', 'receptionniste')
+def admission_urgence(request):
+    """Cas d'utilisation « Admettre un patient en urgence ».
+
+    Accessible à la réception, volontairement : exiger la signature d'un
+    médecin avant d'admettre reviendrait à faire attendre quelqu'un qui
+    saigne. Le contrôle n'est pas d'empêcher avant, mais de tout rendre
+    visible aussitôt — motif, nom de celui qui admet, facture qui reste due,
+    et l'écran « Soins accordés sans paiement » qui ne lâche rien.
+    """
+    from django.db import transaction
+    from facturation.models import Derogation
+
+    if request.method == 'POST':
+        try:
+            motif = (request.POST.get('motif') or '').strip()
+            precision = (request.POST.get('motif_precision') or '').strip()
+            if not motif:
+                raise ValueError(
+                    "Le motif de l'urgence est obligatoire : c'est lui qui "
+                    "justifie de soigner avant d'encaisser.")
+            # « Autre » sans explication ne justifie rien : autant n'avoir
+            # rien demandé. C'est le seul cas où la précision est exigée.
+            if motif == 'autre' and not precision:
+                raise ValueError(
+                    "Vous avez choisi « Autre » : précisez de quelle urgence "
+                    "il s'agit.")
+
+            with transaction.atomic():
+                patient = _patient_urgence(request)
+
+                rdv = Rendez_vous.objects.create(
+                    patient=patient,
+                    medecin_id=request.POST['medecin'],
+                    date=timezone.now(),
+                    statut='programme',
+                )
+                facture = facturer(patient, 'rendez_vous', rdv)
+
+                derogation = Derogation.objects.create(
+                    facture=facture,
+                    accordee_par=request.user,
+                    motif=motif,
+                    motif_precision=precision,
+                    accompagnant_nom=request.POST.get('accompagnant_nom', '').strip(),
+                    accompagnant_lien=request.POST.get('accompagnant_lien', ''),
+                    accompagnant_telephone=request.POST.get(
+                        'accompagnant_telephone', '').strip(),
+                )
+
+            JournalAudit.enregistrer(
+                request.user, 'creation', derogation,
+                details=(f'Admission d\'urgence — {patient} — '
+                         f'{fcfa(facture.montant_restant())} differes. '
+                         f'Motif : {derogation.motif_complet()}'))
+
+            messages.success(
+                request,
+                f'{patient} admis en urgence. Le médecin peut le recevoir '
+                f'immédiatement. {fcfa(facture.montant_restant())} restent dus '
+                f'— FAC-{facture.pk:04d}.')
+            return redirect('consultation:soins_sans_paiement')
+
+        except Exception as e:
+            messages.error(request, f'Erreur : {e}')
+
+    from facturation.models import Derogation as _Derogation
+    return render(request, 'consultation/admission_urgence.html', {
+        'patients': Patient.objects.all().order_by('nom', 'prenom'),
+        'medecins': Medecin.objects.all().order_by('nom'),
+        'motifs': _Derogation.MOTIF_CHOICES,
+        'liens': _Derogation.LIEN_CHOICES,
+    })
+
+
+def _patient_urgence(request):
+    """Le patient admis : un dossier existant, ou une identité provisoire.
+
+    Trois cas, du plus connu au moins connu :
+      • un patient déjà enregistré ;
+      • un patient qu'on sait nommer, sans ses coordonnées ;
+      • un inconnu — on ne retient que le sexe et un âge approximatif.
+    """
+    from datetime import date as date_type
+
+    choix = request.POST.get('identite', 'inconnu')
+
+    if choix == 'existant':
+        return get_object_or_404(Patient, pk=request.POST['patient'])
+
+    sexe = request.POST.get('sexe', '')
+
+    if choix == 'nomme':
+        nom = (request.POST.get('nom') or '').strip()
+        prenom = (request.POST.get('prenom') or '').strip()
+        if not nom:
+            raise ValueError("Donnez au moins le nom, ou choisissez « inconnu ».")
+    else:
+        # Inconnu : un numéro d'ordre suffit à le distinguer, et l'étiquette
+        # dit franchement ce qu'on ignore plutôt que d'inventer un nom.
+        nom = 'INCONNU'
+        prenom = f'n°{Patient.objects.filter(identite_provisoire=True).count() + 1}'
+
+    # Une date de naissance est exigée par la base. À partir d'un âge
+    # approximatif, on pose le 1er janvier de l'année correspondante : le
+    # drapeau « identité provisoire » dit que ce n'est qu'un repère.
+    try:
+        age = int(request.POST.get('age_approximatif') or 0)
+    except ValueError:
+        age = 0
+    annee = date_type.today().year - age if 0 < age < 120 else 1900
+
+    return Patient.objects.create(
+        nom=nom, prenom=prenom, sexe=sexe,
+        date_naissance=date_type(annee, 1, 1),
+        adresse='', telephone=request.POST.get('telephone', '').strip(),
+        email='', numero_urgence=request.POST.get(
+            'accompagnant_telephone', '').strip(),
+        identite_provisoire=True,
+    )
+
+
+@permission_required('facture.view')
+def soins_sans_paiement(request):
+    """Ce que l'urgence a laissé ouvert : qui a été soigné sans payer.
+
+    Sans cet écran, une dérogation est un trou dans la caisse. Avec lui,
+    c'est une créance suivie, avec le nom de l'accompagnant à rappeler.
+    """
+    from facturation.models import Derogation
+
+    derogations = (Derogation.objects
+                   .select_related('facture__patient', 'accordee_par')
+                   .order_by('-date'))
+
+    en_cours = [d for d in derogations if d.est_active()]
+    reglees = [d for d in derogations if not d.est_active()]
+
+    return render(request, 'consultation/soins_sans_paiement.html', {
+        'en_cours': en_cours,
+        'reglees': reglees[:20],
+        'total_differe': sum((d.montant_differe() for d in en_cours), Decimal('0')),
+        'a_identifier': Patient.objects.filter(identite_provisoire=True).count(),
     })
 
 

@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg{% endblock %}
+{% block title %}Opérations{% endblock %}
+{% block nav_operations %}active{% endblock %}
+{% block page_title %}Bloc opératoire{% endblock %}
+{% block page_heading %}Programme opératoire{% endblock %}
+
+{% block extra_css %}<style>
+.op-barre { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; }
+.op-carte { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; overflow: hidden; box-shadow: var(--shadow-sm); }
+
+.op-ligne { padding: 1rem 1.3rem; border-bottom: 1px solid var(--card-border); }
+.op-ligne:last-child { border-bottom: none; }
+.op-ligne.nouveau { background: rgba(13,148,136,.07); }
+
+.op-entete { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.op-type { font-size: .98rem; font-weight: 800; color: var(--text-primary); }
+.op-patient { font-size: .85rem; color: var(--text-secondary); }
+.op-meta { font-size: .76rem; color: var(--text-muted); margin-top: .35rem; line-height: 1.6; }
+.op-actions { margin-top: .6rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.op-vide { padding: 2.8rem 1.5rem; text-align: center; color: var(--text-muted); }
+.op-vide i { font-size: 2.1rem; opacity: .35; display: block; margin-bottom: .7rem; }
+
+.op-statut { padding: .1rem .5rem; border-radius: 999px; font-size: .68rem; font-weight: 800; }
+.op-statut-programmee { background: rgba(59,130,246,.14); color: #2563eb; }
+.op-statut-en_cours   { background: rgba(245,158,11,.16); color: #b45309; }
+.op-statut-terminee   { background: rgba(16,185,129,.14); color: #059669; }
+.op-statut-annulee    { background: rgba(148,163,184,.16); color: var(--text-muted); }
+</style>{% endblock %}
+
+{% block content %}
+
+<div class="op-barre">
+  <form method="get" class="d-flex gap-2">
+    <input type="search" name="q" value="{{ q }}" class="f-input"
+           placeholder="Patient, intervention, motif…" style="min-width:240px">
+    <button type="submit" class="btn-c btn-outline-c"><i class="bi bi-search"></i></button>
+  </form>
+  {% if 'operation.add' in user_permissions %}
+    <a href="{% url 'consultation:operation_ajouter' %}" class="btn-c btn-primary-c">
+      <i class="bi bi-plus-lg"></i> Programmer une intervention
+    </a>
+  {% endif %}
+</div>
+
+<div class="op-carte">
+  {% for item in operations %}
+    <div class="op-ligne {% if nouveau and item.operation.pk|stringformat:'s' == nouveau %}nouveau{% endif %}">
+      <div class="op-entete">
+        <div>
+          <div class="op-type">
+            {{ item.operation.type_operation }}
+            <span class="op-statut op-statut-{{ item.operation.statut }}">
+              {{ item.operation.get_statut_display }}
+            </span>
+          </div>
+          <div class="op-patient">{{ item.operation.patient }}</div>
+        </div>
+        <div>
+          {% if item.paiement.reglee %}
+            <span class="etiquette etiquette-ok">{{ item.paiement.libelle }}</span>
+          {% elif item.paiement.facture %}
+            <span class="etiquette etiquette-critique">{{ item.paiement.libelle }}</span>
+          {% else %}
+            <span class="etiquette">Non facturé</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="op-meta">
+        {% if item.operation.date %}Prévue le {{ item.operation.date|date:"d/m/Y" }}{% else %}Date à fixer{% endif %}
+        {% if item.operation.chirurgien %} — Dr. {{ item.operation.chirurgien.nom }} {{ item.operation.chirurgien.prenom }}{% endif %}
+        {% if item.operation.motif %}<br>{{ item.operation.motif }}{% endif %}
+      </div>
+
+      <div class="op-actions">
+        {% if 'operation.realiser' in user_permissions %}
+          <a class="btn-c btn-outline-c btn-sm"
+             href="{% url 'consultation:operation_realiser' item.operation.pk %}">
+            <i class="bi bi-clipboard2-pulse"></i>
+            {% if item.operation.compte_rendu %}Voir le compte rendu{% else %}Réaliser{% endif %}
+          </a>
+        {% endif %}
+        {% if item.paiement.facture and not item.paiement.reglee and 'paiement.add' in user_permissions %}
+          <a class="btn-c btn-primary-c btn-sm"
+             href="{% url 'facturation:paiement_ajouter' %}?facture={{ item.paiement.facture.pk }}">
+            <i class="bi bi-cash-coin"></i> Encaisser
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="op-vide">
+      <i class="bi bi-clipboard2-pulse"></i>
+      Aucune intervention programmée.
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

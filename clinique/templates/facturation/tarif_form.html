@@ -152,6 +152,7 @@
 <script>
 const CONSULT_TYPES = ['Généraliste','Cardiologie','Dermatologie','Pédiatrie','Chirurgie','Neurologie','Gynécologie','Orthopédie','Ophtalmologie','ORL','Radiologie','Anesthésie','Psychiatrie','Urologie','Endocrinologie','Rhumatologie'];
 const EXAMEN_TYPES  = ['Radiographie','Échographie','Scanner','IRM','Prise de sang','Analyse d\'urine','Électrocardiogramme (ECG)','Endoscopie'];
+const OPERATION_TYPES = ['Césarienne','Accouchement assisté','Appendicectomie','Hernie','Chirurgie abdominale','Petite chirurgie','Fracture'];
 const INIT_SPECIALITE = "{{ tarif.specialite|default:''|escapejs }}";
 let specialiteInit = true;
 
@@ -190,7 +191,9 @@ function specCard(value, label, meta, checked) {
 
 function buildSpecialiteCards(type) {
   const grid = document.getElementById('specialite-grid');
-  const list = (type === 'examen') ? EXAMEN_TYPES : CONSULT_TYPES;
+  const list = (type === 'examen') ? EXAMEN_TYPES
+             : (type === 'operation') ? OPERATION_TYPES
+             : CONSULT_TYPES;
   const current = specialiteInit ? INIT_SPECIALITE : '';
   const isCustom = current && !list.includes(current);
   let html = '';
@@ -234,6 +237,9 @@ function onTypeChange() {
     if (type === 'consultation') {
       lblSpec.textContent  = 'Spécialité (consultation)';
       hintText.textContent = 'Doit correspondre à la spécialité du médecin pour appliquer ce tarif.';
+    } else if (type === 'operation') {
+      lblSpec.textContent  = "Type d'intervention";
+      hintText.textContent = "Le tarif du bloc opératoire. Les nuits d'hospitalisation se facturent à part.";
     } else {
       lblSpec.textContent  = "Type d'examen";
       hintText.textContent = "Doit correspondre au type d'examen saisi pour appliquer ce tarif.";

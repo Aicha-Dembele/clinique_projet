@@ -18,7 +18,21 @@ class Tarif(models.Model):
     TYPE_CHOICES = [
         ('consultation',    'Consultation'),
         ('examen',          'Examen médical'),
+        ('operation',       'Opération chirurgicale'),
         ('hospitalisation', 'Hospitalisation (par nuit)'),
+    ]
+
+    #: Interventions courantes d'une clinique générale, proposées à la saisie
+    #: d'un tarif d'opération. La liste n'est pas fermée : le champ reste
+    #: libre pour une intervention qu'elle ne prévoit pas.
+    TYPE_OPERATION_CHOICES = [
+        ('Césarienne',              'Césarienne'),
+        ('Accouchement assisté',    'Accouchement assisté'),
+        ('Appendicectomie',         'Appendicectomie'),
+        ('Hernie',                  'Cure de hernie'),
+        ('Chirurgie abdominale',    'Chirurgie abdominale'),
+        ('Petite chirurgie',        'Petite chirurgie / sutures'),
+        ('Fracture',                'Réduction de fracture'),
     ]
 
     # Types de chambres prédéfinis pour l'hospitalisation
@@ -35,6 +49,7 @@ class Tarif(models.Model):
     type_service = models.CharField(max_length=20, choices=TYPE_CHOICES)
     # consultation  → specialite = spécialité médecin  (ex: "Cardiologie")
     # examen        → specialite = type d'examen        (ex: "Radiologie")
+    # operation     → specialite = type d'intervention  (ex: "Césarienne")
     # hospitalisation → specialite = type de chambre   (ex: "Standard", "VIP")
     specialite = models.CharField(
         max_length=100, null=True, blank=True,
@@ -98,6 +113,7 @@ class Facture(models.Model):
     # paiement anticipé. Plus proposé à la création.
     consultation    = models.ForeignKey("consultation.Consultation",  on_delete=models.SET_NULL, null=True, blank=True)
     examen          = models.ForeignKey("consultation.ExamenMedical", on_delete=models.SET_NULL, null=True, blank=True)
+    operation       = models.ForeignKey("consultation.Operation", on_delete=models.SET_NULL, null=True, blank=True)
     hospitalisation = models.ForeignKey("consultation.Hospitalisation", on_delete=models.SET_NULL, null=True, blank=True)
     ordonnance      = models.ForeignKey("consultation.Ordonnance", on_delete=models.SET_NULL, null=True, blank=True,
                                         help_text="Facture des médicaments dispensés pour cette ordonnance.")
@@ -321,6 +337,23 @@ class Facture(models.Model):
                 quantite=1,
             ))
 
+        # ── OPÉRATION CHIRURGICALE ───────────────────────────────
+        # Le bloc opératoire seul : les nuits qui suivent se facturent à
+        # part, sur la facture d'hospitalisation, et l'assurance s'applique
+        # séparément sur chacune.
+        elif self.operation:
+            o = self.operation
+            tarif_o = resolve('operation', o.type_operation)
+            prix_o = tarif_o.prix if tarif_o else Decimal('0')
+            nom_o = tarif_o.nom if tarif_o else f"Opération — {o.type_operation}"
+            lignes.append(LigneFacture(
+                facture=self,
+                description=f"{nom_o} ({o.type_operation})",
+                type_service='operation',
+                prix_unitaire=prix_o,
+                quantite=1,
+            ))
+
         # ── HOSPITALISATION ──────────────────────────────────────
         elif self.hospitalisation:
             h = self.hospitalisation
@@ -522,3 +555,114 @@ class Paiement(models.Model):
 
     def __str__(self):
         return f"{self.montant:,.0f} FCFA — {self.get_mode_paiement_display()}"
+
+class Derogation(models.Model):
+    """Un soin accordé sans paiement préalable : l'urgence vitale.
+
+    La règle de la clinique est « on paie avant d'être soigné ». Une
+    dérogation la suspend pour UNE facture, le temps qu'un proche vienne
+    régler. Elle ne l'efface pas : la facture reste due, et reparaît dans
+    « Soins accordés sans paiement » tant qu'elle n'est pas soldée.
+
+    POURQUOI LA RÉCEPTION PEUT L'ACCORDER SEULE
+    Exiger la signature d'un médecin avant d'admettre un blessé reviendrait à
+    faire attendre quelqu'un qui saigne. Le contrôle n'est donc pas d'empêcher
+    avant, mais de tout rendre visible aussitôt : motif obligatoire, nom de
+    celui qui a admis, facture qui reste due, écran de suivi permanent, et
+    trace au journal d'audit.
+    """
+
+    #: Les urgences qu'une clinique générale voit réellement arriver. Une
+    #: liste fermée vaut mieux qu'un champ libre : elle se compte, elle se
+    #: compare d'un mois à l'autre, et elle évite les « urgence » laconiques
+    #: qui ne justifient rien. « Autre » reste ouvert pour le cas imprévu.
+    MOTIF_CHOICES = [
+        ('accident_route',     'Accident de la route'),
+        ('accident_travail',   'Accident de travail'),
+        ('hemorragie',         'Hémorragie'),
+        ('detresse_respi',     'Détresse respiratoire'),
+        ('douleur_thoracique', 'Douleur thoracique'),
+        ('perte_connaissance', 'Perte de connaissance'),
+        ('convulsions',        'Convulsions'),
+        ('brulure',            'Brûlure'),
+        ('agression',          'Blessure par arme ou agression'),
+        ('intoxication',       'Intoxication / empoisonnement'),
+        ('grossesse',          'Complication de grossesse ou accouchement'),
+        ('fievre_enfant',      'Fièvre élevée chez un enfant'),
+        ('autre',              'Autre (à préciser)'),
+    ]
+
+    #: Qui a amené le patient. Le lien compte autant que le nom : on ne
+    #: rappelle pas un passant comme on rappelle un frère, et « impliqué
+    #: dans l'accident » n'est ni l'un ni l'autre — c'est souvent celui à
+    #: qui l'on demandera des comptes.
+    LIEN_CHOICES = [
+        ('famille',          'Membre de la famille'),
+        ('voisin_ami',       'Voisin ou ami'),
+        ('passant',          'Passant / inconnu'),
+        ('implique_accident', "Impliqué dans l'accident"),
+        ('collegue',         'Collègue de travail'),
+        ('secours',          'Police, pompiers ou ambulancier'),
+        ('aucun',            'Personne — patient arrivé seul'),
+        ('autre',            'Autre'),
+    ]
+
+    facture = models.OneToOneField(
+        Facture, on_delete=models.CASCADE, related_name='derogation',
+        verbose_name="facture concernée")
+    accordee_par = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True,
+        related_name='derogations_accordees', verbose_name="accordée par")
+
+    motif = models.CharField(
+        "motif de l'urgence", max_length=30, choices=MOTIF_CHOICES,
+        help_text="Ce qui justifie de soigner avant d'encaisser.")
+    motif_precision = models.TextField(
+        "précision", blank=True, default='',
+        help_text="Obligatoire si le motif est « Autre ».")
+
+    #: C'est lui qu'on appellera pour le règlement : la personne qui a amené
+    #: le patient est souvent le seul lien vers la famille.
+    accompagnant_nom = models.CharField(
+        "accompagnant", max_length=150, blank=True, default='')
+    accompagnant_lien = models.CharField(
+        "lien avec le patient", max_length=20, choices=LIEN_CHOICES,
+        blank=True, default='')
+    accompagnant_telephone = models.CharField(
+        "téléphone de l'accompagnant", max_length=20, blank=True, default='')
+
+    date = models.DateTimeField("accordée le", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "dérogation d'urgence"
+        verbose_name_plural = "dérogations d'urgence"
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"Urgence — FAC-{self.facture_id:04d}"
+
+    def motif_complet(self):
+        """Le motif tel qu'on veut le lire : la catégorie, puis la précision."""
+        libelle = self.get_motif_display()
+        precision = (self.motif_precision or '').strip()
+        if not precision:
+            return libelle
+        if self.motif == 'autre':
+            return precision
+        return f"{libelle} — {precision}"
+
+    def accompagnant_complet(self):
+        """« Oumar Traoré (membre de la famille) », ou ce qu'on en sait."""
+        nom = (self.accompagnant_nom or '').strip()
+        lien = self.get_accompagnant_lien_display() if self.accompagnant_lien else ''
+        if nom and lien:
+            return f"{nom} ({lien.lower()})"
+        return nom or lien or ''
+
+    def est_active(self):
+        """Tant que la facture n'est pas soldée, la dette court toujours."""
+        return not self.facture.est_reglee()
+
+    def montant_differe(self):
+        """Ce qui reste à récupérer auprès du patient ou de sa famille."""
+        return self.facture.montant_restant()

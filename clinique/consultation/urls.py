@@ -10,6 +10,16 @@ urlpatterns = [
     # Le tableau du jour : qui recoit qui, medecin par medecin.
     path('planning/', views.planning_jour, name='planning_jour'),
 
+    # Le bloc operatoire : programme, facture, puis realise une fois regle.
+    path('operations/', views.operations, name='operations'),
+    path('operations/ajouter/', views.operation_ajouter, name='operation_ajouter'),
+    path('operations/<int:pk>/realiser/', views.operation_realiser,
+         name='operation_realiser'),
+
+    # L'urgence : on admet d'abord, on encaisse quand la famille arrive.
+    path('urgence/', views.admission_urgence, name='admission_urgence'),
+    path('urgence/suivi/', views.soins_sans_paiement, name='soins_sans_paiement'),
+
     path('rdv/', views.rdv_liste, name='rdv_liste'),
     path('rdv/ajouter/', views.rdv_ajouter, name='rdv_ajouter'),
     path('rdv/<int:pk>/modifier/', views.rdv_modifier, name='rdv_modifier'),

@@ -1875,6 +1875,13 @@
     <a href="{% url 'consultation:planning_jour' %}" class="sb-link {% block nav_planning %}{% endblock %}">
       <i class="bi bi-calendar3-week"></i> Planning du jour
     </a>
+    {% endif %}
+    {% if 'facture.view' in user_permissions %}
+    <a href="{% url 'consultation:soins_sans_paiement' %}" class="sb-link {% block nav_urgence %}{% endblock %}">
+      <i class="bi bi-exclamation-octagon"></i> Soins sans paiement
+    </a>
+    {% endif %}
+    {% if 'rdv.view' in user_permissions %}
     <a href="{% url 'consultation:suivi' %}" class="sb-link {% block nav_suivi %}{% endblock %}">
       <i class="bi bi-clipboard2-check"></i> Suivi des consultations
       {% if consultations_en_retard %}<span class="sb-badge sb-badge-danger" title="Consultations fixées dont l'heure est dépassée">{{ consultations_en_retard }}</span>{% endif %}
@@ -1887,7 +1894,7 @@
     {% endif %}
 
     <!-- Médical -->
-    {% if 'consultation.view' in user_permissions or 'examen.view' in user_permissions or 'ordonnance.view' in user_permissions or 'hospitalisation.view' in user_permissions or 'traitement.view' in user_permissions %}
+    {% if 'consultation.view' in user_permissions or 'examen.view' in user_permissions or 'operation.view' in user_permissions or 'ordonnance.view' in user_permissions or 'hospitalisation.view' in user_permissions or 'traitement.view' in user_permissions %}
     <div class="sb-section">Médical</div>
     {% endif %}
 
@@ -1897,6 +1904,11 @@
     </a>
     {% endif %}
 
+    {% if 'operation.view' in user_permissions %}
+    <a href="{% url 'consultation:operations' %}" class="sb-link {% block nav_operations %}{% endblock %}">
+      <i class="bi bi-clipboard2-pulse"></i> Opérations
+    </a>
+    {% endif %}
     {% if 'examen.view' in user_permissions %}
     <a href="{% url 'consultation:examens' %}" class="sb-link {% block nav_examens %}{% endblock %}">
       <i class="bi bi-eyedropper"></i> Examens médicaux

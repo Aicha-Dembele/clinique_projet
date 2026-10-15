@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg{% endblock %}
+{% block title %}Programmer une intervention{% endblock %}
+{% block nav_operations %}active{% endblock %}
+{% block page_title %}Bloc opératoire{% endblock %}
+{% block page_heading %}Programmer une intervention{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:operations' %}">Opérations</a></li>
+  <li class="breadcrumb-item active">Programmer</li>
+{% endblock %}
+
+{% block extra_css %}<style>
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+.req-mark { color: #ef4444; }
+
+.op-tarifs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .6rem; }
+.op-tarif { display: block; padding: .8rem .95rem; border: 1px solid var(--card-border); border-radius: .75rem; cursor: pointer; transition: all .15s; background: var(--card-bg); }
+.op-tarif:hover { border-color: var(--primary); }
+.op-tarif input { margin-right: .4rem; }
+.op-tarif-nom { font-weight: 700; font-size: .87rem; color: var(--text-primary); }
+.op-tarif-prix { font-size: .8rem; font-weight: 800; color: var(--primary); margin-top: .25rem; margin-left: 1.25rem; font-variant-numeric: tabular-nums; }
+
+.op-rappel { font-size: .8rem; color: var(--text-muted); background: rgba(13,148,136,.06); border-left: 3px solid var(--primary); padding: .75rem .95rem; border-radius: .5rem; margin-top: 1rem; line-height: 1.55; }
+</style>{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#3b82f6;background:rgba(59,130,246,.12)"><i class="bi bi-clipboard2-pulse"></i></span>
+      <div>
+        <div class="form-section-title">L'intervention</div>
+        <div class="form-section-sub">Le tarif choisi détermine le montant de la facture</div>
+      </div>
+    </div>
+
+    <div class="op-tarifs">
+      {% for tarif in tarifs %}
+        <label class="op-tarif">
+          <input type="radio" name="type_operation" value="{{ tarif.specialite }}" required>
+          <span class="op-tarif-nom">{{ tarif.nom }}</span>
+          <div class="op-tarif-prix">{{ tarif.prix|floatformat:0 }} FCFA</div>
+        </label>
+      {% empty %}
+        <p class="discret">
+          Aucun tarif d'opération n'est enregistré. Ajoutez-en depuis
+          <a href="{% url 'facturation:tarifs' %}">l'écran Tarifs</a>.
+        </p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#10b981;background:rgba(16,185,129,.12)"><i class="bi bi-person-vcard-fill"></i></span>
+      <div>
+        <div class="form-section-title">Patient et chirurgien</div>
+        <div class="form-section-sub">Qui est opéré, et par qui</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Patient <span class="req-mark">*</span></label>
+        <select name="patient" class="f-input f-select" required>
+          <option value="">-- Choisir --</option>
+          {% for patient in patients %}
+            <option value="{{ patient.pk }}">{{ patient.nom }} {{ patient.prenom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Chirurgien</label>
+        <select name="chirurgien" class="f-input f-select">
+          <option value="">-- Moi-même --</option>
+          {% for medecin in chirurgiens %}
+            <option value="{{ medecin.pk }}">
+              Dr. {{ medecin.nom }} {{ medecin.prenom }}{% if medecin.specialite %} — {{ medecin.specialite }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Date prévue</label>
+        <input type="date" name="date" class="f-input">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Motif / indication</label>
+        <input type="text" name="motif" class="f-input"
+               placeholder="ex. Grossesse à terme, présentation par le siège">
+      </div>
+    </div>
+
+    <div class="op-rappel">
+      <strong>La facture part dès maintenant.</strong>
+      Le patient ne pourra passer au bloc qu'une fois réglée — sauf admission
+      d'urgence, qui lève le blocage sans effacer la dette.
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:operations' %}" class="btn-c btn-outline-c">
+      <i class="bi bi-x-lg"></i> Annuler
+    </a>
+    <button type="submit" class="btn-c btn-primary-c">
+      <i class="bi bi-check-lg"></i> {{ action }}
+    </button>
+  </div>
+</form>
+{% endblock %}

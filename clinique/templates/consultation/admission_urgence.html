@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% block body_class %}page-consultation-bg{% endblock %}
+{% block title %}Admission d'urgence{% endblock %}
+{% block nav_urgence %}active{% endblock %}
+{% block page_title %}Admission d'urgence{% endblock %}
+{% block page_heading %}Admettre un patient en urgence{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'consultation:reception' %}">Réception</a></li>
+  <li class="breadcrumb-item active">Urgence</li>
+{% endblock %}
+
+{% block extra_css %}<style>
+.urg-bandeau { display: flex; align-items: flex-start; gap: .8rem; padding: 1rem 1.2rem; margin-bottom: 1.2rem; border-radius: .9rem; background: rgba(239,68,68,.1); border-left: 4px solid #ef4444; }
+.urg-bandeau i { font-size: 1.3rem; color: #ef4444; margin-top: .1rem; }
+.urg-bandeau-titre { font-weight: 800; color: var(--text-primary); font-size: .95rem; }
+.urg-bandeau-texte { font-size: .84rem; color: var(--text-secondary); line-height: 1.55; margin-top: .25rem; }
+
+.form-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.form-section-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.form-section-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; }
+.form-section-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+.req-mark { color: #ef4444; }
+
+/* Les trois degrés d'identité connue. */
+.urg-choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .7rem; margin-bottom: 1.1rem; }
+.urg-choix label { display: block; padding: .85rem 1rem; border: 1px solid var(--card-border); border-radius: .75rem; cursor: pointer; transition: all .15s; background: var(--card-bg); }
+.urg-choix input { margin-right: .45rem; }
+.urg-choix label:hover { border-color: var(--primary); }
+.urg-choix-nom { font-weight: 700; font-size: .88rem; color: var(--text-primary); }
+.urg-choix-sub { font-size: .73rem; color: var(--text-muted); margin-top: .2rem; margin-left: 1.3rem; line-height: 1.4; }
+
+.urg-bloc { display: none; }
+.urg-bloc.actif { display: block; animation: fadeUp .25s ease both; }
+</style>{% endblock %}
+
+{% block content %}
+
+<div class="urg-bandeau">
+  <i class="bi bi-exclamation-octagon-fill"></i>
+  <div>
+    <div class="urg-bandeau-titre">Le soin passe avant l'encaissement</div>
+    <div class="urg-bandeau-texte">
+      Le patient sera pris en charge immédiatement, sans paiement préalable.
+      <strong>La facture reste due</strong> et apparaîtra dans « Soins accordés
+      sans paiement » jusqu'à son règlement par la famille.
+    </div>
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#ef4444;background:rgba(239,68,68,.12)"><i class="bi bi-person-exclamation"></i></span>
+      <div>
+        <div class="form-section-title">Qui est le patient ?</div>
+        <div class="form-section-sub">On peut l'admettre même sans savoir son nom</div>
+      </div>
+    </div>
+
+    <div class="urg-choix">
+      <label>
+        <input type="radio" name="identite" value="inconnu" checked
+               onchange="montrerBloc(this.value)">
+        <span class="urg-choix-nom">Inconnu</span>
+        <div class="urg-choix-sub">Personne inconsciente, sans papiers</div>
+      </label>
+      <label>
+        <input type="radio" name="identite" value="nomme" onchange="montrerBloc(this.value)">
+        <span class="urg-choix-nom">Nom connu</span>
+        <div class="urg-choix-sub">L'accompagnant sait qui c'est</div>
+      </label>
+      <label>
+        <input type="radio" name="identite" value="existant" onchange="montrerBloc(this.value)">
+        <span class="urg-choix-nom">Déjà patient ici</span>
+        <div class="urg-choix-sub">Il a déjà un dossier</div>
+      </label>
+    </div>
+
+    <div class="urg-bloc actif" id="bloc-inconnu">
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="f-label">Sexe apparent</label>
+          <select name="sexe" class="f-input f-select">
+            <option value="">-- Non déterminé --</option>
+            <option value="Masculin">Masculin</option>
+            <option value="Féminin">Féminin</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="f-label">Âge approximatif</label>
+          <input type="number" name="age_approximatif" class="f-input" min="0" max="120"
+                 placeholder="ex. 40">
+        </div>
+      </div>
+      <p class="f-help mt-2">
+        Le dossier sera créé sous « INCONNU n°… », marqué
+        <strong>identité provisoire</strong>, à compléter dès qu'un proche arrive.
+      </p>
+    </div>
+
+    <div class="urg-bloc" id="bloc-nomme">
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="f-label">Nom <span class="req-mark">*</span></label>
+          <input type="text" name="nom" class="f-input">
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="f-label">Prénom</label>
+          <input type="text" name="prenom" class="f-input">
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="f-label">Sexe</label>
+          <select name="sexe" class="f-input f-select">
+            <option value="">-- Choisir --</option>
+            <option value="Masculin">Masculin</option>
+            <option value="Féminin">Féminin</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="f-label">Âge approximatif</label>
+          <input type="number" name="age_approximatif" class="f-input" min="0" max="120">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="f-label">Téléphone du patient</label>
+          <input type="tel" name="telephone" class="f-input">
+        </div>
+      </div>
+    </div>
+
+    <div class="urg-bloc" id="bloc-existant">
+      <label class="f-label">Dossier existant</label>
+      <select name="patient" class="f-input f-select">
+        <option value="">-- Choisir le patient --</option>
+        {% for patient in patients %}
+          <option value="{{ patient.pk }}">{{ patient.nom }} {{ patient.prenom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#f59e0b;background:rgba(245,158,11,.12)"><i class="bi bi-clipboard-pulse"></i></span>
+      <div>
+        <div class="form-section-title">L'urgence et la prise en charge</div>
+        <div class="form-section-sub">Le motif justifie de soigner avant d'encaisser</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Motif de l'urgence <span class="req-mark">*</span></label>
+        <select name="motif" id="motif" class="f-input f-select" required
+                onchange="surMotif()">
+          <option value="">-- Choisir le motif --</option>
+          {% for code, libelle in motifs %}
+            <option value="{{ code }}">{{ libelle }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12" id="bloc-precision" style="display:none">
+        <label class="f-label">
+          Précisez <span class="req-mark" id="precision-requise">*</span>
+        </label>
+        <input type="text" name="motif_precision" id="motif_precision" class="f-input"
+               placeholder="De quelle urgence s'agit-il ?">
+        <p class="f-help">
+          Facultatif pour les motifs de la liste, <strong>obligatoire</strong>
+          si vous avez choisi « Autre ».
+        </p>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Médecin qui prend en charge <span class="req-mark">*</span></label>
+        <select name="medecin" class="f-input f-select" required>
+          <option value="">-- Choisir --</option>
+          {% for medecin in medecins %}
+            <option value="{{ medecin.pk }}">
+              Dr. {{ medecin.nom }} {{ medecin.prenom }}{% if medecin.specialite %} — {{ medecin.specialite }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-hdr">
+      <span class="form-section-ico" style="color:#0ea5e9;background:rgba(14,165,233,.12)"><i class="bi bi-person-rolodex"></i></span>
+      <div>
+        <div class="form-section-title">Qui accompagne le patient ?</div>
+        <div class="form-section-sub">C'est la personne qu'on rappellera pour le règlement</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="f-label">Nom de l'accompagnant</label>
+        <input type="text" name="accompagnant_nom" class="f-input"
+               placeholder="ex. Oumar Traoré">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Qui est-ce pour le patient ?</label>
+        <select name="accompagnant_lien" class="f-input f-select">
+          <option value="">-- Non précisé --</option>
+          {% for code, libelle in liens %}
+            <option value="{{ code }}">{{ libelle }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="f-label">Son téléphone</label>
+        <input type="tel" name="accompagnant_telephone" class="f-input"
+               placeholder="76 00 00 00">
+      </div>
+    </div>
+
+    <p class="f-help mt-2">
+      Le lien compte autant que le nom : on ne rappelle pas un passant comme
+      on rappelle un frère. Et « impliqué dans l'accident » n'est ni l'un ni
+      l'autre — c'est souvent à cette personne qu'on demandera des comptes.
+    </p>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+    <a href="{% url 'consultation:reception' %}" class="btn-c btn-outline-c">
+      <i class="bi bi-x-lg"></i> Annuler
+    </a>
+    <button type="submit" class="btn-c" style="background:#ef4444;color:#fff;border-color:#ef4444">
+      <i class="bi bi-exclamation-octagon"></i> Admettre en urgence
+    </button>
+  </div>
+</form>
+
+<script>
+/* Un seul bloc d'identité visible à la fois. Sans JavaScript, les trois
+   restent affichés : le formulaire est plus long, mais reste utilisable. */
+function montrerBloc(choix) {
+  ['inconnu', 'nomme', 'existant'].forEach(function (nom) {
+    document.getElementById('bloc-' + nom).classList.toggle('actif', nom === choix);
+  });
+}
+
+/* Le champ « précisez » n'apparaît qu'une fois un motif choisi, et il
+   devient obligatoire pour « Autre ». Sans JavaScript, le bloc reste
+   affiché et la vue refuse quand même un « Autre » sans explication :
+   la règle est tenue côté serveur, pas seulement ici. */
+function surMotif() {
+  var motif = document.getElementById('motif').value;
+  var bloc = document.getElementById('bloc-precision');
+  var champ = document.getElementById('motif_precision');
+  var etoile = document.getElementById('precision-requise');
+
+  bloc.style.display = motif ? 'block' : 'none';
+  champ.required = (motif === 'autre');
+  etoile.style.display = (motif === 'autre') ? 'inline' : 'none';
+  champ.placeholder = (motif === 'autre')
+    ? "De quelle urgence s'agit-il ?"
+    : 'Détail utile au médecin (facultatif)';
+}
+</script>
+{% endblock %}
