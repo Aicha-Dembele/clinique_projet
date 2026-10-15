@@ -175,7 +175,8 @@
             <div class="d-flex gap-1 justify-content-end">
               <a href="{% url 'pharmacie:entree_stock' %}?medicament={{ m.pk }}" class="btn-c btn-sm-c btn-outline-c" title="Entrée de stock"><i class="bi bi-box-arrow-in-down"></i></a>
               <a href="{% url 'pharmacie:sortie_stock' %}?medicament={{ m.pk }}" class="btn-c btn-sm-c btn-outline-c" title="Sortie / dispensation"><i class="bi bi-box-arrow-up"></i></a>
-              <a href="{% url 'pharmacie:medicament_modifier' m.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'pharmacie:lots' %}?medicament={{ m.pk }}" class="act-btn" title="Voir ses lots"><i class="bi bi-boxes"></i></a>
+            <a href="{% url 'pharmacie:medicament_modifier' m.pk %}" class="act-btn" title="Modifier"><i class="bi bi-pencil"></i></a>
               {% if is_admin %}<a href="{% url 'pharmacie:medicament_supprimer' m.pk %}" class="act-btn danger" title="Supprimer"><i class="bi bi-trash"></i></a>{% endif %}
             </div>
           </td>

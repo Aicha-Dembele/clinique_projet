@@ -24,6 +24,9 @@ urlpatterns = [
     path('commandes/<int:pk>/',       views.commande_detail,      name='commande_detail'),
     path('commandes/<int:pk>/reception/', views.commande_receptionner, name='commande_receptionner'),
 
+    # Le stock arrivage par arrivage.
+    path('lots/',                     views.lot_liste,            name='lots'),
+
     path('mouvements/',               views.mouvement_liste,      name='mouvements'),
     path('mouvements/<int:pk>/supprimer/', views.mouvement_supprimer, name='mouvement_supprimer'),
 ]

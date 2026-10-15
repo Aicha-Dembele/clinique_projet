@@ -1,10 +1,12 @@
 import re
 import unicodedata
+from datetime import timedelta
 from decimal import Decimal
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib import messages
+from django.db import models
 from django.db.models import Sum, F, Q, DecimalField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -849,4 +851,66 @@ def commande_receptionner(request, pk):
     return render(request, 'pharmacie/commande_reception.html', {
         'commande': commande,
         'lignes':   commande.lignes.select_related('medicament'),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Les lots : voir ce qu'on a vraiment en stock, et quand ça périme
+# ─────────────────────────────────────────────────────────────────
+
+@permission_required('pharmacie.view')
+def lot_liste(request):
+    """Le stock arrivage par arrivage, et non plus médicament par médicament.
+
+    C'est la contrepartie visible des lots : sans cet écran, le pharmacien
+    sait qu'un médicament périme bientôt, mais pas QUEL lot, ni combien de
+    boîtes sont concernées, ni s'il peut encore les écouler.
+
+    Par défaut on montre ce qui reste en stock ; les lots épuisés ne
+    disparaissent pas pour autant, ils restent consultables par le filtre
+    (c'est la traçabilité : savoir quel lot est parti et quand).
+    """
+    lots = (Lot.objects.select_related('medicament', 'fournisseur')
+            .order_by(models.F('date_peremption').asc(nulls_last=True), 'pk'))
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        lots = lots.filter(termes_q(q, 'medicament__nom', 'medicament__dci', 'numero'))
+
+    medicament_id = request.GET.get('medicament', '')
+    if medicament_id:
+        lots = lots.filter(medicament_id=medicament_id)
+
+    etat = request.GET.get('etat', 'stock')
+    aujourdhui = timezone.localdate()
+    limite = aujourdhui + timedelta(days=Medicament.JOURS_AVANT_PEREMPTION)
+
+    if etat == 'stock':
+        lots = lots.filter(quantite_restante__gt=0)
+    elif etat == 'epuise':
+        lots = lots.filter(quantite_restante=0)
+    elif etat == 'perime':
+        lots = lots.filter(quantite_restante__gt=0,
+                           date_peremption__lt=aujourdhui)
+    elif etat == 'bientot':
+        lots = lots.filter(quantite_restante__gt=0,
+                           date_peremption__gte=aujourdhui,
+                           date_peremption__lte=limite)
+    # etat == 'tous' : aucun filtre
+
+    lots = list(lots)
+    valeur = sum((l.quantite_restante * (l.prix_achat or 0)) for l in lots)
+
+    en_stock = Lot.objects.filter(quantite_restante__gt=0)
+    return render(request, 'pharmacie/lots.html', {
+        'lots':         lots,
+        'q':            q,
+        'etat':         etat,
+        'medicament':   Medicament.objects.filter(pk=medicament_id).first()
+                        if medicament_id else None,
+        'nb_stock':     en_stock.count(),
+        'nb_perimes':   en_stock.filter(date_peremption__lt=aujourdhui).count(),
+        'nb_bientot':   en_stock.filter(date_peremption__gte=aujourdhui,
+                                        date_peremption__lte=limite).count(),
+        'valeur_achat': _fmt(valeur),
     })

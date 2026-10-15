@@ -159,3 +159,70 @@ class LotInitialTests(TestCase):
             with self.subTest(medicament=medicament.nom):
                 self.assertEqual(medicament.stock_par_lots(),
                                  medicament.quantite_stock)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class EcranDesLotsTests(TestCase):
+    """L'écran qui rend les lots visibles : filtres et comptes."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from comptes.roles import installer_roles
+        installer_roles()
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from comptes.models import Profil, Role
+
+        Medicament.objects.all().delete()
+        self.medicament = Medicament.objects.create(
+            nom='Paracétamol', unite='boîte', prix_unitaire=Decimal('500'))
+
+        self.perime = self._lot('VIEUX', -10, 20)
+        self.bientot = self._lot('BIENTOT', 10, 30)
+        self.bon = self._lot('BON', 500, 50)
+        self.epuise = self._lot('FINI', 300, 0)
+
+        utilisateur = User.objects.create_user('pharma', password='motdepasse-de-test')
+        Profil.objects.create(user=utilisateur, role=Role.objects.get(code='pharmacien'))
+        self.client.force_login(utilisateur)
+
+    def _lot(self, numero, jours, restant):
+        return Lot.objects.create(
+            medicament=self.medicament, numero=numero,
+            date_peremption=timezone.localdate() + timedelta(days=jours),
+            quantite_initiale=max(restant, 1), quantite_restante=restant,
+            prix_achat=Decimal('300'))
+
+    def numeros(self, **params):
+        from django.urls import reverse
+        reponse = self.client.get(reverse('pharmacie:lots'), params)
+        return [l.numero for l in reponse.context['lots']]
+
+    def test_par_defaut_on_voit_ce_qui_reste_en_stock(self):
+        self.assertEqual(set(self.numeros()), {'VIEUX', 'BIENTOT', 'BON'})
+
+    def test_les_lots_sont_tries_du_plus_urgent_au_moins_urgent(self):
+        self.assertEqual(self.numeros(), ['VIEUX', 'BIENTOT', 'BON'])
+
+    def test_filtre_sur_les_perimes(self):
+        self.assertEqual(self.numeros(etat='perime'), ['VIEUX'])
+
+    def test_filtre_sur_ceux_qui_periment_bientot(self):
+        self.assertEqual(self.numeros(etat='bientot'), ['BIENTOT'])
+
+    def test_les_lots_epuises_restent_consultables(self):
+        """Tracabilité : savoir quel lot est parti, même vidé."""
+        self.assertEqual(self.numeros(etat='epuise'), ['FINI'])
+
+    def test_recherche_par_numero_de_lot(self):
+        self.assertEqual(self.numeros(q='BON'), ['BON'])
+
+    def test_les_compteurs_du_haut_de_page(self):
+        from django.urls import reverse
+
+        reponse = self.client.get(reverse('pharmacie:lots'))
+
+        self.assertEqual(reponse.context['nb_stock'], 3)
+        self.assertEqual(reponse.context['nb_perimes'], 1)
+        self.assertEqual(reponse.context['nb_bientot'], 1)

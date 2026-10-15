@@ -1966,6 +1966,9 @@
       <i class="bi bi-capsule-pill"></i> Médicaments
       {% if stock_alertes %}<span class="sb-badge sb-badge-danger">{{ stock_alertes }}</span>{% endif %}
     </a>
+    <a href="{% url 'pharmacie:lots' %}" class="sb-link {% block nav_lots %}{% endblock %}">
+      <i class="bi bi-boxes"></i> Lots et péremptions
+    </a>
     <a href="{% url 'pharmacie:mouvements' %}" class="sb-link {% block nav_mouvements %}{% endblock %}">
       <i class="bi bi-arrow-left-right"></i> Mouvements de stock
     </a>

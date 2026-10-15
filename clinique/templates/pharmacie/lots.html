@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Lots et péremptions{% endblock %}
+{% block nav_lots %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Lots et péremptions{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Lots</li>
+{% endblock %}
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); animation: fadeUp .5s ease both; text-decoration: none; }
+.stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; margin-top: .1rem; }
+.lot-num { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
+.jauge-lot { height: 5px; border-radius: 999px; background: rgba(0,136,170,.14); overflow: hidden; margin-top: .3rem; max-width: 120px; }
+.jauge-lot > span { display: block; height: 100%; background: #0088aa; border-radius: 999px; }
+</style>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <a href="?etat=stock" class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-boxes"></i></div>
+      <div><div class="stat-h-lbl">Lots en stock</div><div class="stat-h-val">{{ nb_stock }}</div></div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4">
+    <a href="?etat=bientot" class="stat-h" style="animation-delay:.06s">
+      <div class="stat-h-ico" style="background:rgba(245,158,11,.14);color:#d97706"><i class="bi bi-hourglass-split"></i></div>
+      <div><div class="stat-h-lbl">Périment bientôt</div><div class="stat-h-val">{{ nb_bientot }}</div></div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4">
+    <a href="?etat=perime" class="stat-h" style="animation-delay:.12s">
+      <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-calendar-x-fill"></i></div>
+      <div><div class="stat-h-lbl">Déjà périmés</div><div class="stat-h-val">{{ nb_perimes }}</div></div>
+    </a>
+  </div>
+</div>
+
+<div class="card-c mb-3">
+  <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
+    <div>
+      <label class="f-label">Rechercher</label>
+      <input type="text" name="q" value="{{ q }}" class="f-input" style="max-width:280px" placeholder="Médicament, DCI, n° de lot…">
+    </div>
+    <div>
+      <label class="f-label">Afficher</label>
+      <select name="etat" class="f-input f-select" style="max-width:220px" onchange="this.form.submit()">
+        <option value="stock"   {% if etat == 'stock' %}selected{% endif %}>En stock</option>
+        <option value="bientot" {% if etat == 'bientot' %}selected{% endif %}>Périment bientôt</option>
+        <option value="perime"  {% if etat == 'perime' %}selected{% endif %}>Déjà périmés</option>
+        <option value="epuise"  {% if etat == 'epuise' %}selected{% endif %}>Épuisés (historique)</option>
+        <option value="tous"    {% if etat == 'tous' %}selected{% endif %}>Tous</option>
+      </select>
+    </div>
+    {% if medicament %}<input type="hidden" name="medicament" value="{{ medicament.pk }}">{% endif %}
+    <button type="submit" class="btn-c btn-outline-c"><i class="bi bi-search"></i> Filtrer</button>
+    {% if q or medicament %}<a href="{% url 'pharmacie:lots' %}" class="btn-c btn-outline-c">Tout voir</a>{% endif %}
+  </form>
+  {% if medicament %}
+  <div style="margin-top:.7rem;font-size:.85rem;color:var(--text-muted)">
+    Lots de <strong>{{ medicament.libelle }}</strong> uniquement.
+  </div>
+  {% endif %}
+</div>
+
+<div class="card-c">
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Médicament</th>
+          <th>N° de lot</th>
+          <th>Péremption</th>
+          <th class="text-end">Restant</th>
+          <th>Fournisseur</th>
+          <th class="text-end">Prix d'achat</th>
+          <th>Reçu le</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lot in lots %}
+        <tr>
+          <td>
+            <div style="font-weight:600">{{ lot.medicament.libelle }}</div>
+            {% if lot.medicament.dci and lot.medicament.dci != lot.medicament.nom %}
+              <div style="font-size:.72rem;color:var(--text-muted)">{{ lot.medicament.dci }}</div>
+            {% endif %}
+          </td>
+          <td class="lot-num">{{ lot.numero|default:"—" }}</td>
+          <td>
+            {% if not lot.date_peremption %}
+              <span style="color:var(--text-muted)">Non renseignée</span>
+            {% elif lot.est_perime %}
+              <span class="pill" style="background:rgba(239,68,68,.12);color:#ef4444;font-size:.68rem"><i class="bi bi-calendar-x"></i> Périmé le {{ lot.date_peremption|date:'d/m/Y' }}</span>
+            {% elif lot.bientot_perime %}
+              <span class="pill" style="background:rgba(245,158,11,.14);color:#d97706;font-size:.68rem">{{ lot.date_peremption|date:'d/m/Y' }}</span>
+            {% else %}
+              {{ lot.date_peremption|date:'d/m/Y' }}
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <strong>{{ lot.quantite_restante }}</strong>
+            <span style="color:var(--text-muted);font-size:.74rem">/ {{ lot.quantite_initiale }}</span>
+            {# Part du lot déjà servie : on voit d'un coup d'œil s'il s'écoule. #}
+            {% if lot.quantite_initiale %}
+            <div class="jauge-lot"><span style="width:{% widthratio lot.quantite_restante lot.quantite_initiale 100 %}%"></span></div>
+            {% endif %}
+          </td>
+          <td>{{ lot.fournisseur.nom|default:"—" }}</td>
+          <td class="text-end">{{ lot.prix_achat|floatformat:0 }} FCFA</td>
+          <td style="font-size:.78rem;color:var(--text-muted)">{{ lot.date_entree|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-boxes" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+            Aucun lot ne correspond à ce filtre.
+            <div style="font-size:.82rem;margin-top:.5rem">Chaque entrée de stock crée un lot. La pharmacie sert toujours celui qui périme le plus tôt.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if lots %}
+  <div style="margin-top:.8rem;font-size:.82rem;color:var(--text-muted)">
+    {{ lots|length }} lot{{ lots|length|pluralize }} affiché{{ lots|length|pluralize }} ·
+    valeur d'achat du stock affiché : <strong>{{ valeur_achat }} FCFA</strong>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
