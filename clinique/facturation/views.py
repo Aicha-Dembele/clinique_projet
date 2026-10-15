@@ -7,6 +7,7 @@ from django.utils.http import urlencode
 from decimal import Decimal
 
 from .models import Facture, LigneFacture, Paiement, Tarif, Assurance
+from . import sama
 from patients.models import Patient
 from comptes.decorators import role_required, permission_required, get_role
 from .regles import (
@@ -378,21 +379,17 @@ def paiement_ajouter(request):
             if montant > facture.montant_restant():
                 raise ValueError(f"Montant dépasse le restant dû ({_fmt(facture.montant_restant())} FCFA).")
 
-            # Carte bancaire → paiement simulé via Stripe Checkout (mode test) :
-            # redirection vers la page de paiement Stripe, l'enregistrement du
-            # Paiement se fait au retour dans paiement_carte_succes.
-            if request.POST['mode_paiement'] == 'carte':
-                return _rediriger_vers_stripe(request, facture, montant,
-                                              request.POST.get('note', ''))
-
-            # Orange Money → page reproduisant la procédure #144# (simulation) :
-            # l'enregistrement du Paiement se fait après validation du code.
-            if request.POST['mode_paiement'] == 'orange_money':
-                request.session['paiement_orange'] = {
+            # SAMA Money → on ne crée PAS le paiement ici. On demande d'abord
+            # l'encaissement au service, le patient confirme sur son
+            # téléphone, et le Paiement n'est enregistré qu'une fois le
+            # statut passé à « succeeded ». Enregistrer avant la confirmation
+            # reviendrait à écrire en caisse un argent qui n'est pas arrivé.
+            if request.POST['mode_paiement'] == 'sama_money':
+                request.session['paiement_sama'] = {
                     'facture_id': facture.pk, 'montant': str(montant),
                     'note': request.POST.get('note', ''),
                 }
-                return redirect('facturation:paiement_orange_money')
+                return redirect('facturation:paiement_sama_money')
 
             paiement = Paiement.objects.create(
                 facture=facture,
@@ -419,246 +416,123 @@ def paiement_ajouter(request):
     })
 
 
-# ── Paiement par carte : Stripe Checkout en mode test ────────────
-# (cf. Django 4 By Example, chap. 9 : la carte de test 4242 4242 4242 4242
-#  simule un paiement réussi, aucune somme réelle n'est débitée.)
-
-def _rediriger_vers_stripe(request, facture, montant, note):
-    """Démarre le paiement par carte : page Stripe Checkout si une clé de test
-    est configurée, sinon simulateur local (même principe, aucune clé requise).
-    Le FCFA (XOF) est une devise « sans décimales » chez Stripe :
-    unit_amount = montant en francs, tel quel."""
-    import stripe
-    from django.conf import settings
-    from django.urls import reverse
-
-    if not settings.STRIPE_SECRET_KEY:
-        # Pas de clé Stripe : on passe par la page locale de simulation
-        request.session['paiement_carte'] = {
-            'facture_id': facture.pk, 'montant': str(montant), 'note': note,
-        }
-        return redirect('facturation:paiement_carte_simulation')
-
-    stripe.api_key = settings.STRIPE_SECRET_KEY
-    success_url = (request.build_absolute_uri(reverse('facturation:paiement_carte_succes'))
-                   + '?session_id={CHECKOUT_SESSION_ID}')
-    cancel_url = (request.build_absolute_uri(reverse('facturation:paiement_carte_annule'))
-                  + f'?facture={facture.pk}')
-
-    session = stripe.checkout.Session.create(
-        mode='payment',
-        client_reference_id=str(facture.pk),
-        success_url=success_url,
-        cancel_url=cancel_url,
-        line_items=[{
-            'price_data': {
-                'unit_amount': int(montant),
-                'currency': 'xof',
-                'product_data': {
-                    'name': f'Facture FAC-{facture.pk:04d} — Clinique Nevroglie',
-                    'description': f'Patient : {facture.patient}',
-                },
-            },
-            'quantity': 1,
-        }],
-        metadata={'facture_id': str(facture.pk), 'note': note[:400]},
-    )
-    return redirect(session.url)
+# ── Paiement SAMA Money ──────────────────────────────────────────
+# L'encaissement se fait en deux temps, comme l'impose le service :
+#   1. on demande l'encaissement (POST /v1/charges) ;
+#   2. le patient confirme sur son téléphone (application SAMA ou #600#) ;
+#   3. on relit le statut, et SEULEMENT s'il vaut « succeeded » on écrit le
+#      paiement en base.
+# Tant qu'aucune clé n'est configurée, facturation/sama.py répond sans
+# appeler personne : la démonstration tourne sans réseau ni compte.
 
 
 @role_required('admin', 'receptionniste', 'pharmacien')
-def paiement_carte_succes(request):
-    """Retour de Stripe après paiement : vérifie la session côté serveur
-    (statut « paid ») puis enregistre le Paiement — une seule fois, même si
-    la page de retour est rechargée."""
-    import stripe
-    from django.conf import settings
+def paiement_sama_money(request):
+    """Demande l'encaissement à SAMA Money, puis attend la confirmation.
 
-    session_id = request.GET.get('session_id', '')
-    if not session_id:
-        messages.error(request, "Retour de paiement invalide (session manquante).")
-        return redirect('facturation:paiements')
+    Le Paiement n'est créé qu'au retour « succeeded » : écrire en caisse un
+    argent que le patient n'a pas encore confirmé serait un faux en écriture.
+    """
+    donnees = request.session.get('paiement_sama')
+    if not donnees:
+        messages.error(request, "Aucun paiement SAMA Money en cours — "
+                                "sélectionnez d'abord la facture.")
+        return redirect('facturation:paiement_ajouter')
+
+    facture = get_object_or_404(Facture, pk=donnees['facture_id'])
+    montant = Decimal(donnees['montant'])
+    erreur = None
+
+    if request.method == 'POST':
+        # Le montant est revérifié ici : la facture a pu être réglée entre
+        # l'ouverture de cette page et la confirmation du patient.
+        if montant > facture.montant_restant():
+            erreur = (f"Le montant dépasse le restant dû "
+                      f"({_fmt(facture.montant_restant())} FCFA) — la facture "
+                      f"a peut-être été réglée entre-temps.")
+        elif 'verifier' in request.POST:
+            erreur = _sama_verifier(request, facture, montant, donnees)
+            if erreur is None:
+                return redirect('facturation:paiement_recu',
+                                pk=donnees['paiement_id'])
+        else:
+            erreur = _sama_demander(request, facture, montant, donnees)
+
+    return render(request, 'facturation/sama_money.html', {
+        'facture':     facture,
+        'montant':     montant,
+        'erreur':      erreur,
+        'encaissement': donnees.get('encaissement'),
+        'demonstration': sama.mode_demonstration(),
+        'numero_refus': sama.NUMERO_REFUS_DEMO,
+    })
+
+
+def _sama_demander(request, facture, montant, donnees):
+    """Étape 1 : demander l'encaissement. Rend un message d'erreur, ou None."""
+    numero = ''.join(c for c in request.POST.get('numero', '') if c.isdigit())
+    try:
+        encaissement = sama.demander_encaissement(
+            numero=numero,
+            montant_fcfa=montant,
+            description=f'Clinique Nevroglie — FAC-{facture.pk:04d}',
+            reference=f'FAC-{facture.pk:04d}',
+        )
+    except sama.ErreurSama as echec:
+        return str(echec)
+
+    donnees['encaissement'] = {
+        'reference': encaissement['reference'],
+        'numero': numero,
+        'statut': encaissement.get('status'),
+    }
+    request.session['paiement_sama'] = donnees
+    messages.info(
+        request,
+        f"Demande envoyée au {numero}. Le patient doit la confirmer sur son "
+        f"téléphone, puis vous cliquez sur « Vérifier le paiement ».")
+    return None
+
+
+def _sama_verifier(request, facture, montant, donnees):
+    """Étape 2 : relire le statut, et n'écrire en base que si c'est payé."""
+    encaissement = donnees.get('encaissement')
+    if not encaissement:
+        return "Demandez d'abord l'encaissement."
 
     try:
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        session = stripe.checkout.Session.retrieve(session_id)
-    except Exception as e:
-        messages.error(request, f'Vérification du paiement impossible : {e}')
-        return redirect('facturation:paiements')
+        etat = sama.lire_encaissement(encaissement['reference'])
+    except sama.ErreurSama as echec:
+        return str(echec)
 
-    facture = get_object_or_404(Facture, pk=session.metadata.get('facture_id')
-                                or session.client_reference_id)
-    if session.payment_status != 'paid':
-        messages.error(request, "Le paiement n'a pas été confirmé par Stripe.")
-        return redirect('facturation:detail', pk=facture.pk)
+    statut = etat.get('status')
+    if statut == sama.EN_ATTENTE:
+        return ("Le patient n'a pas encore confirmé. Laissez-lui le temps "
+                "d'ouvrir son application SAMA, puis réessayez.")
+    if statut != sama.REUSSI:
+        libelles = {sama.ECHOUE: 'refusé par le client',
+                    sama.EXPIRE: 'expiré avant confirmation'}
+        return (f"Paiement {libelles.get(statut, statut)}. "
+                f"Rien n'a été débité.")
 
-    # Idempotent : la session Stripe est tracée dans la note du paiement
-    ref = f'Stripe {session_id}'
-    if not Paiement.objects.filter(facture=facture, note__contains=session_id).exists():
-        note = (session.metadata.get('note') or '').strip()
-        montant = Decimal(session.amount_total)  # XOF sans décimales : déjà en francs
-        paiement = Paiement.objects.create(
-            facture=facture,
-            montant=montant,
-            mode_paiement='carte',
-            note=(f'{note} · {ref}' if note else ref)[:200],
-        )
-        messages.success(
-            request,
-            f'Paiement par carte de {_fmt(montant)} FCFA confirmé par Stripe (mode test).')
-        return redirect('facturation:paiement_recu', pk=paiement.pk)
-    return redirect('facturation:detail', pk=facture.pk)
-
-
-def _valider_carte_test(numero, expiration, cvc):
-    """Valide une carte de test (mêmes cartes que Stripe). Retourne un message
-    d'erreur, ou None si le paiement simulé est accepté.
-    4242 4242 4242 4242 → succès ; 4000 0000 0000 0002 → refus banque."""
-    import re
-    from datetime import date
-
-    if numero == '4000000000000002':
-        return "Carte refusée par la banque émettrice (carte de test « paiement refusé »)."
-    if numero != '4242424242424242':
-        return "Numéro de carte non reconnu — en mode test, utilisez la carte 4242 4242 4242 4242."
-    m = re.fullmatch(r'(\d{2})\s*/?\s*(\d{2})', expiration)
-    if not m:
-        return "Date d'expiration invalide (format MM/AA, ex. 12/29)."
-    mois, annee = int(m.group(1)), 2000 + int(m.group(2))
-    if not 1 <= mois <= 12:
-        return "Mois d'expiration invalide."
-    auj = date.today()
-    if (annee, mois) < (auj.year, auj.month):
-        return "Carte expirée : choisissez une date d'expiration future."
-    if not re.fullmatch(r'\d{3,4}', cvc):
-        return "CVC invalide (3 chiffres au dos de la carte)."
+    numero = encaissement['numero']
+    note = (donnees.get('note') or '').strip()
+    trace = (f"SAMA Money {encaissement['reference']} — "
+             f"{numero[:2]}••••{numero[-2:]}")
+    paiement = Paiement.objects.create(
+        facture=facture,
+        montant=montant,
+        mode_paiement='sama_money',
+        note=(f'{note} · {trace}' if note else trace)[:200],
+    )
+    # L'encaissement est clos : on vide la session pour qu'un rechargement
+    # de la page ne puisse pas enregistrer un second paiement. Le numéro du
+    # reçu voyage dans `donnees`, que la vue a toujours en main.
+    donnees['paiement_id'] = paiement.pk
+    request.session.pop('paiement_sama', None)
+    messages.success(
+        request, f'Paiement SAMA Money de {_fmt(montant)} FCFA confirmé.')
     return None
-
-
-@role_required('admin', 'receptionniste', 'pharmacien')
-def paiement_carte_simulation(request):
-    """Page locale simulant la procédure de paiement par carte bancaire
-    (utilisée quand aucune clé Stripe n'est configurée). Reproduit le
-    comportement des cartes de test Stripe sans appel réseau."""
-    import re
-
-    data = request.session.get('paiement_carte')
-    if not data:
-        messages.error(request, "Aucun paiement par carte en cours — sélectionnez d'abord la facture.")
-        return redirect('facturation:paiement_ajouter')
-
-    facture = get_object_or_404(Facture, pk=data['facture_id'])
-    montant = Decimal(data['montant'])
-
-    erreur = None
-    if request.method == 'POST':
-        numero = re.sub(r'\D', '', request.POST.get('numero', ''))
-        expiration = request.POST.get('expiration', '').strip()
-        cvc = request.POST.get('cvc', '').strip()
-
-        if montant > facture.montant_restant():
-            erreur = (f"Le montant dépasse le restant dû "
-                      f"({_fmt(facture.montant_restant())} FCFA) — la facture a peut-être été réglée entre-temps.")
-        else:
-            erreur = _valider_carte_test(numero, expiration, cvc)
-
-        if erreur is None:
-            note = (data.get('note') or '').strip()
-            ref = f'PayPal (simulation) — carte •••• {numero[-4:]}'
-            paiement = Paiement.objects.create(
-                facture=facture,
-                montant=montant,
-                mode_paiement='carte',
-                note=(f'{note} · {ref}' if note else ref)[:200],
-            )
-            request.session.pop('paiement_carte', None)
-            messages.success(
-                request,
-                f'Paiement PayPal de {_fmt(montant)} FCFA accepté (simulation — carte •••• {numero[-4:]}).')
-            return redirect('facturation:paiement_recu', pk=paiement.pk)
-
-    return render(request, 'facturation/carte_simulation.html', {
-        'facture': facture,
-        'montant': montant,
-        'erreur':  erreur,
-    })
-
-
-@role_required('admin', 'receptionniste', 'pharmacien')
-def paiement_carte_annule(request):
-    """Retour de Stripe quand l'utilisateur abandonne le paiement."""
-    facture_id = request.GET.get('facture')
-    messages.info(request, "Paiement par carte annulé — aucun montant n'a été débité.")
-    if facture_id:
-        return redirect(f"/facturation/paiements/ajouter/?facture={facture_id}")
-    return redirect('facturation:paiements')
-
-
-# ── Paiement Orange Money : simulation de la procédure mobile money ──────
-# Reproduit le parcours Orange Money (#144#) pour la démonstration :
-# aucune transaction réelle, aucun compte débité.
-ORANGE_MONEY_CODE_DEMO = '1234'
-
-
-def _valider_orange_money(numero, code):
-    """Valide le numéro Orange Money et le code de confirmation (simulation).
-    Retourne un message d'erreur, ou None si tout est correct."""
-    if len(numero) < 8:
-        return "Numéro Orange Money invalide — saisissez un numéro d'au moins 8 chiffres."
-    if not code:
-        return "Saisissez le code de confirmation reçu par SMS."
-    if code != ORANGE_MONEY_CODE_DEMO:
-        return (f"Code de confirmation incorrect. "
-                f"En mode démonstration, saisissez {ORANGE_MONEY_CODE_DEMO}.")
-    return None
-
-
-@role_required('admin', 'receptionniste', 'pharmacien')
-def paiement_orange_money(request):
-    """Page locale reproduisant la procédure de paiement Orange Money (#144#).
-    Simulation pour la démo : aucun mouvement d'argent réel."""
-    import re
-
-    data = request.session.get('paiement_orange')
-    if not data:
-        messages.error(request, "Aucun paiement Orange Money en cours — sélectionnez d'abord la facture.")
-        return redirect('facturation:paiement_ajouter')
-
-    facture = get_object_or_404(Facture, pk=data['facture_id'])
-    montant = Decimal(data['montant'])
-
-    erreur = None
-    if request.method == 'POST':
-        numero = re.sub(r'\D', '', request.POST.get('numero', ''))
-        code = request.POST.get('code', '').strip()
-
-        if montant > facture.montant_restant():
-            erreur = (f"Le montant dépasse le restant dû "
-                      f"({_fmt(facture.montant_restant())} FCFA) — la facture a peut-être été réglée entre-temps.")
-        else:
-            erreur = _valider_orange_money(numero, code)
-
-        if erreur is None:
-            note = (data.get('note') or '').strip()
-            ref = f'Orange Money (simulation) — {numero[:2]}••••{numero[-2:]}'
-            paiement = Paiement.objects.create(
-                facture=facture,
-                montant=montant,
-                mode_paiement='orange_money',
-                note=(f'{note} · {ref}' if note else ref)[:200],
-            )
-            request.session.pop('paiement_orange', None)
-            messages.success(
-                request,
-                f'Paiement Orange Money de {_fmt(montant)} FCFA accepté (simulation).')
-            return redirect('facturation:paiement_recu', pk=paiement.pk)
-
-    return render(request, 'facturation/orange_money_simulation.html', {
-        'facture':   facture,
-        'montant':   montant,
-        'erreur':    erreur,
-        'code_demo': ORANGE_MONEY_CODE_DEMO,
-    })
 
 
 @role_required('admin', 'receptionniste')
@@ -791,8 +665,7 @@ def rapports(request):
         'total_paye':     factures.filter(statut='payé').count(),
         'total_impaye':   factures.filter(statut='non payé').count(),
         'pct_especes':    pct('cash'),
-        'pct_orange':     pct('orange_money'),
-        'pct_carte':      pct('carte'),
+        'pct_sama':       pct('sama_money'),
         # Revenus par service (montants formatés + parts en %)
         'rev_consultation':    _fmt(rev_c),
         'rev_hospitalisation': _fmt(rev_h),

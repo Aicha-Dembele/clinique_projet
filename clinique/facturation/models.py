@@ -501,10 +501,13 @@ class LigneFacture(models.Model):
 
 
 class Paiement(models.Model):
+    #: Deux moyens, et deux seulement : ce qu'on encaisse réellement au
+    #: guichet. Orange Money et la carte bancaire ont été retirés — ni l'un
+    #: ni l'autre n'était branché sur un vrai service, et la clinique
+    #: n'accepte pas la carte.
     MODE_CHOICES = [
-        ('cash',         'Espèces'),
-        ('orange_money', 'Orange Money'),
-        ('carte',        'Carte bancaire'),
+        ('cash',        'Espèces'),
+        ('sama_money',  'SAMA Money'),
     ]
 
     facture        = models.ForeignKey(Facture, related_name='paiements', on_delete=models.CASCADE)

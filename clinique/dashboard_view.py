@@ -51,10 +51,9 @@ def dashboard(request):
                 m = Paiement.objects.filter(mode_paiement=mode).aggregate(t=Sum('montant'))['t'] or 0
                 return round(float(m) * 100 / float(total_paiements))
             pct_especes = _pct('cash')
-            pct_orange  = _pct('orange_money')
-            pct_carte   = _pct('carte')
+            pct_sama    = _pct('sama_money')
         else:
-            pct_especes = pct_orange = pct_carte = 0
+            pct_especes = pct_sama = 0
 
         # ── Statistiques d'évolution sur les 6 derniers mois ──────────
         from django.db.models.functions import TruncMonth
@@ -141,8 +140,7 @@ def dashboard(request):
             'recettes_mois_precedent': recettes_mois_precedent,
             'mois_precedent_label':    mois_precedent_label,
             'pct_especes':       pct_especes,
-            'pct_orange':        pct_orange,
-            'pct_carte':         pct_carte,
+            'pct_sama':          pct_sama,
             'stats_labels':         stats_labels,
             'stats_revenus':        stats_revenus,
             'stats_consultations':  stats_consultations,

@@ -339,7 +339,7 @@
             <div class="chart-wrap-mini" style="position:relative">
               <canvas id="paymentChart"></canvas>
               <div class="donut-center">
-                <div class="donut-center-val">{% if pct_especes or pct_orange or pct_carte %}100{% else %}0{% endif %}%</div>
+                <div class="donut-center-val">{% if pct_especes or pct_sama %}100{% else %}0{% endif %}%</div>
                 <div class="donut-center-lbl">Total</div>
               </div>
             </div>
@@ -347,8 +347,7 @@
           <div class="col-6">
             <div class="donut-legend">
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#10b981"></div><div class="donut-leg-name">Espèces</div><div class="donut-leg-val">{{ pct_especes|default:0 }}%</div></div>
-              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#f59e0b"></div><div class="donut-leg-name">Orange Money</div><div class="donut-leg-val">{{ pct_orange|default:0 }}%</div></div>
-              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#8b5cf6"></div><div class="donut-leg-name">Carte</div><div class="donut-leg-val">{{ pct_carte|default:0 }}%</div></div>
+              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#f59e0b"></div><div class="donut-leg-name">SAMA Money</div><div class="donut-leg-val">{{ pct_sama|default:0 }}%</div></div>
             </div>
           </div>
         </div>
@@ -474,15 +473,15 @@
   // ═══════ Modes paiement (donut) ═══════
   const paymentCtx = document.getElementById('paymentChart');
   if (paymentCtx) {
-    const vals = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_carte|default:0 }}];
+    const vals = [{{ pct_especes|default:0 }}, {{ pct_sama|default:0 }}];
     const allZero = vals.every(v => v === 0);
     new Chart(paymentCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Espèces','Orange','Carte'],
+        labels: ['Espèces','SAMA Money'],
         datasets: [{
-          data: allZero ? [1,1,1] : vals,
-          backgroundColor: ['#10b981','#f59e0b','#8b5cf6'],
+          data: allZero ? [1,1] : vals,
+          backgroundColor: ['#10b981','#f59e0b'],
           borderWidth: 0,
           borderRadius: 6,
           spacing: 3,

@@ -1709,7 +1709,7 @@ def reception(request):
     partout ailleurs (facturation.regles.facturer), et c'est cette facture
     qui est encaissée. En espèces, on repart avec le reçu du patient ; pour
     les autres modes, on enchaîne sur la page de paiement habituelle, qui
-    sait déjà parler à Orange Money et à Stripe.
+    sait déjà parler à SAMA Money.
     """
     from django.db import transaction
     from facturation.models import Paiement
@@ -1749,7 +1749,7 @@ def reception(request):
                     return redirect('facturation:paiement_recu', pk=paiement.pk)
 
             # Hors transaction : on quitte la page avec la facture établie.
-            if mode in ('orange_money', 'carte'):
+            if mode == 'sama_money':
                 messages.info(
                     request,
                     f'{patient} — rendez-vous enregistré. '

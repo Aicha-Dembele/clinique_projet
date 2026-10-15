@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block body_class %}page-facturation-bg{% endblock %}
+{% block title %}Paiement SAMA Money{% endblock %}
+{% block nav_paiements %}active{% endblock %}
+{% block page_title %}Paiement SAMA Money{% endblock %}
+{% block page_heading %}Encaisser par SAMA Money{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'facturation:paiements' %}">Paiements</a></li>
+  <li class="breadcrumb-item active">SAMA Money</li>
+{% endblock %}
+
+{% block extra_css %}<style>
+.sm-carte { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.5rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+.sm-hdr { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.2rem; padding-bottom: .9rem; border-bottom: 1px solid var(--card-border); }
+.sm-ico { width: 42px; height: 42px; border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem; color: #0ea5e9; background: rgba(14,165,233,.12); }
+.sm-titre { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.sm-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
+
+.sm-montant { font-size: 1.9rem; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.sm-montant small { font-size: .9rem; font-weight: 700; color: var(--text-muted); }
+.sm-facture { font-size: .8rem; color: var(--text-muted); margin-top: .2rem; }
+
+.sm-etapes { list-style: none; counter-reset: etape; margin: 0; padding: 0; }
+.sm-etapes li { counter-increment: etape; position: relative; padding: .45rem 0 .45rem 2rem; font-size: .86rem; line-height: 1.5; color: var(--text-secondary); }
+.sm-etapes li::before { content: counter(etape); position: absolute; left: 0; top: .45rem; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: rgba(14,165,233,.14); color: #0ea5e9; font-size: .7rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+
+.sm-attente { display: flex; align-items: flex-start; gap: .6rem; padding: .9rem 1.1rem; border-radius: .7rem; background: rgba(245,158,11,.1); border-left: 3px solid #f59e0b; font-size: .86rem; line-height: 1.5; }
+.sm-ref { font-family: ui-monospace, Consolas, monospace; font-size: .76rem; color: var(--text-muted); word-break: break-all; }
+
+.sm-demo { display: flex; align-items: flex-start; gap: .6rem; margin-top: 1rem; padding: .9rem 1.1rem; border-radius: .7rem; background: rgba(148,163,184,.1); border-left: 3px solid var(--text-muted); font-size: .8rem; line-height: 1.55; color: var(--text-muted); }
+.sm-erreur { padding: .8rem 1rem; border-radius: .7rem; background: rgba(239,68,68,.1); border-left: 3px solid #ef4444; font-size: .86rem; color: var(--text-primary); margin-bottom: 1rem; }
+</style>{% endblock %}
+
+{% block content %}
+
+{% if erreur %}
+  <div class="sm-erreur"><i class="bi bi-exclamation-triangle-fill"></i> {{ erreur }}</div>
+{% endif %}
+
+<div class="sm-carte">
+  <div class="sm-hdr">
+    <span class="sm-ico"><i class="bi bi-phone-fill"></i></span>
+    <div>
+      <div class="sm-titre">Montant à encaisser</div>
+      <div class="sm-sub">Le patient confirme depuis son téléphone</div>
+    </div>
+  </div>
+  <div class="sm-montant">{{ montant|floatformat:0 }} <small>FCFA</small></div>
+  <div class="sm-facture">
+    FAC-{{ facture.pk|stringformat:"04d" }} — {{ facture.patient }}
+  </div>
+</div>
+
+{% if not encaissement %}
+
+  {# Étape 1 : on n'a encore rien demandé au service. #}
+  <div class="sm-carte">
+    <div class="sm-hdr">
+      <span class="sm-ico"><i class="bi bi-send-fill"></i></span>
+      <div>
+        <div class="sm-titre">Numéro SAMA Money du patient</div>
+        <div class="sm-sub">La demande de paiement part sur ce numéro</div>
+      </div>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-7">
+          <label class="f-label">Numéro de téléphone</label>
+          <input type="tel" name="numero" class="f-input" inputmode="numeric"
+                 placeholder="76 00 00 00" autofocus required>
+        </div>
+        <div class="col-12 col-md-5">
+          <button type="submit" class="btn-c btn-primary-c w-100">
+            <i class="bi bi-send"></i> Demander le paiement
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <ol class="sm-etapes mt-3">
+      <li>La demande arrive sur le téléphone du patient.</li>
+      <li>Il la confirme dans son application SAMA Money, ou en composant <strong>#600#</strong>.</li>
+      <li>Vous cliquez sur « Vérifier le paiement » : le reçu n'est établi qu'une fois l'argent reçu.</li>
+    </ol>
+  </div>
+
+{% else %}
+
+  {# Étape 2 : la demande est partie, on attend la confirmation du patient. #}
+  <div class="sm-carte">
+    <div class="sm-hdr">
+      <span class="sm-ico"><i class="bi bi-hourglass-split"></i></span>
+      <div>
+        <div class="sm-titre">En attente du patient</div>
+        <div class="sm-sub">Demande envoyée au {{ encaissement.numero }}</div>
+      </div>
+    </div>
+
+    <div class="sm-attente">
+      <i class="bi bi-phone-vibrate"></i>
+      <div>
+        Le patient doit confirmer sur son téléphone — application SAMA Money
+        ou code <strong>#600#</strong>. Tant qu'il n'a pas confirmé,
+        <strong>rien n'est débité et aucun reçu n'est établi</strong>.
+      </div>
+    </div>
+
+    <p class="sm-ref mt-2">Référence : {{ encaissement.reference }}</p>
+
+    <form method="post" class="d-flex flex-wrap gap-2 mt-3">
+      {% csrf_token %}
+      <button type="submit" name="verifier" value="1" class="btn-c btn-primary-c">
+        <i class="bi bi-arrow-clockwise"></i> Vérifier le paiement
+      </button>
+      <a href="{% url 'facturation:paiement_ajouter' %}" class="btn-c btn-outline-c">
+        <i class="bi bi-x-lg"></i> Abandonner
+      </a>
+    </form>
+  </div>
+
+{% endif %}
+
+{% if demonstration %}
+  <div class="sm-demo">
+    <i class="bi bi-info-circle"></i>
+    <div>
+      <strong>Mode démonstration.</strong>
+      Aucune clé SAMA Money n'est configurée : aucune requête ne part et
+      aucun argent ne bouge. Tout numéro est accepté et le paiement
+      réussit — sauf <strong>{{ numero_refus }}</strong>, qui montre
+      comment un refus est traité.
+      Pour encaisser réellement, posez la clé dans
+      <code>clinique/local_settings.py</code>.
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

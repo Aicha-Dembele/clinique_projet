@@ -201,8 +201,23 @@ if not DEBUG:
 # Carte de test « paiement réussi » : 4242 4242 4242 4242,
 # CVC quelconque (ex. 123), date d'expiration future (ex. 12/29).
 # ─────────────────────────────────────────────────────────────
-STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
-STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+# ─────────────────────────────────────────────────────────────
+#  SAMA Money — l'encaissement mobile (https://developer.sama.money)
+#
+#  Sans clé, l'application tourne en MODE DEMONSTRATION : aucun appel ne
+#  part, aucun argent ne bouge, et la démonstration fonctionne sans réseau.
+#  Avec une clé, le MEME code appelle le vrai service.
+#
+#  La clé ne doit JAMAIS être écrite ici : ce dépôt est public. On la pose
+#  dans clinique/local_settings.py (ignoré par git) ou dans la variable
+#  d'environnement SAMA_MONEY_CLE_API.
+#
+#  Tarif à connaître : 0,3 % du montant encaissé, à la charge de la
+#  clinique — jamais du patient.
+# ─────────────────────────────────────────────────────────────
+SAMA_MONEY_CLE_API = os.environ.get('SAMA_MONEY_CLE_API', '')
+SAMA_MONEY_BASE_URL = os.environ.get(
+    'SAMA_MONEY_BASE_URL', 'https://api.sama.money/v1')
 
 # Surcharges locales non versionnées (ex. EMAIL_HOST_PASSWORD).
 try:

@@ -139,9 +139,9 @@ class ReceptionTests(TestCase):
         # Le rendez-vous existe, mais la consultation reste interdite.
         self.assertIsNotNone(blocage('rendez_vous', Rendez_vous.objects.get()))
 
-    def test_orange_money_renvoie_vers_la_page_de_paiement(self):
+    def test_sama_money_renvoie_vers_la_page_de_paiement(self):
         reponse = self.client.post(reverse('consultation:reception'),
-                                   self.formulaire(mode_paiement='orange_money'))
+                                   self.formulaire(mode_paiement='sama_money'))
 
         facture = Facture.objects.get()
         self.assertRedirects(
