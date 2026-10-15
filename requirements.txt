@@ -14,8 +14,19 @@ reportlab==4.4.10
 # Traitement d'images, requis par les ImageField (photos patients, scans)
 Pillow==12.0.0
 
-# Paiement par carte bancaire simulé via Stripe Checkout (mode test)
-stripe==11.4.1
+# Appels à l'API de paiement SAMA Money (facturation/sama.py)
+requests==2.34.2
 
-# Pilote MySQL (la base tourne sur MySQL Server 8, plus sur SQLite)
-mysqlclient==2.2.8
+# ─────────────────────────────────────────────────────────────
+# Pilote MySQL — VOLONTAIREMENT COMMENTÉ
+#
+# Le projet tourne sur SQLite par défaut (cf. DATABASES dans
+# clinique/settings.py) : rien à installer pour démarrer.
+#
+# Ne décommentez cette ligne QUE si vous basculez votre base locale sur
+# MySQL via clinique/clinique/local_settings.py. Sous Windows, son
+# installation réclame un compilateur C et les en-têtes MySQL : elle
+# échoue sur une machine neuve et bloque tout le reste du fichier.
+#
+# mysqlclient==2.2.8
+# ─────────────────────────────────────────────────────────────

@@ -194,14 +194,6 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'DENY'            # anti clickjacking
 
 # ─────────────────────────────────────────────────────────────
-# Stripe — paiement par carte bancaire SIMULÉ (mode test).
-# Créer un compte sur dashboard.stripe.com puis copier les clés de test
-# (pk_test_… / sk_test_…) depuis dashboard.stripe.com/test/apikeys,
-# via variables d'environnement ou local_settings.py (non versionné).
-# Carte de test « paiement réussi » : 4242 4242 4242 4242,
-# CVC quelconque (ex. 123), date d'expiration future (ex. 12/29).
-# ─────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────
 #  SAMA Money — l'encaissement mobile (https://developer.sama.money)
 #
 #  Sans clé, l'application tourne en MODE DEMONSTRATION : aucun appel ne

@@ -71,6 +71,21 @@ python manage.py runserver
 
 L'application est alors disponible sur http://127.0.0.1:8000/.
 
+**Votre base démarre vide**, et c'est voulu : `db.sqlite3` n'est pas versionné
+parce qu'il contient de vraies données de patients et des comptes
+utilisateurs. Après le `setup_roles`, connectez-vous avec votre compte admin
+et créez de quoi travailler — au minimum un médecin, un tarif de consultation
+et un patient.
+
+Deux pièges qui ont déjà fait perdre du temps :
+
+- **N'installez pas `mysqlclient`** tant que vous n'en avez pas besoin. Le
+  projet tourne sur SQLite par défaut ; ce pilote réclame un compilateur C
+  sous Windows et fait échouer toute l'installation. Il est commenté dans
+  `requirements.txt`, laissez-le ainsi.
+- **Une seule branche : `main`.** Tout le travail s'y trouve. Faites
+  `git pull` avant de commencer *et* avant de pousser.
+
 ## Configuration (variables d'environnement)
 
 Par défaut, le projet fonctionne en mode développement sans configuration.
@@ -85,6 +100,7 @@ le dépôt) :
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Origines HTTPS de confiance | *(vide)* |
 | `DJANGO_TIME_ZONE` | Fuseau horaire | `Africa/Bamako` |
 | `GMAIL_USER` / `GMAIL_APP_PASSWORD` | SMTP pour la réinitialisation de mot de passe | — |
+| `SAMA_MONEY_CLE_API` | Clé de l'API de paiement SAMA Money | *(vide → mode démonstration)* |
 
 > En production (`DJANGO_DEBUG=False`), le durcissement de sécurité s'active
 > automatiquement (HTTPS forcé, cookies sécurisés, HSTS, anti-clickjacking).
