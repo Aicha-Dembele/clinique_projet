@@ -112,7 +112,12 @@ ROLE_PERMISSIONS = {
         'facture.view', 'facture.add', 'facture.change',
         'paiement.view', 'paiement.add', 'paiement.change',
         'tarif.view', 'tarif.add',
-        'pharmacie.view', 'medicament.manage', 'stock.entree', 'stock.sortie',
+        # PAS de permission de pharmacie. Le stock, le catalogue des
+        # medicaments, les fournisseurs et les commandes sont le metier du
+        # pharmacien, pas celui de l'accueil. La reception tient sa caisse
+        # (consultations, examens, hospitalisations) ; le comptoir de la
+        # pharmacie tient la sienne — cf. CAISSES_PAR_ROLE dans
+        # facturation/regles.py.
     ],
     'pharmacien': [
         'patient.view',

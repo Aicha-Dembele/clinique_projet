@@ -351,7 +351,7 @@ def medicament_liste(request):
     })
 
 
-@role_required('admin', 'receptionniste', 'pharmacien')
+@permission_required('medicament.manage')
 def medicament_ajouter(request):
     if request.method == 'POST':
         try:
@@ -385,7 +385,7 @@ def medicament_ajouter(request):
     })
 
 
-@role_required('admin', 'receptionniste', 'pharmacien')
+@permission_required('medicament.manage')
 def medicament_modifier(request, pk):
     medicament = get_object_or_404(Medicament, pk=pk)
     if request.method == 'POST':
@@ -436,7 +436,7 @@ def medicament_supprimer(request, pk):
 
 # ── Entrée de stock (réapprovisionnement) ────────────────────────
 
-@role_required('admin', 'receptionniste', 'pharmacien')
+@permission_required('stock.entree')
 def entree_stock(request):
     pre_medicament = request.GET.get('medicament', '')
     if request.method == 'POST':
@@ -485,7 +485,7 @@ def entree_stock(request):
 
 # ── Sortie de stock (dispensation) ───────────────────────────────
 
-@role_required('admin', 'receptionniste', 'pharmacien')
+@permission_required('stock.sortie')
 def sortie_stock(request):
     pre_medicament = request.GET.get('medicament', '')
     if request.method == 'POST' and 'ligne_med' in request.POST:
