@@ -78,11 +78,19 @@ def permission_required(*codes):
             except Exception:
                 profil = None
             if profil is not None:
+                # Le try n'enveloppe QUE le contrôle des permissions, jamais
+                # l'appel à la vue. Auparavant la vue était dedans : la
+                # moindre erreur qu'elle levait — une 404, un plantage de
+                # base, un vrai bug — était avalée et transformée en « vous
+                # n'avez pas l'autorisation », avec redirection vers le
+                # tableau de bord. Un crash prenait l'apparence d'un problème
+                # de droits, et devenait introuvable.
                 try:
-                    if any(profil.has_permission(c) for c in codes):
-                        return view_func(request, *args, **kwargs)
+                    autorise = any(profil.has_permission(c) for c in codes)
                 except Exception:
-                    pass
+                    autorise = False
+                if autorise:
+                    return view_func(request, *args, **kwargs)
             elif user.is_superuser:
                 return view_func(request, *args, **kwargs)
             messages.error(request, "Vous n'avez pas l'autorisation d'acceder a cette page.")
