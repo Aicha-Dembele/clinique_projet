@@ -187,8 +187,9 @@ python manage.py test
 | `facturation` | Tarifs, factures, paiements, part assurance (AMO), clôture de caisse |
 | `pharmacie` | Médicaments, lots, fournisseurs, commandes, dispensation |
 
-## Équipe
+## Réalisation
 
-Projet de fin de cycle réalisé par **Nana Diawara**, **Aicha Dembele**,
-**Awa Diarra** et **Hubert H Danfaga** — Licence MIAGE, Université Technolab
-ISTA, promotion 2023-2026.
+Développé par **Aicha Dembélé** dans le cadre d'un projet de fin de cycle
+en équipe — Licence MIAGE, Université Technolab ISTA, promotion 2023-2026.
+
+GitHub : [@Aicha-Dembele](https://github.com/Aicha-Dembele)

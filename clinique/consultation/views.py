@@ -1952,13 +1952,23 @@ def admission_urgence(request):
                 raise ValueError(
                     "Vous avez choisi « Autre » : précisez de quelle urgence "
                     "il s'agit.")
+            # Le médecin est vérifié AVANT de créer quoi que ce soit. Compter
+            # sur la clé étrangère ne suffit pas : MySQL la refuse tout de
+            # suite, mais SQLite ne la contrôle qu'à la fin de la transaction,
+            # trop tard pour annuler le patient déjà enregistré.
+            medecin_id = request.POST.get('medecin', '')
+            medecin = (Medecin.objects.filter(pk=medecin_id).first()
+                       if medecin_id.isdigit() else None)
+            if medecin is None:
+                raise ValueError(
+                    "Choisissez le médecin qui va recevoir le patient.")
 
             with transaction.atomic():
                 patient = _patient_urgence(request)
 
                 rdv = Rendez_vous.objects.create(
                     patient=patient,
-                    medecin_id=request.POST['medecin'],
+                    medecin=medecin,
                     date=timezone.now(),
                     statut='programme',
                 )
