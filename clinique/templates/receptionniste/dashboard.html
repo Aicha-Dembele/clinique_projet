@@ -9,9 +9,9 @@
 {% block page_actions %}
 
 {% if is_receptionniste %}
-{# L'action principale va jusqu'au bout : patient, rendez-vous, encaissement,
+{% comment %} L'action principale va jusqu'au bout : patient, rendez-vous, encaissement,
    recu. « Nouveau patient » reste la pour le cas rare d'une fiche ouverte
-   sans visite. #}
+   sans visite. {% endcomment %}
 <a href="{% url 'consultation:reception' %}" class="btn-c btn-primary-c"><i class="bi bi-door-open-fill"></i> Réception</a>
 <a href="{% url 'patients:ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
 {% endif %}

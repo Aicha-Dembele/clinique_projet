@@ -1,11 +1,81 @@
-# Clinique Nevroglie — Logiciel de gestion de clinique
+# Nevroglie — Logiciel de gestion de clinique
 
-Application web Django de gestion d'une clinique : patients, personnel,
-rendez-vous, dossiers médicaux, consultations, examens & résultats,
-ordonnances, hospitalisations, traitements, facturation (avec assurance
-AMO), pharmacie/stock, rôles & permissions et tableaux de bord.
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-6.0-092E20?logo=django&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
+![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-254-2ea44f)
 
-## Protocole de soin : le paiement précède l'acte
+Application web qui gère **tout le parcours du patient** dans une clinique :
+l'accueil, les rendez-vous, la consultation, le laboratoire, l'hospitalisation,
+la pharmacie et la facturation avec prise en charge par l'assurance.
+
+Chaque métier a son propre espace : administrateur, médecin, infirmier,
+laborantin, réceptionniste et pharmacien. Chacun ne voit que ce qui le concerne.
+
+Projet de fin de cycle — Licence MIAGE, Université Technolab ISTA, Bamako (2026).
+
+![Tableau de bord de l'administrateur](docs/captures/02-tableau-de-bord.jpg)
+
+> Les captures ont été prises sur une **base de démonstration** : tous les
+> patients, médecins et montants qui y figurent sont fictifs.
+
+## Aperçu
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/captures/03-espace-medecin.jpg" alt="Espace médecin"><br><sub><b>Espace médecin</b> — rendez-vous du jour, activité, patients hospitalisés</sub></td>
+    <td width="50%"><img src="docs/captures/04-reception.jpg" alt="Réception"><br><sub><b>Réception</b> — planning du jour et enregistrement rapide d'un patient</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/captures/05-planning-du-jour.jpg" alt="Planning du jour"><br><sub><b>Planning du jour</b> — qui reçoit qui, médecin par médecin</sub></td>
+    <td><img src="docs/captures/06-dossier-medical.jpg" alt="Dossier médical"><br><sub><b>Dossier médical</b> — consultations, examens, hospitalisations, ordonnances</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/captures/07-hospitalisation.jpg" alt="Hospitalisation"><br><sub><b>Hospitalisation</b> — occupation des 30 chambres en temps réel</sub></td>
+    <td><img src="docs/captures/08-facture-assurance.jpg" alt="Facture avec assurance"><br><sub><b>Facturation</b> — part de l'assurance et part du patient, ligne par ligne</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/captures/09-pharmacie.jpg" alt="Pharmacie"><br><sub><b>Pharmacie</b> — stock, seuils de réapprovisionnement, dispensation</sub></td>
+    <td><img src="docs/captures/01-connexion.jpg" alt="Connexion"><br><sub><b>Connexion</b> — « se souvenir de moi » et mot de passe oublié par e-mail</sub></td>
+  </tr>
+</table>
+
+## Fonctionnalités
+
+| Module | Ce qu'il fait |
+|--------|---------------|
+| **Accueil et réception** | Enregistrement des patients, rendez-vous, planning du jour par médecin, encaissement |
+| **Espace médecin** | Consultations, prescriptions d'examens, ordonnances, traitements, opérations |
+| **Dossiers médicaux** | Un dossier par patient, visible seulement par son médecin et les confrères avec qui il le partage ; export PDF |
+| **Laboratoire** | Examens à réaliser, saisie des résultats, transmission au médecin avec notification |
+| **Hospitalisation** | Plan fixe de 30 chambres (urgences, VIP, doubles, simples), capacité contrôlée, chambres d'urgence réservées aux patients critiques |
+| **Urgences** | Admission sans identité connue ; soin accordé avant paiement, la dette restant suivie jusqu'au règlement |
+| **Facturation** | Factures créées automatiquement, assurance (AMO) appliquée prestation par prestation, créances sur les assureurs, paiement en espèces ou SAMA Money, clôture de caisse, PDF |
+| **Pharmacie** | Catalogue, stock par lots et dates de péremption, fournisseurs, commandes, alertes de seuil, dispensation liée aux ordonnances |
+| **Administration** | 6 rôles, permissions configurables, journal d'audit, tableaux de bord par rôle |
+
+## Points techniques
+
+- **Règles métier centralisées** : toute la règle « on paie avant d'être soigné »
+  tient dans un seul fichier, [`clinique/facturation/regles.py`](clinique/facturation/regles.py).
+- **Performances** : les listes chargent l'état de paiement de tous leurs actes
+  en une seule requête, sans problème « N+1 ».
+- **Confidentialité** : un médecin n'ouvre que les dossiers médicaux de ses
+  patients, ou ceux qu'un confrère lui a partagés ; l'accès est vérifié côté
+  serveur, pas seulement masqué dans l'interface.
+- **Tests** : 254 tests automatisés (`python manage.py test`).
+- **Sécurité en production** : secrets lus dans des variables d'environnement,
+  HTTPS forcé, cookies sécurisés et HSTS dès que `DEBUG` est désactivé.
+
+## Stack technique
+
+- **Back-end** : Python 3.14 · Django 6.0
+- **Base de données** : SQLite par défaut, MySQL 8 pris en charge
+- **Front-end** : templates Django · Bootstrap 5 · Chart.js
+- **PDF** : ReportLab (factures, reçus, ordonnances, dossiers)
+
+## Règle métier : le paiement précède l'acte
 
 À la clinique Nevroglie, **on paie avant d'être soigné**. Trois actes sont
 prépayés. Pour chacun, deux moments distincts : la facture est créée
@@ -32,19 +102,10 @@ Précisions :
 - Modifier un acte refait sa facture. Rallonger un séjour de deux nuits
   re-bloque donc l'admission jusqu'au complément de paiement.
 
-Toute la règle tient dans **`clinique/facturation/regles.py`** : c'est le seul
-fichier à lire pour la comprendre, et à modifier pour l'ajuster.
-
 > Sur une base contenant déjà des rendez-vous, examens ou hospitalisations
 > **sans facture**, ces actes deviennent impossibles à réaliser. La commande
 > `python manage.py facturer_actes_existants` crée les factures manquantes
 > (voir `--dry-run` pour simuler d'abord).
-
-## Stack technique
-
-- **Python** 3.14 · **Django** 6.0
-- Base de données : SQLite (développement)
-- Frontend : templates Django + Bootstrap + Chart.js
 
 ## Installation (développement)
 
@@ -119,9 +180,15 @@ python manage.py test
 
 | App | Rôle |
 |-----|------|
-| `comptes` | Authentification, rôles, permissions, notifications |
+| `comptes` | Authentification, rôles, permissions, notifications, journal d'audit |
 | `patients` | Dossiers patients et assurance |
-| `personnel` | Médecins, infirmiers, laborantins, réceptionnistes |
-| `consultation` | RDV, consultations, examens, résultats, ordonnances, hospitalisations |
-| `facturation` | Tarifs, factures, paiements, part assurance (AMO) |
-| `pharmacie` | Médicaments, mouvements de stock, dispensation |
+| `personnel` | Médecins, infirmiers, laborantins, réceptionnistes, pharmaciens |
+| `consultation` | RDV, consultations, examens, résultats, ordonnances, hospitalisations, urgences |
+| `facturation` | Tarifs, factures, paiements, part assurance (AMO), clôture de caisse |
+| `pharmacie` | Médicaments, lots, fournisseurs, commandes, dispensation |
+
+## Équipe
+
+Projet de fin de cycle réalisé par **Nana Diawara**, **Aicha Dembele**,
+**Awa Diarra** et **Hubert H Danfaga** — Licence MIAGE, Université Technolab
+ISTA, promotion 2023-2026.

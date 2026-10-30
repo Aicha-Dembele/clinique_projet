@@ -1247,7 +1247,8 @@ def hospitalisations(request):
     # Services distincts pour le filtre
     services = Hospitalisation.objects.values_list('type_chambre', flat=True).distinct().order_by('type_chambre')
 
-    # Grille chambres : plan fixe 101-110 (VIP), 201-210/301-302 (double), 303-310/401-410 (simple)
+    # Grille chambres : le plan fixe de Hospitalisation.plan_chambres(), un étage
+    # par centaine — 0xx urgences au rez-de-chaussée, 1xx VIP, 2xx doubles, 3xx simples.
     occ_par_chambre = {}
     for h in en_cours:
         occ_par_chambre.setdefault(h.numero_chambre, []).append(h)
@@ -1255,45 +1256,41 @@ def hospitalisations(request):
         base_h.filter(date_sortie=today)
         .values_list('numero_chambre', flat=True)
     )
-    type_par_num = dict(Hospitalisation.plan_chambres())
+    plan = Hospitalisation.plan_chambres()
 
-    etages = []
+    rangees = {}            # premier chiffre du numéro → chambres de cet étage
     chambres_libres = 0
-    for centaine in [100, 200, 300, 400]:
-        rangee = []
-        for i in range(1, 11):
-            num = str(centaine + i)
-            type_ = type_par_num.get(num, 'simple')
-            cap = Hospitalisation.capacite_pour(type_)
-            occs = occ_par_chambre.get(num, [])
-            n = len(occs)
-            if n > 0 and not any(o.est_admis() for o in occs):
-                # Place prise, mais aucun séjour réglé : la chambre est
-                # seulement réservée, personne n'y est encore admis.
-                statut_c = 'reservee'
-            elif n >= cap:
-                statut_c = 'occupee'      # pleine
-            elif n > 0:
-                statut_c = 'partiel'      # des places restent libres
-            elif num in sorties_jour:
-                statut_c = 'nettoyage'
-            else:
-                statut_c = 'libre'
-            if n < cap:
-                chambres_libres += 1
-            premier = occs[0] if occs else None
-            rangee.append({
-                'num': num,
-                'statut': statut_c,
-                'type': type_,
-                'nom_type': _nom_chambre(type_),
-                'occupants': n,
-                'capacite': cap,
-                'patient': f'{premier.patient.prenom} {premier.patient.nom}' if premier else '',
-                'service': premier.type_chambre if premier else type_,
-                'medecin': f'Dr. {premier.medecin.nom}' if premier else '',
-            })
-        etages.append(rangee)
+    for num, type_ in plan:
+        cap = Hospitalisation.capacite_pour(type_)
+        occs = occ_par_chambre.get(num, [])
+        n = len(occs)
+        if n > 0 and not any(o.est_admis() for o in occs):
+            # Place prise, mais aucun séjour réglé : la chambre est
+            # seulement réservée, personne n'y est encore admis.
+            statut_c = 'reservee'
+        elif n >= cap:
+            statut_c = 'occupee'      # pleine
+        elif n > 0:
+            statut_c = 'partiel'      # des places restent libres
+        elif num in sorties_jour:
+            statut_c = 'nettoyage'
+        else:
+            statut_c = 'libre'
+        if n < cap:
+            chambres_libres += 1
+        premier = occs[0] if occs else None
+        rangees.setdefault(num[0], []).append({
+            'num': num,
+            'statut': statut_c,
+            'type': type_,
+            'nom_type': _nom_chambre(type_),
+            'occupants': n,
+            'capacite': cap,
+            'patient': f'{premier.patient.prenom} {premier.patient.nom}' if premier else '',
+            'service': premier.type_chambre if premier else type_,
+            'medecin': f'Dr. {premier.medecin.nom}' if premier else '',
+        })
+    etages = list(rangees.values())
 
     hospit_liste, new_pk = nouveau_en_tete(request, qs)
     hospit_liste = _annoter_sejours(hospit_liste)
@@ -1309,7 +1306,7 @@ def hospitalisations(request):
         'service_filtre':   service_filtre,
         'q':                q,
         'etages':           etages,
-        'total_chambres':   30,
+        'total_chambres':   len(plan),
     })
 
 

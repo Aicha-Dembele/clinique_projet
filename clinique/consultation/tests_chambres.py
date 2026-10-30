@@ -126,3 +126,41 @@ class AffectationChambreTests(TestCase):
         self.hospitaliser(numero_chambre='410')
 
         self.assertEqual(Hospitalisation.objects.count(), 0)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class GrilleDesChambresTests(TestCase):
+    """L'écran « Hospitalisation » dessine le même plan que le modèle.
+
+    La grille avait gardé l'ancien plan de 40 chambres (101 à 410) après le
+    passage à 30 : elle affichait « 39 chambres libres · 130 % de
+    disponibilité » et cachait les quatre chambres d'urgence.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        installer_roles()
+
+    def setUp(self):
+        utilisateur = User.objects.create_user('recept', password='motdepasse-de-test')
+        Profil.objects.create(user=utilisateur,
+                              role=Role.objects.get(code='receptionniste'))
+        self.client.force_login(utilisateur)
+
+    def test_la_grille_reprend_le_plan_de_trente_chambres(self):
+        reponse = self.client.get(reverse('consultation:hospitalisations'))
+
+        numeros = [c['num'] for etage in reponse.context['etages'] for c in etage]
+        self.assertEqual(numeros, [n for n, _ in Hospitalisation.plan_chambres()])
+        self.assertEqual(reponse.context['total_chambres'], 30)
+
+    def test_une_clinique_vide_a_toutes_ses_chambres_libres(self):
+        reponse = self.client.get(reverse('consultation:hospitalisations'))
+
+        self.assertEqual(reponse.context['chambres_libres'], 30)
+
+    def test_les_urgences_forment_le_rez_de_chaussee(self):
+        reponse = self.client.get(reverse('consultation:hospitalisations'))
+
+        rez_de_chaussee = [c['num'] for c in reponse.context['etages'][0]]
+        self.assertEqual(rez_de_chaussee, ['001', '002', '003', '004'])

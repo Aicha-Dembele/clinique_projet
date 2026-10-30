@@ -7,8 +7,8 @@
 {% block page_heading %}Bonjour, {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
 
-{# Pas de « Nouveau patient » ici : l'enregistrement des patients relève de la
-   réception, pas de l'administration (cf. role_required_strict côté vues). #}
+{% comment %} Pas de « Nouveau patient » ici : l'enregistrement des patients relève de la
+   réception, pas de l'administration (cf. role_required_strict côté vues). {% endcomment %}
 
 {% block extra_css %}
 <style>

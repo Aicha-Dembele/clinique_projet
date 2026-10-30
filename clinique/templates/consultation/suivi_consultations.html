@@ -298,8 +298,8 @@
             {% endif %}
           </td>
           <td>
-            {# La consultation se règle d'avance : tant que ce n'est pas payé,
-               le médecin ne peut pas recevoir le patient. #}
+            {% comment %} La consultation se règle d'avance : tant que ce n'est pas payé,
+               le médecin ne peut pas recevoir le patient. {% endcomment %}
             {% if rdv.paiement.reglee %}
               <span class="badge-statut badge-termine">
                 <i class="bi bi-check-circle-fill"></i> Réglé

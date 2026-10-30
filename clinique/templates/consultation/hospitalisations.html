@@ -344,7 +344,7 @@ body.page-consultation-bg .etat-attente_paiement { background: #a855f7; color: #
     <div class="plan-modal-body">
       {% for etage in etages %}
       <div class="plan-etage">
-        <div class="plan-etage-lbl"><i class="bi bi-building me-1"></i>Étage {{ forloop.counter }}</div>
+        <div class="plan-etage-lbl"><i class="bi bi-building me-1"></i>{% if forloop.first %}Rez-de-chaussée — urgences{% else %}Étage {{ forloop.counter0 }}{% endif %}</div>
         <div class="plan-etage-rooms">
           {% for chambre in etage %}
           <div class="plan-room plan-room-{{ chambre.statut }}"

@@ -126,9 +126,9 @@
   <div class="d-flex gap-2 justify-content-end mt-3 flex-wrap">
     <a href="{% url 'patients:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-x-lg"></i> Annuler</a>
     {% if action == 'Ajouter' %}
-      {# Un patient vient presque toujours pour être reçu : le bouton
+      {% comment %} Un patient vient presque toujours pour être reçu : le bouton
          principal enchaîne sur le rendez-vous et l'encaissement. L'autre
-         sert au cas rare d'une fiche ouverte sans visite. #}
+         sert au cas rare d'une fiche ouverte sans visite. {% endcomment %}
       <button type="submit" name="sans_suite" value="1" class="btn-c btn-outline-c"><i class="bi bi-folder-plus"></i> Enregistrer seulement</button>
       <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-arrow-right-circle-fill"></i> Enregistrer et encaisser</button>
     {% else %}
