@@ -99,6 +99,23 @@ def _appeler(methode, chemin, **kwargs):
     return corps
 
 
+#: Indicatif du Mali, ajouté aux numéros locaux à 8 chiffres.
+INDICATIF_MALI = '223'
+
+
+def numero_international(numero):
+    """Le numéro au format exigé par SAMA : indicatif du pays compris.
+
+    À la caisse, on tape un numéro malien à 8 chiffres (76 00 00 00) ; l'API
+    attend `client_phone` avec l'indicatif (22376000000). Un numéro qui a
+    déjà son indicatif est laissé tel quel.
+    """
+    chiffres = ''.join(c for c in str(numero) if c.isdigit())
+    if len(chiffres) == 8:
+        return INDICATIF_MALI + chiffres
+    return chiffres
+
+
 def demander_encaissement(numero, montant_fcfa, description='', reference=''):
     """POST /v1/charges — demande au patient de confirmer le paiement.
 
@@ -110,6 +127,8 @@ def demander_encaissement(numero, montant_fcfa, description='', reference=''):
 
     if len(numero) < 8:
         raise ErreurSama("Numéro SAMA Money invalide — au moins 8 chiffres.")
+    if len(numero_international(numero)) > 20:
+        raise ErreurSama("Numéro SAMA Money invalide — trop long.")
     if montant <= 0:
         raise ErreurSama("Le montant doit être supérieur à zéro.")
 
@@ -120,7 +139,7 @@ def demander_encaissement(numero, montant_fcfa, description='', reference=''):
         'POST', 'charges',
         headers=_entetes(cle_idempotence=str(uuid.uuid4())),
         json={
-            'client_phone': numero,
+            'client_phone': numero_international(numero),
             'amount_xof': montant,
             'description': description[:140],
             'reference': reference,

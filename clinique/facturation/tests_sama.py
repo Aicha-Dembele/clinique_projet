@@ -79,6 +79,13 @@ class ClientSansCleTests(TestCase):
         with self.assertRaises(sama.ErreurSama):
             sama.demander_encaissement('76000000', 0)
 
+    def test_un_numero_malien_recoit_son_indicatif(self):
+        """SAMA exige l'indicatif du pays : 22376000000, pas 76000000."""
+        self.assertEqual(sama.numero_international('76 00 00 00'), '22376000000')
+
+    def test_un_numero_deja_international_est_garde(self):
+        self.assertEqual(sama.numero_international('+223 76 00 00 00'), '22376000000')
+
 
 @override_settings(SAMA_MONEY_CLE_API='cle_de_test',
                    SAMA_MONEY_BASE_URL='https://api.sama.money/v1')
@@ -98,7 +105,8 @@ class ClientAvecCleTests(TestCase):
         self.assertEqual(methode, 'POST')
         self.assertEqual(url, 'https://api.sama.money/v1/charges')
         self.assertEqual(options['json'], {
-            'client_phone': '76000000',
+            # Tapé à 8 chiffres à la caisse, envoyé avec l'indicatif du Mali.
+            'client_phone': '22376000000',
             'amount_xof': 5000,
             'description': 'Consultation',
             'reference': 'FAC-0001',
