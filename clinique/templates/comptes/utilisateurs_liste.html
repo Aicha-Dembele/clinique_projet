@@ -43,7 +43,7 @@
         <tr>
           <td><strong>{{ p.user.username }}</strong></td>
           <td>{{ p.user.get_full_name|default:'—' }}</td>
-          <td style="color:var(--text-muted)">{{ p.user.email|default:'—' }}</td>
+          <td style="color:var(--text-muted)">{% if p.user.email %}{{ p.user.email }}{% else %}<span class="pill pill-warning" title="Cette personne ne peut pas utiliser « Mot de passe oublié »">Aucun email</span>{% endif %}</td>
           <td>
             {% if p.role.code == 'admin' %}
               <span class="pill" style="background:rgba(239,68,68,.12);color:#ef4444">{{ p.role.libelle }}</span>

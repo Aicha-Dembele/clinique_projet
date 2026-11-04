@@ -250,7 +250,7 @@ Ouvrir `https://ggroupe3.pythonanywhere.com` et se connecter avec tes identifian
 | Boucle de redirection infinie | HTTPS mal détecté | Vérifier que `SECURE_PROXY_SSL_HEADER` est bien dans `settings.py` (il y est déjà) |
 | `CSRF verification failed` à la connexion | `DJANGO_CSRF_TRUSTED_ORIGINS` oublié ou sans `https://` | Corriger le fichier WSGI puis **Reload** |
 | « Mot de passe oublié » : la page confirme l'envoi mais aucun email n'arrive | `local_settings.py` absent sur le serveur → Gmail refuse (`530 Authentication Required`) | Faire l'**étape 6b**, puis **Reload** |
-| Toujours aucun email alors que `sendtestemail` fonctionne | Le compte visé n'a pas d'adresse email en base | *Utilisateurs* → **Modifier** → remplir le champ **Email**. Django n'envoie qu'aux comptes **actifs** dont l'adresse correspond exactement, sinon il affiche quand même sa page de confirmation (protection anti-énumération) |
+| Toujours aucun email alors que `sendtestemail` fonctionne | Le compte visé n'a pas d'adresse en base, ou porte une autre adresse que celle tapée | *Utilisateurs* → **Modifier** → corriger le champ **Email**. L'application n'envoie qu'aux comptes **actifs** dont l'adresse correspond (les majuscules ne comptent pas), sinon elle affiche quand même sa page de confirmation (protection anti-énumération) |
 
 ---
 

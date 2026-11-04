@@ -45,8 +45,9 @@
       </div>
 
       <div class="col-md-6">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="f-input" value="{{ edit_user.email|default:'' }}">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" class="f-input" value="{{ edit_user.email|default:'' }}" required pattern=".+@.+\..+" title="Exemple : prenom.nom@gmail.com">
+        <small class="text-muted">La vraie adresse de cette personne : c'est là qu'arrive le lien « Mot de passe oublié ».</small>
       </div>
       <div class="col-md-6">
         <label class="form-label">Telephone</label>

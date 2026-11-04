@@ -5,7 +5,9 @@ from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import views as auth_views
 
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
 
 from .models import Profil, Role, Permission, Notification, JournalAudit
 from .decorators import admin_required, role_required
@@ -67,6 +69,21 @@ def utilisateurs_liste(request):
     })
 
 
+def _email_refuse(email):
+    """Le message à afficher si ce compte ne peut pas garder cette adresse, sinon None.
+
+    L'adresse est obligatoire : c'est là que part le lien « Mot de passe oublié »,
+    et un compte sans adresse n'a aucun moyen de le recevoir.
+    """
+    if not email:
+        return "L'adresse email est obligatoire : sans elle, cette personne ne pourra pas récupérer son mot de passe."
+    try:
+        validate_email(email)
+    except ValidationError:
+        return "Cette adresse email n'est pas valide."
+    return None
+
+
 @admin_required
 def utilisateur_ajouter(request):
     roles = Role.objects.all()
@@ -87,6 +104,10 @@ def utilisateur_ajouter(request):
         if User.objects.filter(username=username).exists():
             messages.error(request, "Ce nom d'utilisateur existe deja.")
             return render(request, 'comptes/utilisateur_form.html', {'roles': roles})
+        refus = _email_refuse(email)
+        if refus:
+            messages.error(request, refus)
+            return redirect('comptes:utilisateur_ajouter')
 
         role = get_object_or_404(Role, pk=role_id)
         with transaction.atomic():
@@ -136,6 +157,12 @@ def utilisateur_modifier(request, pk):
     user = profil.user
     roles = Role.objects.all()
     if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        refus = _email_refuse(email)
+        if refus:
+            messages.error(request, refus)
+            return redirect('comptes:utilisateur_modifier', pk=profil.pk)
+
         # Nom d'utilisateur : modifiable, mais doit rester unique et non vide
         nouveau_username = request.POST.get('username', '').strip()
         if nouveau_username and nouveau_username != user.username:
@@ -146,7 +173,7 @@ def utilisateur_modifier(request, pk):
 
         user.first_name = request.POST.get('first_name', '').strip()
         user.last_name = request.POST.get('last_name', '').strip()
-        user.email = request.POST.get('email', '').strip()
+        user.email = email
         user.is_active = request.POST.get('is_active') == 'on'
         new_password = request.POST.get('password', '')
         if new_password:
