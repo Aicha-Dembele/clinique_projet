@@ -2,28 +2,21 @@
 
 Guide pas à pas pour mettre en ligne la Clinique Nevroglie **sans perdre aucune donnée**.
 
-Compte PythonAnywhere : **GGROUPE3** (nom en majuscules, domaine en minuscules) — site final : https://ggroupe3.pythonanywhere.com
+Compte PythonAnywhere : **clinique** (écrit en minuscules) — site : https://clinique.pythonanywhere.com
 
-> ## ✅ Déploiement réalisé le 9 août 2026
+> ## ✅ Déploiement réalisé le 4 novembre 2026
 >
-> Le site est en ligne : **https://ggroupe3.pythonanywhere.com**
+> Le site est en ligne : **https://clinique.pythonanywhere.com**
 >
-> Contrôle d'intégrité après transfert — base identique à l'octet près
-> (753 664 octets), et `migrate` a répondu « No migrations to apply » :
+> Il remplace l'ancien compte `GGROUPE3`, devenu inaccessible.
 >
-> | Table | PC | Serveur |
-> |---|---|---|
-> | Comptes utilisateurs | 12 | 12 |
-> | Patients | 4 | 4 |
-> | Consultations | 2 | 2 |
-> | Factures | 5 | 5 |
-> | Médicaments | 41 | 41 |
+> Base envoyée depuis le PC : `db.sqlite3`, empreinte SHA-256 identique des deux
+> côtés avant `migrate`. Elle contient 12 comptes, le personnel, les tarifs et
+> 41 médicaments, mais **aucun patient**.
 >
-> `python manage.py check --deploy` : **0 problème, 0 avertissement.**
->
-> ⚠️ **À faire avant la soutenance** : onglet *Web* → bouton
-> **« Run until 1 month from today] »**. Sans ce clic, le site est
-> désactivé le **9 septembre 2026**.
+> ⚠️ **Tous les mois** : onglet *Web* → bouton **« Run until 1 month from today »**.
+> Sans ce clic, le site est désactivé le **4 décembre 2026**. PythonAnywhere
+> envoie un rappel par email une semaine avant.
 
 ---
 
@@ -33,10 +26,10 @@ Compte PythonAnywhere : **GGROUPE3** (nom en majuscules, domaine en minuscules) 
 |---|---|
 | Base de données | On garde **SQLite** (le fichier `db.sqlite3` est copié tel quel → 0 perte). MySQL n'est plus dans l'offre gratuite depuis janvier 2026. |
 | Python | Choisir **3.13** (Django 6.0.5 exige 3.12 minimum). |
-| Adresse du site | `https://ggroupe3.pythonanywhere.com` — HTTPS gratuit inclus. |
-| Expiration | L'app gratuite **expire après 1 mois** sans activité. Un bouton « Run until… » sur l'onglet *Web* la réactive. **À cliquer la veille de la soutenance.** |
+| Adresse du site | `https://clinique.pythonanywhere.com` — HTTPS gratuit inclus. L'adresse reprend le nom du compte. L'offre gratuite n'accepte pas de domaine personnel (à partir de l'offre Developer, 10 $/mois). |
+| Expiration | L'app gratuite **expire après 1 mois**. Le bouton « Run until… » de l'onglet *Web* la prolonge. |
 | Emails | L'offre gratuite bloque le SMTP, **sauf Gmail** — la réinitialisation de mot de passe devrait donc marcher, mais peut être capricieuse. |
-| Stripe | Les appels vers `api.stripe.com` peuvent être bloqués par le pare-feu gratuit. À tester ; si bloqué, demander l'ajout à la liste blanche sur le forum PythonAnywhere. |
+| SAMA Money | Sans clé, l'application reste en mode démonstration. Avec une clé, les appels vers `api.sama.money` peuvent être bloqués par le pare-feu gratuit : à tester. |
 
 ---
 
@@ -47,7 +40,7 @@ Sur ton PC, dans `clinique_project` :
 ```bash
 git add -A
 git commit -m "Version deployee sur PythonAnywhere"
-git push origin aicha
+git push origin main
 ```
 
 > `db.sqlite3`, `media/` et `local_settings.py` sont dans `.gitignore` : ils ne partent **pas** sur GitHub (c'est voulu, ils contiennent tes données et ton mot de passe Gmail). On les transférera à la main à l'étape 6.
@@ -69,7 +62,6 @@ Onglet **Consoles** → **Bash**. Puis :
 ```bash
 git clone https://github.com/Aicha-Dembele/clinique_projet.git
 cd clinique_projet
-git checkout aicha
 ```
 
 ---
@@ -80,16 +72,10 @@ Toujours dans la console Bash :
 
 ```bash
 mkvirtualenv --python=/usr/bin/python3.13 clinique-venv
-pip install Django==6.0.5 tzdata reportlab==4.4.10 Pillow==12.0.0 stripe==11.4.1
+pip install -r ~/clinique_projet/requirements.txt
 ```
 
-> On n'installe **pas** `mysqlclient` : le projet tourne sur SQLite, et ce paquet échouerait à s'installer.
-
-Génère aussi une nouvelle clé secrète (à garder de côté pour l'étape 5) :
-
-```bash
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
+> `mysqlclient` n'est **pas** installé : il est commenté dans `requirements.txt`, car le serveur tourne sur SQLite.
 
 ---
 
@@ -102,53 +88,25 @@ Onglet **Web** → **Add a new web app** → **Manual configuration** (surtout *
 Section *Virtualenv*, saisir :
 
 ```
-/home/GGROUPE3/.virtualenvs/clinique-venv
+/home/clinique/.virtualenvs/clinique-venv
 ```
 
 ### 5b. Fichier WSGI
 
-**Méthode utilisée** (plus fiable que l'éditeur web) : le fichier est versionné
-dans le dépôt sous `deploy/wsgi_pythonanywhere.py`, puis copié en place depuis
-la console Bash :
+Le fichier est versionné dans `deploy/wsgi_pythonanywhere.py`. Il déduit l'adresse du
+site du nom du compte : il n'y a rien à modifier dedans. On le copie en place depuis
+la console Bash, **après** avoir créé l'application web :
 
 ```bash
-cd ~/clinique_projet && git pull
-python -c "from django.core.management.utils import get_random_secret_key as g; open('/home/GGROUPE3/.django_secret_key','w').write(g())"
+workon clinique-venv
+python -c "import os; from django.core.management.utils import get_random_secret_key as g; open(os.path.expanduser('~/.django_secret_key'),'w').write(g())"
 chmod 600 ~/.django_secret_key
-cp deploy/wsgi_pythonanywhere.py /var/www/ggroupe3_pythonanywhere_com_wsgi.py
+cp ~/clinique_projet/deploy/wsgi_pythonanywhere.py /var/www/clinique_pythonanywhere_com_wsgi.py
 ```
 
 La clé secrète est générée **sur le serveur** et stockée dans
 `~/.django_secret_key` (hors dépôt, permissions 600) ; le fichier WSGI la lit
 au démarrage. Elle n'a donc jamais transité par GitHub.
-
-Pour mémoire, voici son contenu (équivalent à l'édition manuelle via
-*Code* → `/var/www/ggroupe3_pythonanywhere_com_wsgi.py`) :
-
-```python
-import os
-import sys
-
-# Dossier qui contient manage.py.
-# expanduser('~') = /home/GGROUPE3 (nom en MAJUSCULES, contrairement
-# au domaine qui est en minuscules) — evite toute erreur de casse.
-path = os.path.expanduser('~/clinique_projet/clinique')
-if path not in sys.path:
-    sys.path.insert(0, path)
-
-# Réglages de production
-os.environ['DJANGO_SECRET_KEY'] = 'COLLER_ICI_LA_CLE_DE_L_ETAPE_4'
-os.environ['DJANGO_DEBUG'] = 'False'
-os.environ['DJANGO_ALLOWED_HOSTS'] = 'ggroupe3.pythonanywhere.com'
-os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://ggroupe3.pythonanywhere.com'
-
-os.environ['DJANGO_SETTINGS_MODULE'] = 'clinique.settings'
-
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
-```
-
-Puis **Save**.
 
 ### 5c. Fichiers statiques et médias
 
@@ -156,8 +114,8 @@ Section *Static files*, ajouter **deux** lignes :
 
 | URL | Directory |
 |---|---|
-| `/static/` | `/home/GGROUPE3/clinique_projet/clinique/staticfiles` |
-| `/media/` | `/home/GGROUPE3/clinique_projet/clinique/media` |
+| `/static/` | `/home/clinique/clinique_projet/clinique/staticfiles` |
+| `/media/` | `/home/clinique/clinique_projet/clinique/media` |
 
 ---
 
@@ -165,9 +123,9 @@ Section *Static files*, ajouter **deux** lignes :
 
 Onglet **Files**, naviguer dans `clinique_projet/clinique/`, puis **Upload a file** :
 
-1. `db.sqlite3` — depuis `C:\Users\User\clinique_project\clinique\db.sqlite3` (≈ 750 Ko)
-   → à déposer dans `/home/GGROUPE3/clinique_projet/clinique/`
-2. Le dossier `media/` — créer `media/patients/photos/` via *New directory*, puis y téléverser les photos.
+1. `db.sqlite3` — depuis `C:\Users\User\clinique_project\clinique\db.sqlite3` (≈ 840 Ko)
+   → à déposer dans `/home/clinique/clinique_projet/clinique/`
+2. Le dossier `media/` — seulement si la base envoyée contient des patients : créer `media/patients/photos/` via *New directory*, puis y téléverser les photos.
 3. `local_settings.py` — **à créer sur place, surtout pas à téléverser** (voir ci-dessous).
 
 > **Ordre important :** téléverser `db.sqlite3` **avant** toute commande `migrate` ou `createsuperuser`, sinon tu risques d'écraser tes données par une base vide.
@@ -227,7 +185,7 @@ python manage.py migrate
 python manage.py check --deploy
 ```
 
-`migrate` doit répondre « No migrations to apply » : c'est la preuve que ta base est bien celle de ton PC, intacte.
+`migrate` applique seulement les mises à jour que la base n'a pas encore (10 lors du déploiement du 4 novembre), sans effacer de données. Une seule modifie du contenu : `0022_retirer_takaful` retire Takaful des patients et rend inactive une formule déjà portée par des factures.
 
 ---
 
@@ -235,7 +193,7 @@ python manage.py check --deploy
 
 Onglet **Web** → gros bouton vert **Reload**.
 
-Ouvrir `https://ggroupe3.pythonanywhere.com` et se connecter avec tes identifiants habituels (ils sont dans la base transférée).
+Ouvrir `https://clinique.pythonanywhere.com` et se connecter avec tes identifiants habituels (ils sont dans la base transférée).
 
 ---
 
@@ -259,8 +217,9 @@ Ouvrir `https://ggroupe3.pythonanywhere.com` et se connecter avec tes identifian
 ```bash
 cd ~/clinique_projet
 git pull
-cd clinique
 workon clinique-venv
+pip install -r requirements.txt
+cd clinique
 python manage.py migrate
 python manage.py collectstatic --noinput
 ```
