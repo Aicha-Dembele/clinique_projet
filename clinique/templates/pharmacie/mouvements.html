@@ -34,11 +34,11 @@
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.06s">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-box-arrow-up"></i></div>
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12);color:#1666b3"><i class="bi bi-box-arrow-up"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Sorties</div>
         <div class="stat-h-val">{{ nb_sorties }}</div>
-        <div style="font-size:.74rem;font-weight:700;color:#0088aa;margin-top:.1rem">{{ val_sorties }} FCFA</div>
+        <div style="font-size:.74rem;font-weight:700;color:#1666b3;margin-top:.1rem">{{ val_sorties }} FCFA</div>
       </div>
     </div>
   </div>
@@ -95,7 +95,7 @@
             {% if mv.type_mouvement == 'entree' %}
               <span class="pill" style="background:rgba(16,185,129,.12);color:#10b981;font-size:.68rem"><i class="bi bi-box-arrow-in-down"></i> Entrée</span>
             {% else %}
-              <span class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;font-size:.68rem"><i class="bi bi-box-arrow-up"></i> Sortie</span>
+              <span class="pill" style="background:rgba(22,102,179,.12);color:#1666b3;font-size:.68rem"><i class="bi bi-box-arrow-up"></i> Sortie</span>
             {% endif %}
           </td>
           <td style="font-weight:700">{{ mv.medicament.nom }}{% if mv.medicament.dosage %} <span style="color:var(--text-muted);font-weight:500">{{ mv.medicament.dosage }}</span>{% endif %}</td>
@@ -106,7 +106,7 @@
           <td class="text-end" style="white-space:nowrap;font-weight:800">{{ mv.montant|floatformat:0 }} FCFA</td>
           <td>
             {% if mv.patient %}{{ mv.patient }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
-            {% if mv.facture_id %}<br><a href="{% url 'facturation:detail' mv.facture_id %}" class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;font-size:.66rem;text-decoration:none"><i class="bi bi-receipt"></i> FAC-{{ mv.facture_id|stringformat:"04d" }}</a>{% endif %}
+            {% if mv.facture_id %}<br><a href="{% url 'facturation:detail' mv.facture_id %}" class="pill" style="background:rgba(22,102,179,.12);color:#1666b3;font-size:.66rem;text-decoration:none"><i class="bi bi-receipt"></i> FAC-{{ mv.facture_id|stringformat:"04d" }}</a>{% endif %}
           </td>
           <td style="color:var(--text-muted);font-size:.82rem">{{ mv.motif|default:'—' }}</td>
           <td style="color:var(--text-muted);font-size:.82rem">{% if mv.utilisateur %}{{ mv.utilisateur.username }}{% else %}—{% endif %}</td>

@@ -67,6 +67,7 @@ PERMISSIONS = [
     ('paiement.delete', 'Supprimer un paiement'),
 
     ('caisse.cloturer', 'Arreter et compter sa caisse'),
+    ('creance.marquer', 'Marquer les creances assurances (reclamees, remboursees)'),
 
     ('tarif.view', 'Consulter les tarifs'),
     ('tarif.add', 'Ajouter un tarif'),
@@ -141,6 +142,9 @@ ROLE_PERMISSIONS = {
         'facture.view',
         'paiement.view', 'paiement.add',
         'caisse.cloturer',
+        # Il réclame lui-même aux assurances leur part sur les médicaments
+        # (et seulement sur les médicaments : cf. factures_visibles).
+        'creance.marquer',
     ],
 }
 

@@ -441,7 +441,7 @@ def suivi_consultations(request):
     if q:
         base = base.filter(
             termes_q(q, 'patient__nom', 'patient__prenom', 'patient__telephone',
-                     'medecin__nom', 'medecin__prenom', 'medecin__specialite')
+                     'medecin__nom', 'medecin__prenom', 'medecin__specialite', numero='RDV')
         )
 
     # Fixées mais pas encore faites (les annulées ne sont plus « à faire »).
@@ -508,7 +508,7 @@ def dossiers(request):
 
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', numero='DOS'))
 
     today = timezone.localdate()
     total_dossiers     = visibles.count()
@@ -629,7 +629,7 @@ def consultation_liste(request):
     if q:
         consultations = consultations.filter(
             termes_q(q, 'rendez_vous__patient__nom', 'rendez_vous__patient__prenom',
-                     'rendez_vous__medecin__nom', 'motif', 'diagnostic')
+                     'rendez_vous__medecin__nom', 'motif', 'diagnostic', numero='CON')
         )
 
     nb_ordonnance = consultations.filter(ordonnance__isnull=False).distinct().count()
@@ -753,7 +753,7 @@ def examens(request):
         qs = qs.filter(
             termes_q(q, 'type_examen',
                      'consultation__rendez_vous__patient__nom',
-                     'consultation__rendez_vous__patient__prenom')
+                     'consultation__rendez_vous__patient__prenom', numero='EXM')
         )
 
     qs = qs.prefetch_related('resultats')
@@ -935,7 +935,7 @@ def resultats(request):
 
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', 'examen__type_examen'))
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', 'examen__type_examen', numero='RES'))
 
     resultats_liste, new_pk = nouveau_en_tete(request, qs)
     page = Paginator(resultats_liste, 25).get_page(request.GET.get('page'))
@@ -1102,7 +1102,7 @@ def ordonnances(request):
         qs = qs.filter(
             termes_q(q, 'consultation__rendez_vous__patient__nom',
                      'consultation__rendez_vous__patient__prenom',
-                     'consultation__rendez_vous__medecin__nom', 'medicaments')
+                     'consultation__rendez_vous__medecin__nom', 'medicaments', numero='ORD')
         )
 
     ordonnances_liste, new_pk = nouveau_en_tete(request, qs)
@@ -1215,7 +1215,7 @@ def hospitalisations(request):
     # Filtre service (type_chambre)
     service_filtre = request.GET.get('service', '')
     if service_filtre:
-        qs = qs.filter(type_chambre__iexact=service_filtre)
+        qs = qs.filter(type_chambre__lower=service_filtre.lower())
 
     # Recherche (patient, médecin, chambre)
     q = request.GET.get('q', '').strip()
@@ -1495,7 +1495,7 @@ def traitements(request):
     if q:
         qs = qs.filter(
             termes_q(q, 'patient__nom', 'patient__prenom',
-                     'consultation__rendez_vous__medecin__nom', 'description')
+                     'consultation__rendez_vous__medecin__nom', 'description', numero='TRT')
         )
 
     base = Traitement.objects.all()

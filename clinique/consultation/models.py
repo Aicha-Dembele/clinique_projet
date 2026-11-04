@@ -407,7 +407,7 @@ class Hospitalisation(models.Model):
         tarif = (
             Tarif.objects.filter(
                 type_service='hospitalisation',
-                specialite__iexact=self.type_chambre
+                specialite__lower=(self.type_chambre or '').strip().lower()
             ).first()
             or Tarif.objects.filter(type_service='hospitalisation').first()
         )

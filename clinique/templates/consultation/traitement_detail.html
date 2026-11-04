@@ -22,8 +22,8 @@
 .live-dot { width:9px; height:9px; border-radius:50%; background:#10b981; box-shadow:0 0 0 0 rgba(16,185,129,.5); }
 .live-dot.pulse { animation: livepulse .8s ease-out; }
 @keyframes livepulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)} 100%{box-shadow:0 0 0 9px rgba(16,185,129,0)} }
-.prog-track { height:12px; border-radius:999px; background:rgba(0,136,170,.12); overflow:hidden; }
-.prog-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#0088aa,#22d3ee); width:0; transition:width .6s ease; }
+.prog-track { height:12px; border-radius:999px; background:rgba(22,102,179,.12); overflow:hidden; }
+.prog-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#1666b3,#22d3ee); width:0; transition:width .6s ease; }
 .prog-meta { display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:.6rem; }
 .prog-meta-item { font-size:.8rem; color:var(--text-muted); }
 .prog-meta-item strong { color:var(--text-primary); font-size:1.05rem; font-weight:800; display:block; }
@@ -33,14 +33,14 @@
 .timeline::before { content:''; position:absolute; left:14px; top:6px; bottom:6px; width:2px; background:var(--card-border); }
 .tl-item { position:relative; padding:0 0 1rem 2.4rem; }
 .tl-item:last-child { padding-bottom:.25rem; }
-.tl-dot { position:absolute; left:7px; top:3px; width:16px; height:16px; border-radius:50%; background:#0088aa; border:3px solid var(--card-bg); box-shadow:0 0 0 1px rgba(0,136,170,.4); }
+.tl-dot { position:absolute; left:7px; top:3px; width:16px; height:16px; border-radius:50%; background:#1666b3; border:3px solid var(--card-bg); box-shadow:0 0 0 1px rgba(22,102,179,.4); }
 .tl-item-new .tl-dot { background:#10b981; box-shadow:0 0 0 1px rgba(16,185,129,.5); }
 .tl-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:.7rem; padding:.6rem .85rem; box-shadow:var(--shadow-sm); }
 .tl-item-new .tl-card { animation: tlnew 1.2s ease; border-color:rgba(16,185,129,.45); }
 @keyframes tlnew { 0%{background:rgba(16,185,129,.14)} 100%{background:var(--card-bg)} }
 .tl-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
 .tl-date { font-size:.8rem; font-weight:700; color:var(--text-primary); }
-.tl-inf { font-size:.72rem; font-weight:600; color:#0088aa; }
+.tl-inf { font-size:.72rem; font-weight:600; color:#1666b3; }
 .tl-note { font-size:.8rem; color:var(--text-secondary); margin-top:.3rem; white-space:pre-wrap; }
 .tl-empty { text-align:center; color:var(--text-muted); padding:2rem 1rem; font-size:.85rem; }
 </style>{% endblock %}

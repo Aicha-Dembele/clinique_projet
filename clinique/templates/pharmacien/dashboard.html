@@ -1,15 +1,12 @@
 {% extends 'base.html' %}
-{% block body_class %}page-dashboard-bg page-facturation-bg{% endblock %}
+{% load static %}
+{% block body_class %}page-dashboard-bg page-pharmacie-bg page-accueil{% endblock %}
 
 {% block title %}Dashboard Pharmacien{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Pharmacie{% endblock %}
 {% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
-{% block page_actions %}
-<a href="{% url 'pharmacie:entree_stock' %}" class="btn-c btn-outline-c"><i class="bi bi-box-arrow-in-down"></i> Entrée de stock</a>
-<a href="{% url 'pharmacie:sortie_stock' %}" class="btn-c btn-primary-c"><i class="bi bi-capsule"></i> Dispenser</a>
-{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -30,6 +27,19 @@
 {% endblock %}
 
 {% block content %}
+<!-- ── Accueil : bannière photo ─────────────────────────────── -->
+<section class="accueil-hero" style="background-image:url('{% static 'consultation/img/ANAA3.jpg' %}')">
+  <div>
+    <div class="accueil-hero-date">{% now "l j F Y" %}</div>
+    <h1>Bonjour, {{ request.user.get_full_name|default:request.user.username }} 👋</h1>
+    <p>{% if nb_alerte or nb_rupture %}<b>{{ nb_alerte }} médicament{{ nb_alerte|pluralize }}</b> sous le seuil{% if nb_rupture %} et <b>{{ nb_rupture }}</b> en rupture{% endif %} : pensez à commander.{% else %}Le stock est en ordre : aucun médicament sous le seuil.{% endif %}</p>
+    <div class="accueil-hero-btns">
+      <a class="plein" href="{% url 'pharmacie:sortie_stock' %}"><i class="bi bi-capsule"></i>Dispenser</a>
+      <a class="verre" href="{% url 'pharmacie:entree_stock' %}"><i class="bi bi-box-arrow-in-down"></i>Entrée de stock</a>
+    </div>
+  </div>
+</section>
+
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
@@ -106,7 +116,7 @@
   <div class="col-12 col-xl-5">
     <div class="panel h-100">
       <div class="panel-hdr">
-        <div class="panel-title"><i class="bi bi-arrow-left-right" style="color:#0088aa"></i> Mouvements récents</div>
+        <div class="panel-title"><i class="bi bi-arrow-left-right" style="color:#1666b3"></i> Mouvements récents</div>
         <a href="{% url 'pharmacie:mouvements' %}" class="btn-c btn-sm-c btn-outline-c">Historique</a>
       </div>
       <div class="panel-body">

@@ -157,15 +157,16 @@ def patient_liste(request):
     qs = _restreindre_au_medecin(request, qs)
 
     if q:
-        qs = qs.filter(termes_q(q, 'nom', 'prenom', 'telephone', 'email'))
+        qs = qs.filter(termes_q(q, 'nom', 'prenom', 'telephone', 'email', numero='P'))
     if sexe:
         qs = qs.filter(sexe=sexe)
 
     aujourd_hui = timezone.now()
     stats = qs.aggregate(
-        # istartswith : tolère « Feminin » sans accent ou « M »/« F » d'anciennes saisies
-        nb_hommes=Count('pk', distinct=True, filter=Q(sexe__istartswith='m')),
-        nb_femmes=Count('pk', distinct=True, filter=Q(sexe__istartswith='f')),
+        # lower + startswith : tolère « Feminin » sans accent ou « M »/« F » d'anciennes
+        # saisies (et pas __istartswith, sensible à la casse sur MySQL utf8mb4_bin)
+        nb_hommes=Count('pk', distinct=True, filter=Q(sexe__lower__startswith='m')),
+        nb_femmes=Count('pk', distinct=True, filter=Q(sexe__lower__startswith='f')),
         nb_nouveaux=Count('pk', distinct=True,
                           filter=Q(date_creation__year=aujourd_hui.year,
                                    date_creation__month=aujourd_hui.month)),
@@ -186,7 +187,7 @@ def patient_export(request):
     qs = Patient.objects.select_related('assurance').order_by('nom', 'prenom')
     qs = _restreindre_au_medecin(request, qs)
     if q:
-        qs = qs.filter(termes_q(q, 'nom', 'prenom', 'telephone', 'email'))
+        qs = qs.filter(termes_q(q, 'nom', 'prenom', 'telephone', 'email', numero='P'))
     if sexe:
         qs = qs.filter(sexe=sexe)
 
@@ -230,10 +231,13 @@ def patient_detail(request, pk):
 
     # Le médecin soigne, il ne facture pas : la situation financière du patient
     # ne lui est pas envoyée du tout (et pas seulement masquée à l'affichage).
+    # Le pharmacien, lui, n'en voit que la partie médicaments (facturation/regles.py).
     if get_role(request.user) == 'medecin':
         factures = Facture.objects.none()
     else:
-        factures = Facture.objects.filter(patient=patient).order_by('-id')[:5]
+        from facturation.regles import factures_visibles
+        factures = factures_visibles(Facture.objects.filter(patient=patient),
+                                     get_role(request.user)).order_by('-id')[:5]
 
     # Séjours du patient. Même cloisonnement que la liste des hospitalisations :
     # un médecin ne voit que les séjours dont il est le médecin traitant.

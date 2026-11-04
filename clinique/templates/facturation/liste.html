@@ -12,7 +12,7 @@
 
 {% block extra_css %}<style>
 .stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(0,136,170,.25); }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(22,102,179,.25); }
 .stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
 .stat-h-info { flex: 1; min-width: 0; }
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
@@ -27,15 +27,15 @@
 .tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
 /* Barre de recherche : même boîte (teal translucide) que la liste des consultations */
 .search-bar {
-  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
-  border: 1.5px solid rgba(0,136,170,.35);
+  background: linear-gradient(135deg, rgba(22,102,179,.08) 0%, rgba(34,184,224,.05) 100%);
+  border: 1.5px solid rgba(22,102,179,.35);
   border-radius: .9rem; padding: .9rem 1.2rem; margin-bottom: .75rem;
-  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  box-shadow: 0 2px 12px rgba(22,102,179,.10);
   display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
 }
-.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
-.search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
-.search-bar i.bi-search { color: #0088aa !important; }
+.search-bar .f-input { border-color: rgba(22,102,179,.3) !important; }
+.search-bar .f-input:focus { border-color: #1666b3 !important; box-shadow: 0 0 0 3px rgba(22,102,179,.15) !important; outline: none; }
+.search-bar i.bi-search { color: #1666b3 !important; }
 </style>{% endblock %}
 
 {% block content %}
@@ -50,7 +50,7 @@
     </div>
     <div>
       <div class="hero-title">Gestion des factures</div>
-      <div class="hero-sub">{{ total_factures|default:0 }} facture(s) enregistrée(s)</div>
+      <div class="hero-sub">{{ total_factures|default:0 }} facture(s) enregistrée(s){% if perimetre == 'pharmacie' %} — médicaments uniquement (ordonnances){% elif perimetre == 'reception' %} — soins : consultations, examens, hospitalisations{% endif %}</div>
     </div>
   </div>
 </div>
@@ -58,19 +58,19 @@
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:var(--primary)"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12);color:var(--primary)"><i class="bi bi-check-circle-fill"></i></div>
       <div class="stat-h-info"><div class="stat-h-lbl">Encaissé</div><div class="stat-h-val">{{ total_paye|default:0 }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div><div class="stat-h-trend" style="color:var(--primary)"><i class="bi bi-arrow-up-short"></i>Ce mois</div></div>
       <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:50%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:40%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:65%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:55%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:75%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:60%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:85%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:70%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:100%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:35%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:50%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:40%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:65%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:55%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:75%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:60%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:85%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:70%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:100%;background:#1666b3"></div>
       </div>
     </div>
   </div>
@@ -161,7 +161,7 @@
           <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:var(--text-muted)">FAC-{{ f.pk|stringformat:"04d" }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <div class="av" style="background:rgba(0,136,170,.12);color:var(--primary)">{{ f.patient.nom|slice:":1" }}{{ f.patient.prenom|slice:":1" }}</div>
+              <div class="av" style="background:rgba(22,102,179,.12);color:var(--primary)">{{ f.patient.nom|slice:":1" }}{{ f.patient.prenom|slice:":1" }}</div>
               <div>
                 <div style="font-weight:700">{{ f.patient }}</div>
                 {% if f.assurance %}<span class="pill pill-purple" style="font-size:.6rem;margin-top:3px"><i class="bi bi-shield-fill-check"></i> {{ f.assurance.nom }} {{ f.taux_prise_en_charge|floatformat:0 }}%</span>{% endif %}

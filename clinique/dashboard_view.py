@@ -22,13 +22,16 @@ def dashboard(request):
     # Imports ici pour éviter les imports circulaires
     from consultation.models import Rendez_vous, Hospitalisation, ExamenMedical
     from facturation.models import Facture, Paiement
+    from facturation.regles import factures_visibles
     from django.db.models import Sum
 
     # Contexte commun (utilisé dans la sidebar / notifs pour tous les rôles)
     base_ctx = {
         'rdv_count':            Rendez_vous.objects.filter(date__date=aujourd_hui).count(),
         'examens_attente_count': ExamenMedical.objects.filter(statut='en_attente').count(),
-        'factures_impayees':    Facture.objects.filter(statut='non payé').count(),
+        # Le pharmacien ne compte que les factures de médicaments (facturation/regles.py).
+        'factures_impayees':    factures_visibles(
+            Facture.objects.filter(statut='non payé'), role).count(),
     }
 
     # ── ADMIN ──────────────────────────────────────────────────────

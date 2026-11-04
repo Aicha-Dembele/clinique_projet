@@ -37,6 +37,7 @@ def personnel_liste(request):
         medecins        = medecins.filter(f)
         infirmiers      = infirmiers.filter(f)
         laborantins     = laborantins.filter(f)
+        agents          = agents.filter(f)
         receptionnistes = receptionnistes.filter(f)
         pharmaciens     = pharmaciens.filter(f)
 

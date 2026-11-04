@@ -27,13 +27,13 @@
 .hero-banner-bg {
   position: absolute; inset: 0;
   background-image: url('{% static "consultation/img/bloc_operatoire.jpg" %}'),
-                    linear-gradient(135deg, #0a3d4f 0%, #0088aa 100%);
+                    linear-gradient(135deg, #0a3d4f 0%, #1666b3 100%);
   background-size: cover; background-position: center; background-repeat: no-repeat;
   filter: brightness(.55) saturate(.9);
 }
 .hero-banner-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(0,136,170,.75) 0%, rgba(0,80,120,.45) 60%, transparent 100%);
+  background: linear-gradient(90deg, rgba(22,102,179,.75) 0%, rgba(0,80,120,.45) 60%, transparent 100%);
 }
 .hero-banner-content {
   position: relative; z-index: 2;
@@ -74,7 +74,7 @@
   transition: background .12s;
 }
 .modern-table tbody tr:last-child { border-bottom: none; }
-.modern-table tbody tr:hover { background: rgba(0,136,170,.04); }
+.modern-table tbody tr:hover { background: rgba(22,102,179,.04); }
 .modern-table tbody td { padding: .85rem 1.1rem; font-size: .84rem; vertical-align: middle; }
 
 /* ── Badges statut ── */
@@ -118,20 +118,20 @@
 
 /* ── Barre de recherche ── */
 .search-bar {
-  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
-  border: 1.5px solid rgba(0,136,170,.35);
+  background: linear-gradient(135deg, rgba(22,102,179,.08) 0%, rgba(34,184,224,.05) 100%);
+  border: 1.5px solid rgba(22,102,179,.35);
   border-radius: .9rem; padding: .9rem 1.2rem;
   margin-bottom: .75rem;
-  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  box-shadow: 0 2px 12px rgba(22,102,179,.10);
   display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
 }
-.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input { border-color: rgba(22,102,179,.3) !important; }
 .search-bar .f-input:focus {
-  border-color: #0088aa !important;
-  box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important;
+  border-color: #1666b3 !important;
+  box-shadow: 0 0 0 3px rgba(22,102,179,.15) !important;
   outline: none;
 }
-.search-bar i.bi-search { color: #0088aa !important; }
+.search-bar i.bi-search { color: #1666b3 !important; }
 
 </style>{% endblock %}
 
@@ -156,23 +156,23 @@
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-capsule-pill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12);color:#1666b3"><i class="bi bi-capsule-pill"></i></div>
       <div style="flex:1;min-width:0">
         <div class="stat-h-lbl">Total</div>
         <div class="stat-h-val">{{ traitements|length }}</div>
-        <div class="stat-h-trend" style="color:#0088aa">Protocoles</div>
+        <div class="stat-h-trend" style="color:#1666b3">Protocoles</div>
       </div>
       <div class="stat-h-spark" aria-hidden="true">
-        <div class="spark-bar" style="height:35%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:50%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:40%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:65%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:55%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:75%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:60%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:85%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:70%;background:#0088aa"></div>
-        <div class="spark-bar" style="height:100%;background:#0088aa"></div>
+        <div class="spark-bar" style="height:35%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:50%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:40%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:65%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:55%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:75%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:60%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:85%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:70%;background:#1666b3"></div>
+        <div class="spark-bar" style="height:100%;background:#1666b3"></div>
       </div>
     </div>
   </div>
@@ -290,7 +290,7 @@
           <td><span class="con-num">TRT-{{ traitement.pk|stringformat:"04d" }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <div class="av-sm" style="background:rgba(0,136,170,.12);color:#0088aa">
+              <div class="av-sm" style="background:rgba(22,102,179,.12);color:#1666b3">
                 {{ traitement.patient.nom|slice:":1" }}{{ traitement.patient.prenom|slice:":1" }}
               </div>
               <div>

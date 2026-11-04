@@ -1,0 +1,509 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Charte « Humain et chaleureux » — Nevroglie
+   ───────────────────────────────────────────────────────────────────
+   Chargée juste après le style de base.html : elle redéfinit les
+   couleurs (variables), arrondit les formes et change la police.
+   La mise en page des écrans ne bouge pas.
+
+   Les couleurs se changent ICI, dans les deux blocs de variables
+   ci-dessous (thème jour, puis thème nuit). Rien d'autre à toucher.
+
+   Rappel : 1rem = 22px sur ordinateur (choix de lisibilité au
+   vidéoprojecteur, voir base.html) — toutes les tailles sont en rem.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] {
+  --primary:        #1666b3;   /* bleu de la marque */
+  --primary-dark:   #0d4a86;
+  --primary-light:  #eaf3fd;
+  --primary-mid:    #22b8e0;
+  --accent:         #22b8e0;   /* cyan, fin du dégradé */
+  --danger:         #e5484d;
+
+  --sidebar-bg:     #ffffff;
+  --sidebar-bg-2:   #ffffff;
+  --sidebar-border: #e6edf5;
+  --sidebar-text:   #4a5f74;
+  --sidebar-muted:  #9aabbd;
+
+  --body-bg:        #eef3f9;
+  --body-grid:      transparent;
+  --card-bg:        #ffffff;
+  --card-border:    #e6edf5;
+  --proj-card:      #ffffff;
+  --proj-border:    #cfdceb;
+  --text-primary:   #102a43;
+  --text-secondary: #334e68;
+  --text-muted:     #6b7f95;
+
+  --topbar-bg:      rgba(238,243,249,.86);
+  --topbar-border:  transparent;
+  --input-bg:       #f6f9fd;
+  --input-border:   #dbe5f0;
+  --row-hover:      #f3f8fd;
+
+  --shadow-sm:      0 10px 30px -22px rgba(16,42,67,.45);
+  --shadow-md:      0 18px 40px -22px rgba(16,42,67,.5);
+  --shadow-lg:      0 30px 60px -24px rgba(16,42,67,.45);
+  --ring-primary:   0 0 0 4px rgba(22,102,179,.14);
+
+  --degrade:        linear-gradient(135deg, #1666b3, #22b8e0);
+}
+
+[data-theme="dark"] {
+  --primary:        #4aa3f0;
+  --primary-dark:   #2b86d8;
+  --primary-light:  rgba(74,163,240,.14);
+  --primary-mid:    #5fd0f0;
+  --accent:         #38c8ec;
+  --danger:         #f2696d;
+
+  --sidebar-bg:     #12202f;
+  --sidebar-bg-2:   #12202f;
+  --sidebar-border: #1f3246;
+  --sidebar-text:   #b8c7d6;
+  --sidebar-muted:  #6f8499;
+
+  --body-bg:        #0b1622;
+  --body-grid:      transparent;
+  --card-bg:        #12202f;
+  --card-border:    #1f3246;
+  --proj-card:      #12202f;
+  --proj-border:    #2a4560;
+  --text-primary:   #eef4fa;
+  --text-secondary: #c3d1de;
+  --text-muted:     #93a7bb;
+
+  --topbar-bg:      rgba(11,22,34,.86);
+  --topbar-border:  transparent;
+  --input-bg:       #0f1b28;
+  --input-border:   #24384d;
+  --row-hover:      #172a3d;
+
+  --shadow-sm:      0 10px 30px -18px rgba(0,0,0,.7);
+  --shadow-md:      0 18px 40px -18px rgba(0,0,0,.75);
+  --shadow-lg:      0 30px 60px -22px rgba(0,0,0,.8);
+  --ring-primary:   0 0 0 4px rgba(74,163,240,.2);
+
+  --degrade:        linear-gradient(135deg, #1f78cf, #2cc0e6);
+}
+
+/* ── Police et fond ───────────────────────────────────────────────── */
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: var(--body-bg);
+  background-image: none;
+}
+body::after { display: none; }
+.tb-title, .tb-brand-name, .page-hdr-title, .panel-title, .card-body h5,
+.rdv-time, .sb-name, h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+.tb-title { font-weight: 600; letter-spacing: -.01em; }
+.page-hdr-title { font-weight: 700; letter-spacing: -.02em; }
+.panel-title { font-weight: 700; }
+
+::-webkit-scrollbar-thumb { background: #c5d4e4; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2a4560; }
+
+/* ── Menu latéral : blanc, flottant, liens en pilule ─────────────── */
+#sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+}
+#sidebar::before { display: none; }
+@media (min-width: 992px) {
+  #sidebar {
+    top: .65rem; left: .65rem;
+    height: calc(100vh - 1.3rem);
+    border: none; border-radius: 1.4rem;
+    box-shadow: 0 16px 44px -22px rgba(16,42,67,.35);
+    overflow: hidden;
+  }
+  #main { margin-left: calc(264px + .65rem); }
+}
+.sb-brand { border-bottom-color: var(--sidebar-border); }
+.sb-logo { border: none; box-shadow: 0 4px 14px rgba(22,102,179,.25); }
+.sb-name { color: var(--text-primary); text-shadow: none; letter-spacing: .04em; }
+.sb-sub { color: var(--text-muted); }
+/* Le badge porte une couleur par rôle en style en ligne : on la remplace. */
+.sb-role-badge {
+  background: var(--primary-light) !important;
+  color: var(--primary-dark); border: none; border-radius: 999px;
+  backdrop-filter: none;
+}
+[data-theme="dark"] .sb-role-badge { color: var(--primary-mid); }
+.sb-section { color: var(--sidebar-muted); font-weight: 600; }
+.sb-link {
+  color: var(--sidebar-text); border-radius: 999px;
+  padding: .6rem 1rem; font-weight: 500;
+}
+.sb-link i { opacity: 1; color: var(--sidebar-muted); }
+.sb-link:hover { background: var(--primary-light); color: var(--primary-dark); transform: none; }
+.sb-link:hover i { color: var(--primary); }
+[data-theme="dark"] .sb-link:hover { color: #fff; }
+.sb-link.active {
+  background: var(--degrade); color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(22,102,179,.75);
+}
+.sb-link.active::before { display: none; }
+.sb-link.active i { color: #fff; }
+.sb-badge { background: var(--primary); box-shadow: none; }
+.sb-badge-danger { background: var(--danger); box-shadow: none; }
+.sb-link.active .sb-badge { background: #fff; color: var(--primary-dark); }
+.sb-footer { border-top-color: var(--sidebar-border); }
+.sb-user:hover { background: var(--primary-light); border-color: transparent; }
+.sb-uname { color: var(--text-primary); }
+.sb-urole { color: var(--text-muted); }
+.sb-user .bi-three-dots-vertical { color: var(--sidebar-muted) !important; }
+.sb-av { background: var(--degrade); box-shadow: none; font-weight: 600; }
+
+/* ── Barre du haut : sans bordure, recherche et boutons ronds ────── */
+.topbar { border-bottom: none; background: var(--topbar-bg); }
+.tb-search input {
+  border-radius: 999px; border-color: transparent;
+  background: var(--card-bg); box-shadow: var(--shadow-sm);
+}
+.tb-search kbd { border-radius: 999px; }
+.tb-btn {
+  border-radius: 50%; border-color: transparent;
+  background: var(--card-bg); box-shadow: var(--shadow-sm);
+}
+.tb-dot { background: var(--danger); }
+.theme-toggle { border-radius: 999px; }
+.proj-toggle { border-radius: 50%; }
+
+/* ── Cartes : blanches, très arrondies, ombre douce ──────────────── */
+.panel, .stat-h, .stat-card, .form-section, .stat-p, .pcard, .role-card, .dash-card {
+  background: var(--card-bg);
+  border: 1px solid transparent;
+  border-radius: 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="dark"] .panel, [data-theme="dark"] .stat-h, [data-theme="dark"] .stat-card,
+[data-theme="dark"] .form-section { border-color: var(--card-border); }
+.panel:hover { box-shadow: var(--shadow-md); }
+.panel-hdr { border-bottom-color: var(--card-border); background: transparent; }
+.card { border-radius: 1rem !important; }
+
+/* ── Boutons : pilules, le principal en dégradé ──────────────────── */
+.btn-c { border-radius: 999px; font-weight: 600; }
+.btn-sm-c { border-radius: 999px; }
+.btn-primary-c {
+  background: var(--degrade);
+  box-shadow: 0 10px 22px -12px rgba(22,102,179,.8);
+}
+.btn-primary-c:hover { box-shadow: 0 14px 26px -12px rgba(22,102,179,.9); }
+.btn-outline-c { border-color: var(--input-border); }
+.act-btn { border-radius: 50%; }
+.act-btn[title="Voir"], .act-btn[href*="detail"] { background: var(--primary); }
+
+/* ── Champs de saisie et pastilles ───────────────────────────────── */
+.f-input, .f-select, .form-control, .form-select { border-radius: .85rem; }
+.pill { border-radius: 999px; }
+.pill-info { background: var(--primary-light); color: var(--primary-dark); border-color: transparent; }
+[data-theme="dark"] .pill-info { color: var(--primary-mid); }
+
+/* ── Tableaux ────────────────────────────────────────────────────── */
+.ctable th, .modern-table thead th { background: var(--input-bg); color: var(--text-muted); }
+
+/* ── Cartes de chiffres des listes ───────────────────────────────────
+   Les mini-histogrammes (.stat-h-spark) avaient des hauteurs inventées,
+   identiques quelle que soit la donnée : on les retire, comme on l'avait
+   déjà fait sur les tableaux de bord. La place libérée garde les montants
+   sur une seule ligne ; l'unité (FCFA) passe dessous. */
+body .stat-h-spark { display: none; }
+body .stat-h-val { white-space: nowrap; }
+body .stat-h-val small { display: block; margin-top: .15rem; }
+
+/* ── Barres de recherche des listes ──────────────────────────────────
+   Définies dans le extra_css de chaque liste (chargé APRÈS cette feuille) :
+   le « body » en tête donne la priorité sans toucher aux onze gabarits. */
+body .search-bar {
+  background: var(--card-bg);
+  border: 1px solid transparent;
+  border-radius: 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+body .search-bar .f-input, body .search-bar .f-select { border-color: var(--input-border) !important; }
+
+/* Recherche instantanée (recherche_live.js) : les blocs remplacés pendant la
+   frappe ne rejouent pas leur animation d'apparition, sinon la liste clignote. */
+[data-recherche-live], [data-recherche-live] * { animation: none !important; }
+form[aria-busy="true"] .bi-search { opacity: .45; }
+
+/* ── Bannières photo des pages (facturation, pharmacie…) ─────────── */
+.hero-banner { border-radius: 1.4rem; box-shadow: var(--shadow-md); }
+.hero-banner-bg { filter: saturate(1.05); }
+.hero-banner-overlay {
+  background: linear-gradient(90deg, rgba(13,58,108,.94) 0%, rgba(13,74,134,.78) 45%, rgba(22,102,179,.15) 100%);
+}
+
+/* ── Divers ──────────────────────────────────────────────────────── */
+.breadcrumb-item a { color: var(--primary); }
+.dropdown-menu { border-radius: 1rem; }
+.alert-c { border-radius: 1rem; }
+@keyframes row-new-flash {
+  0%, 55% { background-color: rgba(34,184,224,.22); box-shadow: inset 4px 0 0 var(--primary); }
+  100%    { background-color: transparent; box-shadow: inset 4px 0 0 transparent; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ACCUEIL — bannière photo et cartes de services des tableaux de bord
+   (gabarit partials/accueil_hero.html)
+   ═══════════════════════════════════════════════════════════════════ */
+body.page-accueil .page-hdr { display: none; }
+
+.accueil-hero {
+  position: relative; overflow: hidden;
+  border-radius: 1.5rem; min-height: 12rem;
+  display: flex; align-items: center;
+  padding: 1.6rem 2rem; margin-bottom: 1.4rem;
+  color: #fff; background-size: cover; background-position: center 30%;
+  box-shadow: var(--shadow-md);
+  animation: fadeUp .5s ease both;
+}
+.accueil-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(13,58,108,.96) 0%, rgba(13,74,134,.86) 40%,
+                                     rgba(22,102,179,.25) 72%, rgba(22,102,179,0) 100%);
+}
+.accueil-hero > * { position: relative; max-width: 34rem; }
+.accueil-hero-date { font-size: .62rem; opacity: .85; }
+.accueil-hero-date::first-letter { text-transform: uppercase; }
+.accueil-hero h1 { font-size: 1.55rem; font-weight: 700; margin: .15rem 0 .35rem; color: #fff; }
+.accueil-hero p { font-size: .72rem; line-height: 1.6; opacity: .95; margin: 0; }
+.accueil-hero-btns { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1rem; }
+.accueil-hero-btns a {
+  border-radius: 999px; padding: .5rem 1rem; font-size: .66rem; font-weight: 600;
+  text-decoration: none; display: inline-flex; align-items: center; gap: .4rem;
+  transition: transform .15s ease, background .15s ease;
+}
+.accueil-hero-btns a:hover { transform: translateY(-1px); }
+.accueil-hero-btns .plein { background: #fff; color: var(--primary-dark); }
+.accueil-hero-btns .verre { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.45); color: #fff; }
+.accueil-hero-btns .verre:hover { background: rgba(255,255,255,.26); }
+
+.services-titre {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .82rem; font-weight: 700; color: var(--text-primary); margin: 0 0 .7rem;
+}
+.services-grille { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.4rem; }
+.service-carte {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+  height: 8.5rem; border-radius: 1.2rem; padding: .85rem 1rem;
+  color: #fff; text-decoration: none; background-size: cover; background-position: center;
+  box-shadow: var(--shadow-sm); transition: transform .2s ease, box-shadow .2s ease;
+}
+.service-carte::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(16,42,67,0) 30%, rgba(16,42,67,.86));
+}
+.service-carte > * { position: relative; }
+.service-carte:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); color: #fff; }
+.service-carte b { font-size: .74rem; font-weight: 700; }
+.service-carte span { font-size: .58rem; opacity: .92; }
+.service-carte .etiquette {
+  position: absolute; top: .65rem; left: .65rem;
+  background: rgba(255,255,255,.94); color: #102a43;
+  font-size: .54rem; font-weight: 600; border-radius: 999px; padding: .2rem .6rem;
+  display: inline-flex; align-items: center; gap: .3rem;
+}
+.service-carte .etiquette i { font-size: .4rem; }
+
+@media (max-width: 1199.98px) { .services-grille { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 991.98px) {
+  .accueil-hero { padding: 1.3rem; min-height: 0; }
+  .accueil-hero::before { background: linear-gradient(90deg, rgba(13,58,108,.94), rgba(13,74,134,.8)); }
+  .accueil-hero h1 { font-size: 1.3rem; }
+  .accueil-hero p { font-size: .8rem; }
+  .accueil-hero-btns a { font-size: .75rem; }
+  .accueil-hero-date { font-size: .72rem; }
+  .services-titre { font-size: .95rem; }
+  .service-carte b { font-size: .85rem; } .service-carte span { font-size: .7rem; }
+  .service-carte .etiquette { font-size: .65rem; }
+}
+@media (max-width: 575.98px) {
+  .services-grille { gap: .6rem; }
+  .service-carte { height: 7.5rem; padding: .65rem .75rem; }
+  .service-carte .etiquette { top: .45rem; left: .45rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOTIFS MÉDICAUX — dessins générés par generer_motifs.py (img/motifs/)
+   Chaque gabarit pose sur <body> la classe page-*-bg de son service :
+   elle choisit ici les dessins du fond, de l'en-tête et des cartes.
+   Tout est posé en image de fond : rien ne change l'empilement des
+   éléments, donc les menus déroulants et les fenêtres ne sont pas gênés.
+   ═══════════════════════════════════════════════════════════════════ */
+body {
+  --motif-tuile: url(../img/motifs/tuile_soins.svg); --motif-bandeau: url(../img/motifs/bandeau_soins.svg); --motif-coin: url(../img/motifs/coin_soins.svg);
+  background-image: var(--motif-tuile);
+  background-size: 472px; background-repeat: repeat; background-attachment: fixed;
+}
+body.page-pharmacie-bg { --motif-tuile: url(../img/motifs/tuile_pharmacie.svg); --motif-bandeau: url(../img/motifs/bandeau_pharmacie.svg); --motif-coin: url(../img/motifs/coin_pharmacie.svg); }
+body.page-examen-bg { --motif-tuile: url(../img/motifs/tuile_labo.svg); --motif-bandeau: url(../img/motifs/bandeau_labo.svg); --motif-coin: url(../img/motifs/coin_labo.svg); }
+body.page-hospitalisation-bg { --motif-tuile: url(../img/motifs/tuile_hospit.svg); --motif-bandeau: url(../img/motifs/bandeau_hospit.svg); --motif-coin: url(../img/motifs/coin_hospit.svg); }
+body.page-rdv-bg { --motif-tuile: url(../img/motifs/tuile_rdv.svg); --motif-bandeau: url(../img/motifs/bandeau_rdv.svg); --motif-coin: url(../img/motifs/coin_rdv.svg); }
+body.page-patients-bg, body.page-dossier-bg { --motif-tuile: url(../img/motifs/tuile_dossier.svg); --motif-bandeau: url(../img/motifs/bandeau_dossier.svg); --motif-coin: url(../img/motifs/coin_dossier.svg); }
+body.page-ordonnance-bg, body.page-traitement-bg { --motif-tuile: url(../img/motifs/tuile_ordonnance.svg); --motif-bandeau: url(../img/motifs/bandeau_ordonnance.svg); --motif-coin: url(../img/motifs/coin_ordonnance.svg); }
+body.page-facturation-bg { --motif-tuile: url(../img/motifs/tuile_facturation.svg); --motif-bandeau: url(../img/motifs/bandeau_facturation.svg); --motif-coin: url(../img/motifs/coin_facturation.svg); }
+body.page-personnel-bg { --motif-tuile: url(../img/motifs/tuile_personnel.svg); --motif-bandeau: url(../img/motifs/bandeau_personnel.svg); --motif-coin: url(../img/motifs/coin_personnel.svg); }
+
+/* En-tête illustré, sur les pages qui n'ont pas déjà une bannière photo.
+   Jamais de overflow:hidden ici : il couperait les menus des boutons d'action. */
+.content:not(:has(.hero-banner)) > .page-hdr {
+  align-items: center;
+  padding: .85rem 1.25rem; border-radius: 1.2rem;
+  background: var(--motif-bandeau) right .75rem center / auto 94% no-repeat,
+              linear-gradient(100deg, var(--card-bg) 30%, var(--primary-light)) var(--card-bg);
+  box-shadow: var(--shadow-sm);
+}
+/* Avec des boutons à droite, les dessins se placent à côté au lieu de passer dessous. */
+.content:not(:has(.hero-banner)) > .page-hdr:has(.btn-c) { background-position: right 15rem center, 0 0; }
+/* Trois boutons ou plus : ils passent à la ligne et tomberaient sur les dessins. */
+.content:not(:has(.hero-banner)) > .page-hdr:has(.btn-c ~ .btn-c ~ .btn-c) {
+  background: linear-gradient(100deg, var(--card-bg) 30%, var(--primary-light)) var(--card-bg);
+}
+/* Cartes à dégradé transparent : un fond plein, pour ne pas voir les dessins à travers. */
+body .invoice-hero { background-color: var(--card-bg); }
+/* Pages à bannière : le titre reste sur fond uni, les dessins n'y gênent pas la lecture. */
+.content:has(.hero-banner) > .page-hdr {
+  background-color: var(--body-bg); box-shadow: 0 0 0 .45rem var(--body-bg); border-radius: .6rem;
+}
+/* Petites notes posées directement sur le fond : même chose, sur une carte. */
+body .cl-note, body .cc-note, body .ssp-note {
+  background: var(--card-bg); border-radius: .9rem; padding: .65rem .9rem; box-shadow: var(--shadow-sm);
+}
+body .periode-bar { background-color: var(--card-bg); }
+/* Titres et petits textes sur le fond : un aplat uni juste derrière le texte. */
+body .services-titre, body .section-hdr, body .texte-sur-fond {
+  background-color: var(--body-bg); box-shadow: 0 0 0 .35rem var(--body-bg); border-radius: .5rem;
+}
+/* Messages après une action : teintes pleines, le fond de page ne passe plus à travers. */
+body .alert-c.bg-success { background-color: #e6f6ee !important; }
+body .alert-c.bg-danger { background-color: #fdecec !important; }
+body .alert-c.bg-info { background-color: #e8f2fc !important; }
+body .alert-c.text-info { color: var(--primary-dark) !important; }
+body .alert-c.alerte-attention { background-color: #fff3e0; color: #9a5300; }
+[data-theme="dark"] body .alert-c.bg-success { background-color: #10291f !important; }
+[data-theme="dark"] body .alert-c.bg-danger { background-color: #331618 !important; }
+[data-theme="dark"] body .alert-c.bg-info { background-color: #122a40 !important; }
+[data-theme="dark"] body .alert-c.text-info { color: var(--primary-mid) !important; }
+[data-theme="dark"] body .alert-c.alerte-attention { background-color: #33240e; color: #f7bd6b; }
+/* Bannières photo : les mêmes dessins, en blanc, sur la droite de la photo. */
+.hero-banner::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: #fff;
+  -webkit-mask: var(--motif-bandeau) right 1rem center / auto 74% no-repeat;
+          mask: var(--motif-bandeau) right 1rem center / auto 74% no-repeat;
+}
+/* Filigrane dans le coin des cartes de chiffres ; dessins en ligne dans la carte large. */
+body .stat-h { background: var(--card-bg) var(--motif-coin) right -.55rem bottom -.65rem / 3rem no-repeat; }
+body .stat-h.stat-h-bandeau { background: var(--card-bg) var(--motif-bandeau) right .8rem center / auto 92% no-repeat; }
+body .panel-hdr { background: linear-gradient(90deg, var(--primary-light), transparent 60%); }
+body .ctable tbody tr:nth-child(even) td, body .table-c tbody tr:nth-child(even) td { background: rgba(63,142,216,.035); }
+body .ctable tbody tr:hover td, body .table-c tbody tr:hover td { background: var(--row-hover); }
+
+/* Cartes et tableaux utilisés par les pages Lots, Commandes et Fournisseurs,
+   qui n'étaient définis nulle part : le contenu était posé à nu sur le fond. */
+.card-c {
+  background: var(--card-bg); border: 1px solid transparent; border-radius: 1.2rem;
+  box-shadow: var(--shadow-sm); padding: 1.05rem 1.25rem;
+}
+[data-theme="dark"] .card-c { border-color: var(--card-border); }
+.table-c { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .82rem; }
+.table-c th {
+  font-size: .67rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: .08em; padding: .8rem 1.1rem; border-bottom: 1px solid var(--card-border);
+  background: var(--input-bg); white-space: nowrap; text-align: left;
+}
+.table-c th:first-child { border-radius: .8rem 0 0 .8rem; }
+.table-c th:last-child { border-radius: 0 .8rem .8rem 0; }
+.table-c td {
+  padding: .85rem 1.1rem; border-bottom: 1px solid var(--card-border); vertical-align: middle;
+  color: var(--text-primary);
+}
+.table-c tbody tr:last-child td { border-bottom: none; }
+
+/* Colonnes un peu resserrées : avec la police et la taille de texte actuelles,
+   les tableaux dépassaient et .panel (overflow:hidden) coupait la colonne Actions.
+   Si l'écran reste trop étroit, le tableau défile au lieu d'être coupé. */
+body .ctable th, body .ctable td, .table-c th, .table-c td { padding-left: .75rem; padding-right: .75rem; }
+body .ctable th:first-child, body .ctable td:first-child { padding-left: 1.25rem; }
+body .ctable th:last-child, body .ctable td:last-child { padding-right: 1.25rem; }
+.panel-body:has(.ctable), .panel:has(> .ctable) { overflow-x: auto; }
+
+/* Un dessin seul, de la couleur du texte : <span class="dessin dessin-mortier"></span> */
+.dessin {
+  display: inline-block; width: 1.3rem; height: 1.3rem; background: currentColor; flex-shrink: 0;
+  -webkit-mask: var(--dessin) center / contain no-repeat;
+          mask: var(--dessin) center / contain no-repeat;
+}
+.dessin-aerosol { --dessin: url(../img/motifs/icone_aerosol.svg); }
+.dessin-ampoule { --dessin: url(../img/motifs/icone_ampoule.svg); }
+.dessin-bande { --dessin: url(../img/motifs/icone_bande.svg); }
+.dessin-comprime { --dessin: url(../img/motifs/icone_comprime.svg); }
+.dessin-flacon { --dessin: url(../img/motifs/icone_flacon.svg); }
+.dessin-gelule { --dessin: url(../img/motifs/icone_gelule.svg); }
+.dessin-goutte { --dessin: url(../img/motifs/icone_goutte.svg); }
+.dessin-mortier { --dessin: url(../img/motifs/icone_mortier.svg); }
+.dessin-pansement { --dessin: url(../img/motifs/icone_pansement.svg); }
+.dessin-plaquette { --dessin: url(../img/motifs/icone_plaquette.svg); }
+.dessin-poche { --dessin: url(../img/motifs/icone_poche.svg); }
+.dessin-sachet { --dessin: url(../img/motifs/icone_sachet.svg); }
+.dessin-vide { display: block; width: 3.4rem; height: 3.4rem; margin: 0 auto .75rem; opacity: .4; }
+
+/* Listes de médicaments : pastille selon la forme, jauge de stock.
+   Pas de vert, d'orange ni de rouge pour les pastilles : ces couleurs-là
+   sont réservées à l'état du stock et à la péremption. */
+.med-cell { display: flex; align-items: center; gap: .7rem; }
+.med-pastille {
+  width: 2.15rem; height: 2.15rem; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(22,102,179,.11); color: #1666b3;
+}
+.med-gelule, .med-sachet { background: rgba(139,92,246,.13); color: #7c3aed; }
+.med-flacon, .med-goutte { background: rgba(13,148,170,.13); color: #0e7f97; }
+.med-ampoule, .med-poche { background: rgba(79,70,229,.12); color: #4f46e5; }
+.med-bande, .med-pansement, .med-aerosol { background: rgba(219,39,119,.11); color: #be2570; }
+[data-theme="dark"] .med-pastille { color: #7cc0f5; }
+[data-theme="dark"] .med-gelule, [data-theme="dark"] .med-sachet { color: #b79cf8; }
+[data-theme="dark"] .med-flacon, [data-theme="dark"] .med-goutte { color: #62cfe2; }
+[data-theme="dark"] .med-ampoule, [data-theme="dark"] .med-poche { color: #a5a0f7; }
+[data-theme="dark"] .med-bande, [data-theme="dark"] .med-pansement, [data-theme="dark"] .med-aerosol { color: #f08bbb; }
+
+/* Jauge : pleine à 3 fois le seuil d'alerte ; le petit trait marque le seuil. */
+.jauge-stock {
+  position: relative; width: 6rem; max-width: 100%; height: .3rem; margin-top: .35rem;
+  border-radius: 999px; background: rgba(107,127,149,.18);
+}
+.jauge-stock > span { display: block; height: 100%; border-radius: 999px; background: #10b981; }
+.jauge-alerte > span { background: #d97706; }
+.jauge-rupture > span { background: #ef4444; }
+.jauge-stock > i {
+  position: absolute; left: 33.33%; top: -.1rem; bottom: -.1rem; width: 2px;
+  background: var(--text-muted); border-radius: 2px;
+}
+.stock-note { font-size: .66rem; color: var(--text-muted); margin-top: .25rem; white-space: nowrap; }
+
+/* Le mode projection rend les cartes opaques (base.html) avec un background !important
+   qui efface le filigrane : on le remet, les dessins restent visibles dans ce mode.
+   L'imprimante, elle, n'a pas besoin de décor. */
+html[data-projector="on"] body .stat-h { background: var(--proj-card) var(--motif-coin) right -.55rem bottom -.65rem / 3rem no-repeat !important; }
+html[data-projector="on"] body .stat-h.stat-h-bandeau { background: var(--proj-card) var(--motif-bandeau) right .8rem center / auto 92% no-repeat !important; }
+@media print {
+  body, .content > .page-hdr, .panel, .card-c, .stat-h, .panel-hdr { background-image: none !important; }
+  .hero-banner::after { display: none; }
+}
+/* Sur téléphone et tablette, un fond « fixe » saccade au défilement. */
+@media (max-width: 991.98px) { body { background-attachment: scroll; } }
+/* Moins de 1200 px : plus la place pour les dessins à côté des boutons. */
+@media (max-width: 1199.98px) {
+  .content:not(:has(.hero-banner)) > .page-hdr:has(.btn-c) { background: linear-gradient(100deg, var(--card-bg) 30%, var(--primary-light)) var(--card-bg); }
+}
+/* Sur téléphone, le titre prend toute la largeur : les dessins y gêneraient. */
+@media (max-width: 575.98px) {
+  .hero-banner::after { display: none; }
+  body .stat-h.stat-h-bandeau { background: var(--card-bg) var(--motif-coin) right -.55rem bottom -.65rem / 3rem no-repeat; }
+  .content:not(:has(.hero-banner)) > .page-hdr { background: linear-gradient(100deg, var(--card-bg) 30%, var(--primary-light)) var(--card-bg); }
+}

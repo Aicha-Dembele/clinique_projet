@@ -15,7 +15,6 @@
 
 {% block extra_css %}<style>
 
-@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
 /* ── Sous-titre d'en-tête ── */
 .hdr-sub {
@@ -57,7 +56,7 @@
 }
 .modern-table tbody tr { border-bottom: 1px solid var(--card-border); transition: background .12s; }
 .modern-table tbody tr:last-child { border-bottom: none; }
-.modern-table tbody tr:hover { background: rgba(0,136,170,.04); }
+.modern-table tbody tr:hover { background: rgba(22,102,179,.04); }
 .modern-table tbody td { padding: .8rem 1rem; font-size: .83rem; vertical-align: middle; white-space: nowrap; }
 
 /* ── Avatar patient ── */
@@ -65,7 +64,7 @@
   width: 34px; height: 34px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: .72rem; font-weight: 800; flex-shrink: 0;
-  background: rgba(0,136,170,.14); color: #0088aa;
+  background: rgba(22,102,179,.14); color: #1666b3;
 }
 
 /* ── Badges d'état clinique ── */
@@ -371,7 +370,11 @@ body.page-consultation-bg .etat-attente_paiement { background: #a855f7; color: #
 
 {% block extra_js %}<script>
   function openPlanChambres() {
-    var m = document.getElementById('planChambresModal');
+    // La recherche instantanée a pu redessiner la page : la modale à jour est
+    // alors celle du contenu, et l'ancienne (déjà sortie dans <body>) est jetée.
+    var m = document.querySelector('#main .content #planChambresModal')
+         || document.getElementById('planChambresModal');
+    document.querySelectorAll('body > #planChambresModal').forEach(function (x) { if (x !== m) x.remove(); });
     // Sortir la modale du contexte d'empilement de #main pour passer au-dessus de la sidebar
     if (m.parentElement !== document.body) document.body.appendChild(m);
     m.classList.add('open');

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block body_class %}page-dashboard-bg{% endblock %}
+{% load static %}
+{% block body_class %}page-dashboard-bg page-accueil{% endblock %}
 
 {% block title %}Tableau de bord{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
@@ -205,6 +206,38 @@
 {% endblock %}
 
 {% block content %}
+<!-- ── Accueil : bannière photo ─────────────────────────────── -->
+<section class="accueil-hero" style="background-image:url('{% static 'consultation/img/MED2.jpg' %}')">
+  <div>
+    <div class="accueil-hero-date">{% now "l j F Y" %}</div>
+    <h1>Bonjour, {{ request.user.get_full_name|default:request.user.username }} 👋</h1>
+    <p>Aujourd'hui : <b>{{ rdv_count }} rendez-vous</b>, <b>{{ total_hospitalises }} patient{{ total_hospitalises|pluralize }} hospitalisé{{ total_hospitalises|pluralize }}</b> et <b>{{ examens_attente_count }} examen{{ examens_attente_count|pluralize }}</b> en attente au laboratoire.</p>
+    <div class="accueil-hero-btns">
+      <a class="plein" href="{% url 'consultation:planning_jour' %}"><i class="bi bi-calendar-check"></i>Planning du jour</a>
+      <a class="verre" href="{% url 'facturation:rapports' %}"><i class="bi bi-graph-up-arrow"></i>Rapports de facturation</a>
+    </div>
+  </div>
+</section>
+<div class="services-titre">Les services de la clinique</div>
+<div class="services-grille">
+  <a class="service-carte" href="{% url 'consultation:liste' %}" style="background-image:url('{% static 'consultation/img/pat.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#1f9d55"></i>{{ rdv_count }} RDV aujourd'hui</span>
+    <b>Consultations</b><span>{{ rdv_termines }} terminée{{ rdv_termines|pluralize }} aujourd'hui</span>
+  </a>
+  <a class="service-carte" href="{% url 'consultation:hospitalisations' %}" style="background-image:url('{% static 'consultation/img/rendezvous.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#1666b3"></i>Plan des 30 chambres</span>
+    <b>Hospitalisation</b><span>{{ total_hospitalises }} patient{{ total_hospitalises|pluralize }} hospitalisé{{ total_hospitalises|pluralize }}</span>
+  </a>
+  <a class="service-carte" href="{% url 'pharmacie:medicaments' %}" style="background-image:url('{% static 'consultation/img/ANAA2.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#f59e0b"></i>Catalogue</span>
+    <b>Pharmacie</b><span>Stock, lots et dispensation</span>
+  </a>
+  <a class="service-carte" href="{% url 'facturation:liste' %}" style="background-image:url('{% static 'consultation/img/facturation.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#e5484d"></i>Caisse</span>
+    <b>Facturation</b><span>{{ factures_impayees }} facture{{ factures_impayees|pluralize }} non payée{{ factures_impayees|pluralize }}</span>
+  </a>
+</div>
+
 
 <!-- ═════════════════════════════════════════════════════════
      STAT CARDS (Patients + Recettes)
@@ -407,7 +440,7 @@
 {{ stats_labels|json_script:"stats-labels" }}
 {{ stats_revenus|json_script:"stats-revenus" }}
 {{ stats_consultations|json_script:"stats-consultations" }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script>Chart.defaults.animation = false;</script>
 <script>
 (function(){
   // Données réelles (6 derniers mois) injectées depuis la vue.

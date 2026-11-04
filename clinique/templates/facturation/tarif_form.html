@@ -30,15 +30,15 @@
   padding: .75rem .9rem; cursor: pointer; transition: all .15s;
   display: flex; align-items: center; gap: .65rem;
 }
-.chambre-card:hover { border-color: var(--primary); background: rgba(0,136,170,.04); }
-.chambre-card.selected { border-color: var(--primary); background: rgba(0,136,170,.08); }
+.chambre-card:hover { border-color: var(--primary); background: rgba(22,102,179,.04); }
+.chambre-card.selected { border-color: var(--primary); background: rgba(22,102,179,.08); }
 .chambre-card input[type="radio"] { display: none; }
 .chambre-ico { width: 34px; height: 34px; border-radius: .5rem; display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; }
 .chambre-name { font-size: .82rem; font-weight: 700; color: var(--text-primary); }
 .chambre-sub  { font-size: .68rem; color: var(--text-muted); }
 
 /* Preview prix */
-.prix-preview { background: rgba(0,136,170,.06); border: 1px solid rgba(0,136,170,.2); border-radius: .75rem; padding: .9rem 1.1rem; margin-top: .75rem; display: none; }
+.prix-preview { background: rgba(22,102,179,.06); border: 1px solid rgba(22,102,179,.2); border-radius: .75rem; padding: .9rem 1.1rem; margin-top: .75rem; display: none; }
 .prix-preview.show { display: flex; align-items: center; justify-content: space-between; }
 </style>
 {% endblock %}
@@ -48,7 +48,7 @@
 
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-tags-fill"></i></span>
+      <span class="form-section-ico" style="color:#1666b3;background:rgba(22,102,179,.12)"><i class="bi bi-tags-fill"></i></span>
       <div>
         <div class="form-section-title">Informations du tarif</div>
         <div class="form-section-sub">Définissez le type de service, la spécialité/chambre et le prix</div>
@@ -158,7 +158,7 @@ let specialiteInit = true;
 
 // Icône + couleur par type, pour des cartes jolies comme l'hospitalisation
 const SPEC_META = {
-  'Généraliste':{i:'clipboard2-pulse-fill',c:'#0088aa'}, 'Cardiologie':{i:'heart-pulse-fill',c:'#ef4444'},
+  'Généraliste':{i:'clipboard2-pulse-fill',c:'#1666b3'}, 'Cardiologie':{i:'heart-pulse-fill',c:'#ef4444'},
   'Dermatologie':{i:'bandaid-fill',c:'#f59e0b'}, 'Pédiatrie':{i:'emoji-smile-fill',c:'#14b8a6'},
   'Chirurgie':{i:'scissors',c:'#3b82f6'}, 'Neurologie':{i:'cpu-fill',c:'#8b5cf6'},
   'Gynécologie':{i:'gender-female',c:'#ec4899'}, 'Orthopédie':{i:'person-arms-up',c:'#0ea5e9'},
@@ -166,12 +166,12 @@ const SPEC_META = {
   'Radiologie':{i:'radioactive',c:'#10b981'}, 'Anesthésie':{i:'moon-stars-fill',c:'#6366f1'},
   'Psychiatrie':{i:'chat-heart-fill',c:'#f43f5e'}, 'Urologie':{i:'droplet-fill',c:'#06b6d4'},
   'Endocrinologie':{i:'activity',c:'#f97316'}, 'Rhumatologie':{i:'person-walking',c:'#84cc16'},
-  'Radiographie':{i:'radioactive',c:'#10b981'}, 'Échographie':{i:'soundwave',c:'#0088aa'},
+  'Radiographie':{i:'radioactive',c:'#10b981'}, 'Échographie':{i:'soundwave',c:'#1666b3'},
   'Scanner':{i:'box-fill',c:'#6366f1'}, 'IRM':{i:'magnet-fill',c:'#8b5cf6'},
   'Prise de sang':{i:'droplet-fill',c:'#ef4444'}, "Analyse d'urine":{i:'eyedropper',c:'#f59e0b'},
   'Électrocardiogramme (ECG)':{i:'activity',c:'#14b8a6'}, 'Endoscopie':{i:'camera-video-fill',c:'#3b82f6'},
 };
-const SPEC_DEFAULT = {i:'stethoscope',c:'#0088aa'};
+const SPEC_DEFAULT = {i:'stethoscope',c:'#1666b3'};
 function hexA(hex,a){const n=parseInt(hex.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
 
 function toggleAutre(show, val) {

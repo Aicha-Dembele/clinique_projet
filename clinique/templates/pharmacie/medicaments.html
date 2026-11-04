@@ -14,10 +14,10 @@
 {% if is_admin or is_receptionniste %}<a href="{% url 'pharmacie:medicament_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Ajouter</a>{% endif %}
 {% endblock %}
 {% block extra_css %}<style>
-.cat-row td { background: rgba(0,136,170,.07); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: #0088aa; padding: .55rem .75rem !important; border-top: 1px solid var(--card-border); }
-.cat-nb { display: inline-block; background: rgba(0,136,170,.16); border-radius: 999px; padding: 0 .45rem; font-size: .7rem; margin-left: .4rem; }
+.cat-row td { background: rgba(22,102,179,.07); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: #1666b3; padding: .55rem .75rem !important; border-top: 1px solid var(--card-border); }
+.cat-nb { display: inline-block; background: rgba(22,102,179,.16); border-radius: 999px; padding: 0 .45rem; font-size: .7rem; margin-left: .4rem; }
 .stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; text-decoration: none; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(0,136,170,.25); }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(22,102,179,.25); }
 .stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
 .stat-h-info { flex: 1; min-width: 0; }
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
@@ -48,11 +48,11 @@
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-4 col-xl-3">
     <a href="{% url 'pharmacie:medicaments' %}" class="stat-h">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-capsule"></i></div>
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12);color:#1666b3"><i class="bi bi-capsule"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Médicaments</div>
         <div class="stat-h-val">{{ nb_total }}</div>
-        <div class="stat-h-trend" style="color:#0088aa">Catalogue actif</div>
+        <div class="stat-h-trend" style="color:#1666b3">Catalogue actif</div>
       </div>
     </a>
   </div>
@@ -86,8 +86,8 @@
       </div>
     </a>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-h" style="animation-delay:.24s">
+  <div class="col-12">
+    <div class="stat-h stat-h-bandeau" style="animation-delay:.24s">
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-cash-stack"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Valeur du stock</div>
@@ -138,8 +138,6 @@
           <th>Médicament</th>
           <th>Catégorie</th>
           <th>Stock</th>
-          <th>Seuil</th>
-          <th>Prix unit.</th>
           <th>Valeur</th>
           <th>Péremption</th>
           <th class="text-end">Actions</th>
@@ -149,21 +147,27 @@
         {% for m in medicaments %}
         <tr>
           <td>
-            <div style="font-weight:700">{{ m.nom }}{% if m.dosage %} <span style="color:var(--text-muted);font-weight:500">{{ m.dosage }}</span>{% endif %}</div>
-            {% if m.forme or m.dci %}<div style="font-size:.72rem;color:var(--text-muted)">{{ m.forme }}{% if m.forme and m.dci %} · {% endif %}{{ m.dci }}</div>{% endif %}
+            <div class="med-cell">
+              {% with dessin=m.dessin %}<span class="med-pastille med-{{ dessin }}"><span class="dessin dessin-{{ dessin }}"></span></span>{% endwith %}
+              <div>
+                <div style="font-weight:700">{{ m.nom }}{% if m.dosage %} <span style="color:var(--text-muted);font-weight:500">{{ m.dosage }}</span>{% endif %}</div>
+                {% if m.forme or m.dci %}<div style="font-size:.72rem;color:var(--text-muted)">{{ m.forme }}{% if m.forme and m.dci %} · {% endif %}{{ m.dci }}</div>{% endif %}
+              </div>
+            </div>
           </td>
           <td>
-            {% if m.categorie %}<span class="pill" style="background:rgba(0,136,170,.1);color:#0088aa;font-size:.68rem">{{ m.get_categorie_display }}</span>
+            {% if m.categorie %}<span class="pill" style="background:rgba(22,102,179,.1);color:#1666b3;font-size:.68rem">{{ m.get_categorie_display }}</span>
             {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
           </td>
           <td>
             <span class="stock-badge stock-{{ m.statut_stock }}">{{ m.quantite_stock }} {{ m.unite }}</span>
-            {% if m.statut_stock == 'rupture' %}<div style="font-size:.66rem;color:#ef4444;font-weight:700;margin-top:2px">Rupture</div>
-            {% elif m.statut_stock == 'alerte' %}<div style="font-size:.66rem;color:#d97706;font-weight:700;margin-top:2px">Stock faible</div>{% endif %}
+            <div class="jauge-stock jauge-{{ m.statut_stock }}" title="Le petit trait marque le seuil d'alerte : {{ m.seuil_alerte }}"><span style="width:{{ m.jauge_stock }}%"></span>{% if m.seuil_alerte %}<i></i>{% endif %}</div>
+            <div class="stock-note">Seuil {{ m.seuil_alerte }}{% if m.statut_stock == 'rupture' %} · <b style="color:#ef4444">Rupture</b>{% elif m.statut_stock == 'alerte' %} · <b style="color:#d97706">Stock faible</b>{% endif %}</div>
           </td>
-          <td style="color:var(--text-muted)">{{ m.seuil_alerte }}</td>
-          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700">{{ m.prix_unitaire|floatformat:0 }} FCFA</td>
-          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:#0088aa">{{ m.valeur_stock|floatformat:0 }} FCFA</td>
+          <td style="white-space:nowrap">
+            <div style="font-weight:700;color:var(--primary)">{{ m.valeur_stock|floatformat:"0g" }} FCFA</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">{{ m.prix_unitaire|floatformat:"0g" }} FCFA l'unité</div>
+          </td>
           <td>
             {% if m.date_peremption %}
               {% if m.est_perime %}<span class="pill" style="background:rgba(239,68,68,.12);color:#ef4444;font-size:.68rem"><i class="bi bi-calendar-x"></i> Périmé</span>
@@ -172,7 +176,7 @@
             {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
           </td>
           <td>
-            <div class="d-flex gap-1 justify-content-end">
+            <div class="d-flex gap-1 justify-content-end align-items-center">
               <a href="{% url 'pharmacie:entree_stock' %}?medicament={{ m.pk }}" class="btn-c btn-sm-c btn-outline-c" title="Entrée de stock"><i class="bi bi-box-arrow-in-down"></i></a>
               <a href="{% url 'pharmacie:sortie_stock' %}?medicament={{ m.pk }}" class="btn-c btn-sm-c btn-outline-c" title="Sortie / dispensation"><i class="bi bi-box-arrow-up"></i></a>
               <a href="{% url 'pharmacie:lots' %}?medicament={{ m.pk }}" class="act-btn" title="Voir ses lots"><i class="bi bi-boxes"></i></a>
@@ -183,8 +187,8 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="text-center py-5" style="color:var(--text-muted)">
-            <i class="bi bi-capsule text-muted" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.4"></i>
+          <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+            <span class="dessin dessin-mortier dessin-vide"></span>
             Aucun médicament{% if q or categorie or etat %} ne correspond à ce filtre{% endif %}.
             {% if not q and not categorie and not etat %}{% if is_admin or is_receptionniste %}<div class="mt-3"><a href="{% url 'pharmacie:medicament_ajouter' %}" class="btn-c btn-primary-c"><i class="bi bi-plus-lg"></i> Ajouter le premier médicament</a></div>{% endif %}{% endif %}
           </td>

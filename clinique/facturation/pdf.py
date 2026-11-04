@@ -3,6 +3,7 @@
 Produit un document propre et imprimable, indépendant du navigateur,
 réutilisable pour l'archivage ou l'envoi par email.
 """
+from html import escape
 from io import BytesIO
 
 from django.http import HttpResponse
@@ -38,6 +39,14 @@ def _fcfa(val):
         return f"{int(val):,}".replace(",", " ") + " FCFA"
     except (TypeError, ValueError):
         return "0 FCFA"
+
+
+def medicaments_non_couverts(facture):
+    """Noms des médicaments de cette facture que l'assurance ne prend pas en charge."""
+    if not facture.assurance_id:
+        return []
+    return [ligne.description.removeprefix('Médicament — ')
+            for ligne in facture.lignes.all() if not ligne.rembourse]
 
 
 def facture_pdf_response(facture):
@@ -86,7 +95,8 @@ def facture_pdf_response(facture):
     # ── Lignes ──
     data = [["Désignation", "Qté", "Prix unitaire", "Sous-total"]]
     for l in facture.lignes.all():
-        data.append([l.description, str(l.quantite),
+        marque = " *" if facture.assurance_id and not l.rembourse else ""
+        data.append([l.description + marque, str(l.quantite),
                      _fcfa(l.prix_unitaire), _fcfa(l.sous_total())])
 
     t = Table(data, colWidths=[88 * mm, 16 * mm, 33 * mm, 33 * mm])
@@ -103,6 +113,12 @@ def facture_pdf_response(facture):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
     elements.append(t)
+    non_couverts = medicaments_non_couverts(facture)
+    if non_couverts:
+        elements.append(Spacer(1, 2 * mm))
+        elements.append(Paragraph(
+            "* Non pris en charge par l'AMO, entièrement à la charge du patient : "
+            + escape(', '.join(non_couverts)) + ".", normal))
     elements.append(Spacer(1, 6 * mm))
 
     # ── Totaux ──

@@ -24,7 +24,7 @@
 @media (min-width: 768px) { .mode-grid { grid-template-columns: repeat(4, 1fr); } }
 .mode-card { border: 2px solid var(--card-border); background: var(--input-bg); border-radius: .85rem; padding: .9rem .8rem; display: flex; flex-direction: column; align-items: center; gap: .35rem; cursor: pointer; transition: all .2s; text-align: center; }
 .mode-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-.mode-card.selected { border-color: var(--primary); background: rgba(0,136,170,.08); box-shadow: 0 4px 14px -4px rgba(0,136,170,.35); }
+.mode-card.selected { border-color: var(--primary); background: rgba(22,102,179,.08); box-shadow: 0 4px 14px -4px rgba(22,102,179,.35); }
 .mode-card i { font-size: 1.5rem; }
 .mode-card-name { font-size: .78rem; font-weight: 700; color: var(--text-primary); }
 .mode-card input[type="radio"] { display: none; }
@@ -36,7 +36,7 @@
 
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-receipt-cutoff"></i></span>
+      <span class="form-section-ico" style="color:#1666b3;background:rgba(22,102,179,.12)"><i class="bi bi-receipt-cutoff"></i></span>
       <div>
         <div class="form-section-title">Facture concernée</div>
         <div class="form-section-sub">Sélection de la facture à encaisser et du montant payé</div>
@@ -83,7 +83,7 @@
       {% for code, label in modes %}
       <label class="mode-card {% if paiement and paiement.mode_paiement == code %}selected{% endif %}" data-mode="{{ code }}">
         <input type="radio" name="mode_paiement" value="{{ code }}" {% if paiement and paiement.mode_paiement == code %}checked{% endif %} required>
-        {% if code == 'cash' %}<i class="bi bi-cash-stack" style="color:#0088aa"></i>
+        {% if code == 'cash' %}<i class="bi bi-cash-stack" style="color:#1666b3"></i>
         {% elif code == 'orange_money' %}<i class="bi bi-phone-fill" style="color:#f97316"></i>
         {% elif code == 'moov_money' %}<i class="bi bi-phone-fill" style="color:#3b82f6"></i>
         {% elif code == 'carte' %}<i class="bi bi-credit-card-fill" style="color:#a855f7"></i>

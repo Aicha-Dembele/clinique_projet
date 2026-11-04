@@ -49,7 +49,7 @@
 .modern-table tfoot td { padding: .8rem 1.1rem; font-weight: 800; font-size: .85rem; border-top: 2px solid var(--card-border); background: rgba(168,85,247,.05); }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.badge-service { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 700; padding: .25em .7em; border-radius: 999px; background: rgba(0,136,170,.12); color: #0088aa; white-space: nowrap; }
+.badge-service { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 700; padding: .25em .7em; border-radius: 999px; background: rgba(22,102,179,.12); color: #1666b3; white-space: nowrap; }
 .badge-etat { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 700; padding: .25em .75em; border-radius: 999px; white-space: nowrap; }
 .pastille { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .3rem; vertical-align: middle; }
 .act-btn { width: 30px; height: 30px; border-radius: .45rem; display: inline-flex; align-items: center; justify-content: center; font-size: .82rem; transition: all .15s; border: 1px solid var(--card-border); background: transparent; cursor: pointer; padding: 0; }
@@ -70,8 +70,8 @@
       <i class="bi bi-shield-fill-check" style="font-size:1.6rem;color:#fff"></i>
     </div>
     <div>
-      <div class="hero-title">Ce que les assurances doivent à la clinique</div>
-      <div class="hero-sub">{{ periode_label }} — part prise en charge, non encaissée auprès des patients</div>
+      <div class="hero-title">{% if perimetre == 'pharmacie' %}Ce que les assurances doivent pour les médicaments{% elif perimetre == 'reception' %}Ce que les assurances doivent pour les soins{% else %}Ce que les assurances doivent à la clinique{% endif %}</div>
+      <div class="hero-sub">{{ periode_label }} — part prise en charge, non encaissée auprès des patients{% if perimetre == 'pharmacie' %} · ordonnances uniquement{% elif perimetre == 'reception' %} · consultations, examens, hospitalisations{% endif %}</div>
     </div>
   </div>
 </div>
@@ -162,6 +162,8 @@
            class="btn-c btn-outline-c">
           <i class="bi bi-download"></i> Dossier
         </a>
+        {# Marquer réclamé / remboursé : seulement pour qui en a le droit (mêmes permissions que creances_marquer). #}
+        {% if 'facture.change' in user_permissions or 'rapport.view' in user_permissions or 'creance.marquer' in user_permissions %}
         {% if g.nb_a_reclamer %}
         <form method="post" action="{% url 'facturation:creances_marquer' %}" style="display:inline">
           {% csrf_token %}
@@ -187,6 +189,7 @@
             <i class="bi bi-check2-circle"></i> Remboursé
           </button>
         </form>
+        {% endif %}
         {% endif %}
       </div>
     </div>
@@ -250,6 +253,7 @@
           </td>
           <td>
             <div class="d-flex gap-1">
+              {% if 'facture.change' in user_permissions or 'rapport.view' in user_permissions or 'creance.marquer' in user_permissions %}
               {% if f.statut_assurance == 'a_reclamer' %}
                 {% include 'facturation/_bouton_creance.html' with facture=f action='reclame' titre='Marquer cette facture comme réclamée' icone='bi-send' couleur='#f59e0b' %}
               {% elif f.statut_assurance == 'reclame' %}
@@ -257,6 +261,7 @@
                 {% include 'facturation/_bouton_creance.html' with facture=f action='a_reclamer' titre='Annuler : revenir à « à réclamer »' icone='bi-arrow-counterclockwise' couleur='#6b7280' %}
               {% else %}
                 {% include 'facturation/_bouton_creance.html' with facture=f action='reclame' titre='Annuler le remboursement : revenir à « réclamé »' icone='bi-arrow-counterclockwise' couleur='#6b7280' %}
+              {% endif %}
               {% endif %}
             </div>
           </td>

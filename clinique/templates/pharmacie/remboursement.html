@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block body_class %}page-pharmacie-bg{% endblock %}
-{% block title %}Prise en charge par l'assurance{% endblock %}
+{% block title %}Prise en charge par l'AMO{% endblock %}
 {% block nav_pharmacie %}active{% endblock %}
 {% block page_title %}Pharmacie{% endblock %}
-{% block page_heading %}Prise en charge par l'assurance{% endblock %}
+{% block page_heading %}Prise en charge par l'AMO{% endblock %}
 {% block breadcrumb %}
   <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
   <li class="breadcrumb-item active">Prise en charge</li>
@@ -29,13 +29,13 @@
 {% block content %}
 
 <div class="rb-intro">
-  <strong>L'assurance s'applique médicament par médicament, jamais sur le total de l'ordonnance.</strong>
+  <strong>L'AMO s'applique médicament par médicament, jamais sur le total de l'ordonnance.</strong>
   Un médicament décoché reste <u>entièrement</u> à la charge du patient, même assuré — les autres
   restent pris en charge normalement.
   <br><br>
   La liste qui fait foi est celle de l'assureur (la CANAM pour l'AMO) : <strong>demande-la à ton pharmacien</strong>.
   Le bouton « Appliquer la proposition » ne fait que pré-cocher, d'après deux règles de terrain :
-  les consommables ne sont pas des médicaments, et l'assurance rembourse le générique
+  les consommables ne sont pas des médicaments, et l'AMO rembourse le générique
   (Paracétamol) et non la marque (Doliprane). <strong>Rien n'est enregistré tant que tu ne valides pas.</strong>
 </div>
 

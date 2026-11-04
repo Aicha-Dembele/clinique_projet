@@ -5,6 +5,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from comptes.recherche import normaliser
+
 
 class Specialite(models.Model):
     """Spécialité médicale servant à cibler les médicaments à la prescription."""
@@ -54,6 +56,20 @@ class Medicament(models.Model):
         ('autre',            'Autre'),
     ]
 
+    # (mot cherché dans la forme, dessin affiché) : voir dessin().
+    DESSINS_FORME = [
+        ('ampoule', 'ampoule'), ('inject', 'ampoule'),
+        ('poche', 'poche'), ('perfusion', 'poche'),
+        ('comprim', 'comprime'),
+        ('gelule', 'gelule'), ('capsule', 'gelule'), ('ovule', 'gelule'), ('suppositoire', 'gelule'),
+        ('goutte', 'goutte'), ('collyre', 'goutte'),
+        ('flacon', 'flacon'), ('sirop', 'flacon'), ('suspension', 'flacon'), ('solution', 'flacon'),
+        ('sachet', 'sachet'), ('poudre', 'sachet'),
+        ('aerosol', 'aerosol'), ('spray', 'aerosol'), ('inhal', 'aerosol'),
+        ('rouleau', 'bande'), ('bande', 'bande'),
+        ('compresse', 'pansement'), ('pansement', 'pansement'),
+    ]
+
     nom            = models.CharField(max_length=150)
     dci            = models.CharField(
         max_length=150, blank=True, default='',
@@ -72,7 +88,7 @@ class Medicament(models.Model):
     commun         = models.BooleanField(
         default=False,
         help_text="Médicament de base, proposé à toutes les spécialités.")
-    # Toutes les assurances ne remboursent pas tout : un générique essentiel
+    # La liste de l'AMO : l'AMO ne rembourse pas tout. Un générique essentiel
     # est pris en charge, une spécialité de marque souvent pas. Décoché, le
     # médicament est entièrement à la charge du patient, même assuré.
     rembourse      = models.BooleanField(
@@ -133,6 +149,27 @@ class Medicament(models.Model):
     def valeur_stock(self):
         """Valeur monétaire du stock détenu (prix unitaire × quantité)."""
         return (self.prix_unitaire or Decimal('0')) * self.quantite_stock
+
+    def jauge_stock(self):
+        """Remplissage de la jauge des listes, en % : pleine à 3 fois le seuil
+        d'alerte, donc le seuil tombe toujours au même endroit (le tiers)."""
+        if self.quantite_stock <= 0:
+            return 0
+        if not self.seuil_alerte:
+            return 100
+        return min(100, round(self.quantite_stock * 100 / (self.seuil_alerte * 3)))
+
+    # ── Petit dessin des listes ───────────────────────────────────
+    def dessin(self):
+        """Nom du dessin correspondant à la forme (img/motifs/icone_<nom>.svg).
+        La forme est du texte libre : on cherche un mot connu, sans tenir compte
+        de la casse ni des accents. « solution injectable » doit donner l'ampoule,
+        donc « inject » passe avant « solution » dans DESSINS_FORME."""
+        forme = normaliser(self.forme)
+        for mot, dessin in self.DESSINS_FORME:
+            if mot in forme:
+                return dessin
+        return {'solute': 'poche', 'consommable': 'pansement'}.get(self.categorie, 'plaquette')
 
     # ── Péremption ────────────────────────────────────────────────
     def est_perime(self):

@@ -19,7 +19,7 @@
 .form-section-sub { font-size: .73rem; color: var(--text-muted); margin-top: 1px; }
 .req-mark { color: #ef4444; }
 .helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
-.stock-now { border-radius: .75rem; padding: .8rem 1.1rem; margin-top: .25rem; display: none; align-items: center; justify-content: space-between; background: rgba(0,136,170,.06); border: 1px solid rgba(0,136,170,.2); }
+.stock-now { border-radius: .75rem; padding: .8rem 1.1rem; margin-top: .25rem; display: none; align-items: center; justify-content: space-between; background: rgba(22,102,179,.06); border: 1px solid rgba(22,102,179,.2); }
 .stock-now.show { display: flex; }
 .stock-warn { color: #ef4444 !important; font-weight: 800; }
 .actions-row { max-width: 720px; margin-left: auto; margin-right: auto; }
@@ -39,10 +39,31 @@
 .ol-badge-miss { background: rgba(239,68,68,.14);  color: #ef4444; }
 .ol-qte { width: 72px; padding: .35rem .5rem; border: 1px solid var(--card-border); border-radius: .55rem; background: var(--card-bg); color: var(--text-primary); font-weight: 700; text-align: center; }
 #ordo-resume { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .9rem; }
+
+/* ── Assurance : annoncée avant de valider ── */
+.ol-row.ol-hors { border-color: rgba(229,72,77,.45); background: rgba(229,72,77,.06); }
+.ol-alerte { display: inline-flex; align-items: center; gap: .3rem; margin-top: .3rem; font-size: .7rem; font-weight: 700; color: #c81e24; }
+[data-theme="dark"] .ol-alerte { color: #ff8a8e; }
+.ol-prix { font-size: .72rem; color: var(--text-muted); margin-top: 1px; }
+.assure-info { display: none; align-items: center; gap: .45rem; margin-top: .85rem; padding: .55rem .85rem; border-radius: .75rem; font-size: .78rem; font-weight: 600; background: var(--primary-light); color: var(--primary-dark); }
+[data-theme="dark"] .assure-info { color: var(--primary-mid); }
+.assure-info.sans { background: var(--input-bg); color: var(--text-muted); }
+.calcul { display: none; margin: .9rem 0 .4rem; padding: .85rem 1.05rem; border-radius: .85rem; background: var(--input-bg); border: 1px solid var(--card-border); font-size: .84rem; }
+.calcul div { display: flex; justify-content: space-between; gap: 1rem; padding: .16rem 0; color: var(--text-secondary); }
+.calcul .hors { color: #c81e24; font-weight: 600; }
+[data-theme="dark"] .calcul .hors { color: #ff8a8e; }
+.calcul .a-payer { margin-top: .3rem; padding-top: .5rem; border-top: 1px solid var(--card-border); font-weight: 800; font-size: .95rem; color: var(--text-primary); }
+/* Sur téléphone : le nom et l'alerte sur toute la largeur, le stock et la quantité dessous. */
+@media (max-width: 575.98px) {
+  .ol-row { flex-wrap: wrap; }
+  .ol-info { flex: 1 1 calc(100% - 2.6rem); }
+  .ol-qte { margin-left: auto; }
+}
 </style>{% endblock %}
 {% block content %}
 
 {{ ordo_par_patient|json_script:"ordo-data" }}
+{{ assurance_par_patient|json_script:"assurance-data" }}
 
 <!-- ══ CARTE A : DISPENSER L'ORDONNANCE DU PATIENT ══ -->
 <form method="post" id="ordo-form">
@@ -70,6 +91,7 @@
         <select id="ordo-pick" class="f-input f-select" onchange="rendreOrdo()"></select>
       </div>
     </div>
+    <div class="assure-info" id="ordo-assure"></div>
 
     <!-- Aucune ordonnance -->
     <div id="ordo-vide" class="helper" style="display:none;color:#ef4444;margin-top:1rem">
@@ -80,6 +102,7 @@
     <div id="ordo-corps" style="display:none;margin-top:1.1rem">
       <div id="ordo-resume"></div>
       <div id="ordo-lignes"></div>
+      <div class="calcul" id="ordo-calcul" aria-live="polite"></div>
       <div class="helper"><i class="bi bi-receipt"></i> Les médicaments cochés sont retirés du stock et ajoutés à la facture du patient.</div>
       <div class="actions-row d-flex flex-wrap gap-2 justify-content-end mt-3">
         <button type="submit" class="btn-c btn-primary-c" id="ordo-submit"><i class="bi bi-capsule"></i> Dispenser les médicaments cochés</button>
@@ -93,7 +116,7 @@
   {% csrf_token %}
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-box-arrow-up"></i></span>
+      <span class="form-section-ico" style="color:#1666b3;background:rgba(22,102,179,.12)"><i class="bi bi-box-arrow-up"></i></span>
       <div>
         <div class="form-section-title">Sortie manuelle</div>
         <div class="form-section-sub">Un seul médicament — soin infirmier, péremption, ajustement… La vente à un patient exige son ordonnance.</div>
@@ -106,13 +129,13 @@
         <select id="medicament" name="medicament" class="f-input f-select" onchange="onMedChange()">
           <option value="">— Choisir un médicament —</option>
           {% for m in medicaments %}
-          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}" data-prix="{{ m.prix_unitaire|stringformat:'.2f' }}"
+          <option value="{{ m.pk }}" data-stock="{{ m.quantite_stock }}" data-unite="{{ m.unite }}" data-prix="{{ m.prix_unitaire|stringformat:'.2f' }}" data-rembourse="{{ m.rembourse|yesno:'1,0' }}"
             {% if pre_medicament == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nom }}{% if m.dosage %} {{ m.dosage }}{% endif %} — stock : {{ m.quantite_stock }} {{ m.unite }}</option>
           {% endfor %}
         </select>
         <div class="stock-now" id="stock-now">
           <span style="font-size:.8rem;color:var(--text-muted);font-weight:600">Stock disponible</span>
-          <span style="font-weight:800;color:#0088aa" id="stock-now-val">—</span>
+          <span style="font-weight:800;color:#1666b3" id="stock-now-val">—</span>
         </div>
       </div>
 
@@ -131,8 +154,9 @@
       <div class="col-12">
         <div class="stock-now show" id="montant-box">
           <span style="font-size:.8rem;color:var(--text-muted);font-weight:600">Montant total de la sortie</span>
-          <span style="font-weight:800;color:#0088aa" id="montant-val">0 FCFA</span>
+          <span style="font-weight:800;color:#1666b3" id="montant-val">0 FCFA</span>
         </div>
+        <div class="calcul" id="manuel-calcul" aria-live="polite"></div>
       </div>
 
       <div class="col-12 col-md-6">
@@ -171,10 +195,50 @@
 {% block extra_js %}
 <script>
 const ORDO_DATA = JSON.parse(document.getElementById('ordo-data').textContent);
+const ASSURANCES = JSON.parse(document.getElementById('assurance-data').textContent);
 
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=(s==null)?'':s; return d.innerHTML; }
 
+// ── Qui paie quoi ── (même calcul que la facture : le taux sur la part couverte,
+// arrondi au franc, un demi franc allant au nombre pair)
+function fcfa(n){ return Math.round(n).toLocaleString('fr-FR').replace(/[\s\u202f\u00a0,]/g,' ')+' FCFA'; }
+function partAssurance(base, taux){
+  const v = base*taux/100, bas = Math.floor(v);
+  return Math.abs(v-bas-.5) < 1e-9 ? (bas%2 ? bas+1 : bas) : Math.round(v);
+}
+function afficherCalcul(boite, total, couvert, a){
+  if (total <= 0){ boite.style.display='none'; return; }
+  const hors = total-couvert;
+  const part = a ? partAssurance(couvert, a.taux) : 0;
+  let html = `<div><span>Total</span><span>${fcfa(total)}</span></div>`;
+  if (a){
+    html += `<div><span>Part ${escapeHtml(a.nom)} (${a.taux} % de ${fcfa(couvert)})</span><span>- ${fcfa(part)}</span></div>`;
+    if (hors > 0) html += `<div class="hors"><span><i class="bi bi-shield-x"></i> Non pris en charge par l'${escapeHtml(a.nom)}</span><span>${fcfa(hors)}</span></div>`;
+  }
+  html += `<div class="a-payer"><span>À payer par le patient</span><span>${fcfa(total-part)}</span></div>`;
+  boite.innerHTML = html; boite.style.display='block';
+}
+
 // ── Carte A : ordonnance du patient ──
+function annoncerAssurance(pid){
+  const info = document.getElementById('ordo-assure'), a = ASSURANCES[pid];
+  if (!pid){ info.style.display='none'; return; }
+  info.className = 'assure-info' + (a ? '' : ' sans');
+  info.innerHTML = a
+    ? `<i class="bi bi-shield-check"></i> Patient assuré : ${escapeHtml(a.nom)}, ${a.taux} % sur les médicaments couverts.`
+    : `<i class="bi bi-info-circle"></i> Patient sans assurance : tout est à sa charge.`;
+  info.style.display='flex';
+}
+function calculerOrdo(){
+  let total=0, couvert=0;
+  document.querySelectorAll('#ordo-lignes .ol-row[data-prix]').forEach(row=>{
+    if (!row.querySelector('.ol-check input').checked) return;
+    const montant = (parseInt(row.querySelector('.ol-qte').value)||0) * parseFloat(row.dataset.prix||'0');
+    total += montant;
+    if (row.dataset.rembourse === '1') couvert += montant;
+  });
+  afficherCalcul(document.getElementById('ordo-calcul'), total, couvert, ASSURANCES[document.getElementById('ordo-patient').value]);
+}
 function chargerOrdos(){
   const pid  = document.getElementById('ordo-patient').value;
   const pick = document.getElementById('ordo-pick');
@@ -183,6 +247,7 @@ function chargerOrdos(){
   const corps= document.getElementById('ordo-corps');
   const list = ORDO_DATA[pid] || [];
   pick.innerHTML = '';
+  annoncerAssurance(pid);
   if (!pid){ pickWrap.style.display='none'; vide.style.display='none'; corps.style.display='none'; return; }
   if (list.length === 0){ pickWrap.style.display='none'; corps.style.display='none'; vide.style.display='block'; return; }
   vide.style.display='none';
@@ -199,16 +264,18 @@ function rendreOrdo(){
   const o = list[idx]; if(!o) return;
   document.getElementById('ordo-id').value = o.id;
 
+  const assurance = ASSURANCES[pid];
   let dispo=0, rup=0, abs=0;
   const rows = o.lignes.map(l=>{
     if (l.statut === 'disponible'){
       dispo++;
-      return `<div class="ol-row ol-ok">
+      const hors = assurance && !l.rembourse;
+      return `<div class="ol-row ol-ok${hors?' ol-hors':''}" data-prix="${l.prix}" data-rembourse="${l.rembourse?1:0}">
         <label class="ol-check"><input type="checkbox" checked onchange="toggleLigne(this)"></label>
         <input type="hidden" name="ligne_med" value="${l.medicament_id}">
-        <div class="ol-info"><div class="ol-nom">${escapeHtml(l.nom)}</div>${l.posologie?`<div class="ol-pos">${escapeHtml(l.posologie)}</div>`:''}</div>
+        <div class="ol-info"><div class="ol-nom">${escapeHtml(l.nom)}</div>${l.posologie?`<div class="ol-pos">${escapeHtml(l.posologie)}</div>`:''}<div class="ol-prix">${fcfa(l.prix)} l'unité</div>${hors?`<div class="ol-alerte"><i class="bi bi-shield-x"></i> Non pris en charge par l'${escapeHtml(assurance.nom)}, à la charge du patient</div>`:''}</div>
         <span class="ol-badge ol-badge-ok">En stock · ${l.stock} ${escapeHtml(l.unite)}</span>
-        <input type="number" class="ol-qte" name="ligne_qte" value="1" min="1" max="${l.stock}" title="Quantité à dispenser">
+        <input type="number" class="ol-qte" name="ligne_qte" value="1" min="1" max="${l.stock}" title="Quantité à dispenser" oninput="calculerOrdo()">
       </div>`;
     }
     if (l.statut === 'rupture'){
@@ -232,6 +299,7 @@ function rendreOrdo(){
     + (abs ? `<span class="ol-badge ol-badge-miss">${abs} hors stock</span>` : '');
   document.getElementById('ordo-submit').disabled = (dispo === 0);
   document.getElementById('ordo-corps').style.display='block';
+  calculerOrdo();
 }
 
 function toggleLigne(cb){
@@ -241,6 +309,7 @@ function toggleLigne(cb){
   hid.disabled = !cb.checked;
   qte.disabled = !cb.checked;
   row.style.opacity = cb.checked ? '1' : '.5';
+  calculerOrdo();
 }
 
 // ── Carte B : sortie manuelle ──
@@ -275,6 +344,11 @@ function calcMontant(){
   const qte=parseFloat(document.getElementById('quantite').value||'0'); const prix=parseFloat(document.getElementById('prix_unitaire').value||'0');
   const total=(qte>0&&prix>0)?Math.round(qte*prix):0;
   document.getElementById('montant-val').textContent=total.toLocaleString('fr-FR').replace(/,/g,' ')+' FCFA';
+  // Vendu à un patient : on annonce ce que l'assurance prendra, ou pas.
+  const sel=document.getElementById('medicament'), opt=sel.options[sel.selectedIndex];
+  const pid=document.getElementById('patient').value, boite=document.getElementById('manuel-calcul');
+  if (pid && opt && opt.value) afficherCalcul(boite, total, opt.dataset.rembourse==='1' ? total : 0, ASSURANCES[pid]);
+  else boite.style.display='none';
 }
 function filtrerOrdonnances(){
   const pid=document.getElementById('patient').value; const sel=document.getElementById('ordonnance');

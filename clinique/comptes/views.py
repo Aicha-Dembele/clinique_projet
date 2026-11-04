@@ -315,7 +315,7 @@ def journal_audit(request):
     if modele:
         qs = qs.filter(modele=modele)
     if q:
-        qs = qs.filter(objet_repr__icontains=q)
+        qs = qs.filter(termes_q(q, 'objet_repr', 'details', 'modele', 'user__username'))
 
     page = Paginator(qs, 50).get_page(request.GET.get('page'))
     return render(request, 'comptes/journal_audit.html', {

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block body_class %}page-dashboard-bg{% endblock %}
+{% load static %}
+{% block body_class %}page-dashboard-bg page-accueil{% endblock %}
 
 {% block title %}Dashboard Médecin{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
@@ -83,6 +84,38 @@
 {% endblock %}
 
 {% block content %}
+<!-- ── Accueil : bannière photo ─────────────────────────────── -->
+<section class="accueil-hero" style="background-image:url('{% static 'consultation/img/dfd.jpeg' %}')">
+  <div>
+    <div class="accueil-hero-date">{% now "l j F Y" %}</div>
+    <h1>Bonjour, Dr {{ request.user.get_full_name|default:request.user.username }} 👋</h1>
+    <p>{% if mes_rdv_count %}Vous avez <b>{{ mes_rdv_count }} rendez-vous</b> aujourd'hui{% with premier=mes_rdv_aujourd_hui.0 %}{% if premier %}, le premier à <b>{{ premier.date|time:"H:i" }}</b>{% endif %}{% endwith %}.{% else %}Aucun rendez-vous prévu aujourd'hui.{% endif %}{% if mes_hospitalises %} <b>{{ mes_hospitalises }} patient{{ mes_hospitalises|pluralize }}</b> hospitalisé{{ mes_hospitalises|pluralize }} sous votre suivi.{% endif %}</p>
+    <div class="accueil-hero-btns">
+      <a class="plein" href="{% url 'consultation:planning_jour' %}"><i class="bi bi-calendar-check"></i>Voir mon planning</a>
+      <a class="verre" href="{% url 'consultation:ajouter' %}"><i class="bi bi-clipboard2-plus"></i>Nouvelle consultation</a>
+    </div>
+  </div>
+</section>
+<div class="services-titre">Mon activité</div>
+<div class="services-grille">
+  <a class="service-carte" href="{% url 'consultation:liste' %}" style="background-image:url('{% static 'consultation/img/pat.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#1f9d55"></i>{{ rdv_termines }} / {{ mes_rdv_count }} aujourd'hui</span>
+    <b>Consultations</b><span>{{ mes_consultations }} réalisée{{ mes_consultations|pluralize }}</span>
+  </a>
+  <a class="service-carte" href="{% url 'consultation:hospitalisations' %}" style="background-image:url('{% static 'consultation/img/rendezvous.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#1666b3"></i>En cours</span>
+    <b>Hospitalisation</b><span>{{ mes_hospitalises }} patient{{ mes_hospitalises|pluralize }} suivi{{ mes_hospitalises|pluralize }}</span>
+  </a>
+  <a class="service-carte" href="{% url 'consultation:dossiers' %}" style="background-image:url('{% static 'consultation/img/TU.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#7c3aed"></i>Confidentiels</span>
+    <b>Dossiers médicaux</b><span>{{ mes_patients }} patient{{ mes_patients|pluralize }}</span>
+  </a>
+  <a class="service-carte" href="{% url 'consultation:ordonnances' %}" style="background-image:url('{% static 'consultation/img/ANA3.jpg' %}')">
+    <span class="etiquette"><i class="bi bi-circle-fill" style="color:#f59e0b"></i>Pharmacie</span>
+    <b>Ordonnances</b><span>{{ mes_ordonnances }} prescrite{{ mes_ordonnances|pluralize }}</span>
+  </a>
+</div>
+
 <!-- ── Rangée 1 : cartes statistiques ─────────────────────────── -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
@@ -251,7 +284,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script>Chart.defaults.animation = false;</script>
 <script>
 (function(){
   const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';

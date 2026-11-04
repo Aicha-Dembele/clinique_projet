@@ -34,11 +34,11 @@
 .recu-row:last-child { border-bottom: none; }
 .recu-row-lbl { color: var(--text-muted); font-weight: 600; }
 .recu-row-val { color: var(--text-primary); font-weight: 700; text-align: right; }
-.recu-total { background: rgba(0,136,170,.08); border: 1px dashed rgba(0,136,170,.4); border-radius: .85rem; padding: 1.25rem 1.5rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.recu-total { background: rgba(22,102,179,.08); border: 1px dashed rgba(22,102,179,.4); border-radius: .85rem; padding: 1.25rem 1.5rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
 .recu-total-lbl { font-size: .78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.recu-total-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: #0088aa; letter-spacing: -.02em; }
+.recu-total-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: #1666b3; letter-spacing: -.02em; }
 .recu-footer { padding: 1.25rem 2rem; background: var(--input-bg); border-top: 1px dashed var(--card-border); text-align: center; font-size: .78rem; color: var(--text-muted); font-weight: 500; }
-.recu-stamp { position: absolute; right: 1.25rem; top: 1.25rem; transform: rotate(-12deg); border: 3px solid #0088aa; color: #0088aa; padding: .35rem 1rem; border-radius: .55rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; opacity: .85; }
+.recu-stamp { position: absolute; right: 1.25rem; top: 1.25rem; transform: rotate(-12deg); border: 3px solid #1666b3; color: #1666b3; padding: .35rem 1rem; border-radius: .55rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; opacity: .85; }
 @media print {
   .no-print, .topbar, #sidebar, nav, .breadcrumb-c { display: none !important; }
   #main, body, .page { margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -98,7 +98,7 @@
       <div class="recu-row">
         <span class="recu-row-lbl">Mode de paiement</span>
         <span class="recu-row-val">
-          {% if paiement.mode_paiement == 'cash' %}<i class="bi bi-cash-stack me-1" style="color:#0088aa"></i>Espèces
+          {% if paiement.mode_paiement == 'cash' %}<i class="bi bi-cash-stack me-1" style="color:#1666b3"></i>Espèces
           {% elif paiement.mode_paiement == 'orange_money' %}<i class="bi bi-phone-fill me-1" style="color:#f97316"></i>Orange Money
           {% elif paiement.mode_paiement == 'carte' %}<i class="bi bi-credit-card-fill me-1" style="color:#a855f7"></i>Carte bancaire
           {% else %}{{ paiement.get_mode_paiement_display }}{% endif %}

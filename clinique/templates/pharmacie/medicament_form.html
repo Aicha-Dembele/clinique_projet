@@ -21,7 +21,7 @@
 .helper { font-size: .72rem; color: var(--text-muted); margin-top: .35rem; }
 .actions-row { max-width: 760px; margin-left: auto; margin-right: auto; }
 .spec-chip { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .8rem; border: 1px solid var(--card-border); border-radius: 999px; cursor: pointer; font-size: .82rem; font-weight: 600; background: var(--input-bg); transition: all .15s; }
-.spec-chip:has(input:checked) { border-color: var(--accent); background: rgba(0,136,170,.12); color: var(--accent); }
+.spec-chip:has(input:checked) { border-color: var(--accent); background: rgba(22,102,179,.12); color: var(--accent); }
 .spec-chip input { accent-color: var(--accent); }
 </style>{% endblock %}
 {% block content %}
@@ -30,7 +30,7 @@
 
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-capsule-pill"></i></span>
+      <span class="form-section-ico" style="color:#1666b3;background:rgba(22,102,179,.12)"><i class="bi bi-capsule-pill"></i></span>
       <div>
         <div class="form-section-title">Informations du médicament</div>
         <div class="form-section-sub">Identité, conditionnement et tarif</div>
@@ -138,9 +138,9 @@
         </label>
         <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
           <input type="checkbox" name="rembourse" {% if not medicament or medicament.rembourse %}checked{% endif %}>
-          <span style="font-weight:600">Remboursé par l'assurance</span>
+          <span style="font-weight:600">Remboursé par l'AMO</span>
         </label>
-        <div class="helper"><i class="bi bi-info-circle me-1"></i>Décoché, ce médicament reste <u>entièrement</u> à la charge du patient, même assuré. L'assurance s'applique médicament par médicament, pas sur le total de l'ordonnance.</div>
+        <div class="helper"><i class="bi bi-info-circle me-1"></i>Décoché, ce médicament reste <u>entièrement</u> à la charge du patient, même assuré. L'AMO s'applique médicament par médicament, pas sur le total de l'ordonnance.</div>
         <label class="d-inline-flex align-items-center gap-2" style="cursor:pointer">
           <input type="checkbox" name="actif" {% if not medicament or medicament.actif %}checked{% endif %}>
           <span style="font-weight:600">Médicament actif (disponible à la dispensation)</span>

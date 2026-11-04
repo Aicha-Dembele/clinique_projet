@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block body_class %}page-dashboard-bg{% endblock %}
+{% load static %}
+{% block body_class %}page-dashboard-bg page-hospitalisation-bg page-accueil{% endblock %}
 
 {% block title %}Dashboard Infirmier{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
@@ -19,6 +20,19 @@
 </style>{% endblock %}
 
 {% block content %}
+<!-- ── Accueil : bannière photo ─────────────────────────────── -->
+<section class="accueil-hero" style="background-image:url('{% static 'consultation/img/PA1.jpg' %}')">
+  <div>
+    <div class="accueil-hero-date">{% now "l j F Y" %}</div>
+    <h1>Bonjour, {{ request.user.get_full_name|default:request.user.username }} 👋</h1>
+    <p><b>{{ total_hospitalises }} patient{{ total_hospitalises|pluralize }}</b> hospitalisé{{ total_hospitalises|pluralize }} et <b>{{ traitements_actifs }} traitement{{ traitements_actifs|pluralize }}</b> en cours aujourd'hui.</p>
+    <div class="accueil-hero-btns">
+      <a class="plein" href="{% url 'consultation:hospitalisations' %}"><i class="bi bi-hospital"></i>Hospitalisations</a>
+      <a class="verre" href="{% url 'consultation:traitements' %}"><i class="bi bi-capsule-pill"></i>Traitements</a>
+    </div>
+  </div>
+</section>
+
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="stat-h" style="animation-delay:.04s">

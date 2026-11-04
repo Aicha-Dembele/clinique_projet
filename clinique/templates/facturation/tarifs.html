@@ -13,7 +13,7 @@
 {% endblock %}
 {% block extra_css %}<style>
 .stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s, border-color .25s; animation: fadeUp .5s ease both; }
-.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(0,136,170,.25); }
+.stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(22,102,179,.25); }
 .stat-h-ico { width: 48px; height: 48px; border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; }
 .stat-h-info { flex: 1; min-width: 0; }
 .stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
@@ -25,15 +25,15 @@
 .tab-link.active { background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-sm); }
 /* Barre de recherche : même boîte (teal translucide) que la liste des consultations */
 .search-bar {
-  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
-  border: 1.5px solid rgba(0,136,170,.35);
+  background: linear-gradient(135deg, rgba(22,102,179,.08) 0%, rgba(34,184,224,.05) 100%);
+  border: 1.5px solid rgba(22,102,179,.35);
   border-radius: .9rem; padding: .9rem 1.2rem; margin-bottom: .75rem;
-  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  box-shadow: 0 2px 12px rgba(22,102,179,.10);
   display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
 }
-.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
-.search-bar .f-input:focus { border-color: #0088aa !important; box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important; outline: none; }
-.search-bar i.bi-search { color: #0088aa !important; }
+.search-bar .f-input { border-color: rgba(22,102,179,.3) !important; }
+.search-bar .f-input:focus { border-color: #1666b3 !important; box-shadow: 0 0 0 3px rgba(22,102,179,.15) !important; outline: none; }
+.search-bar i.bi-search { color: #1666b3 !important; }
 </style>{% endblock %}
 {% block content %}
 
@@ -55,11 +55,11 @@
 <div class="row g-3 mb-4">
   <div class="col-12 col-md-4">
     <div class="stat-h">
-      <div class="stat-h-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12);color:#1666b3"><i class="bi bi-clipboard2-pulse-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Tarifs consultation</div>
         <div class="stat-h-val">{{ nb_consultation }}</div>
-        <div class="stat-h-trend" style="color:#0088aa">Actif</div>
+        <div class="stat-h-trend" style="color:#1666b3">Actif</div>
       </div>
     </div>
   </div>
@@ -127,7 +127,7 @@
           <td style="font-weight:700">{{ t.nom }}</td>
           <td>
             {% if t.type_service == 'consultation' %}
-              <span class="pill" style="background:rgba(0,136,170,.12);color:#0088aa;border:1px solid rgba(0,136,170,.2)"><i class="bi bi-clipboard2-pulse-fill"></i> Consultation</span>
+              <span class="pill" style="background:rgba(22,102,179,.12);color:#1666b3;border:1px solid rgba(22,102,179,.2)"><i class="bi bi-clipboard2-pulse-fill"></i> Consultation</span>
             {% elif t.type_service == 'examen' %}
               <span class="pill" style="background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.2)"><i class="bi bi-eyedropper"></i> Examen</span>
             {% elif t.type_service == 'hospitalisation' %}
@@ -135,7 +135,7 @@
             {% endif %}
           </td>
           <td>{% if t.specialite %}{{ t.specialite }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</td>
-          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:#0088aa">{{ t.prix|floatformat:0 }} FCFA</td>
+          <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:#1666b3">{{ t.prix|floatformat:0 }} FCFA</td>
           <td>
             <div class="d-flex gap-1 justify-content-end">
               {% if 'tarif.manage' in user_permissions %}
@@ -168,10 +168,11 @@
   let activeFilter = 'all';
 
   function refresh() {
-    const q = (search.value || '').toLowerCase().trim();
+    const q = (search.value || '').trim();
     rows.forEach(r => {
       const matchType = activeFilter === 'all' || r.dataset.type === activeFilter;
-      const matchQ = !q || (r.dataset.search || '').includes(q);
+      // Début de mot, sans majuscules ni accents : « gen » trouve « Généraliste ».
+      const matchQ = !q || window.Recherche.correspond(r.dataset.search, q);
       r.style.display = (matchType && matchQ) ? '' : 'none';
     });
   }

@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import Count
 
+from facturation.pdf import medicaments_non_couverts
 from .models import (
     Commande, Fournisseur, LigneCommande, Lot, Medicament, MouvementStock,
     Specialite)
@@ -97,7 +98,7 @@ def _facture_pour_dispensation(patient_id, ordonnance_id):
         return None
 
     ordo = (Ordonnance.objects
-            .select_related('consultation__rendez_vous')
+            .select_related('consultation__rendez_vous__patient')
             .filter(pk=ordonnance_id).first())
     # L'ordonnance n'est retenue que si sa consultation est bien CELLE du patient
     try:
@@ -109,9 +110,30 @@ def _facture_pour_dispensation(patient_id, ordonnance_id):
 
     facture = Facture.objects.filter(ordonnance=ordo).first()
     if facture is None:
-        facture = Facture(patient_id=patient_id, ordonnance=ordo)
+        # L'assurance du patient s'applique d'elle-même, comme sur ses autres factures :
+        # le pharmacien ne peut pas modifier une facture pour l'ajouter ensuite.
+        facture = Facture(patient_id=patient_id, ordonnance=ordo,
+                          assurance_id=ordo.consultation.rendez_vous.patient.assurance_id)
         facture.save()
     return facture
+
+
+def _resume_assurance(facture):
+    """Fin du message de dispensation : qui paie quoi sur cette facture."""
+    if not facture.assurance_id:
+        return " Patient sans assurance : tout est à sa charge."
+    return (f" Part {facture.assurance.nom} : {facture.part_assurance():,.0f} FCFA · "
+            f"à payer par le patient : {facture.part_patient():,.0f} FCFA.").replace(',', ' ')
+
+
+def _prevenir_non_couverts(request, facture):
+    """Rappelle au pharmacien les médicaments que l'AMO ne prend pas en charge."""
+    non_couverts = medicaments_non_couverts(facture)
+    if non_couverts:
+        messages.warning(
+            request,
+            "Non pris en charge par l'AMO, entièrement à la charge du patient : "
+            + ', '.join(non_couverts) + '.')
 
 
 def _verifier_ordonnance_vente(patient_id, ordonnance_id):
@@ -204,6 +226,7 @@ def _analyser_ordonnance(ordonnance, index):
             'stock':         med.quantite_stock if med else 0,
             'unite':         med.unite if med else '',
             'prix':          float(med.prix_unitaire) if med else 0,
+            'rembourse':     med.rembourse if med else None,
         })
     return lignes
 
@@ -292,7 +315,10 @@ def _dispenser_groupe(request):
         if facture is not None:
             msg += (f" Facturé à {facture.patient} (FAC-{facture.pk:04d} — "
                     f"{facture.montant_total:,.0f} FCFA).").replace(',', ' ')
+            msg += _resume_assurance(facture)
         messages.success(request, msg)
+        if facture is not None:
+            _prevenir_non_couverts(request, facture)
     if erreurs:
         messages.error(request, "Stock insuffisant, non dispensé(s) : " + ', '.join(erreurs) + '.')
     if ignores:
@@ -531,16 +557,22 @@ def sortie_stock(request):
                     request,
                     f'-{quantite} {medicament.unite} dispensés. Médicament facturé à '
                     f'{facture.patient} (FAC-{facture.pk:04d} — {facture.montant_total:,.0f} FCFA).'
-                    .replace(',', ' '))
+                    .replace(',', ' ') + _resume_assurance(facture))
+                _prevenir_non_couverts(request, facture)
             else:
                 messages.success(request, f'-{quantite} {medicament.unite} dispensés de {medicament.nom}.')
             return redirect('pharmacie:medicaments')
         except Exception as e:
             messages.error(request, f'Erreur : {e}')
 
+    patients = Patient.objects.select_related('assurance').order_by('nom')
     return render(request, 'pharmacie/sortie_form.html', {
         'medicaments':      Medicament.objects.filter(actif=True).order_by('nom'),
-        'patients':         Patient.objects.order_by('nom'),
+        'patients':         patients,
+        # L'écran annonce la part de l'assurance avant même que l'on valide.
+        'assurance_par_patient': {
+            str(p.pk): {'nom': p.assurance.nom, 'taux': float(p.assurance.taux_prise_en_charge)}
+            for p in patients if p.assurance_id},
         'ordonnances':      Ordonnance.objects.select_related(
                                 'consultation__rendez_vous__patient').order_by('-date')[:100],
         'ordo_par_patient': _ordonnances_par_patient(),

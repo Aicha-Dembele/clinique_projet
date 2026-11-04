@@ -30,18 +30,18 @@
 
 /* ── Aperçu montant ── */
 .montant-preview {
-  background: linear-gradient(135deg, rgba(0,136,170,.07), rgba(20,184,166,.04));
-  border: 1.5px solid rgba(0,136,170,.25);
+  background: linear-gradient(135deg, rgba(22,102,179,.07), rgba(20,184,166,.04));
+  border: 1.5px solid rgba(22,102,179,.25);
   border-radius: 1rem; padding: 1.1rem 1.4rem;
   margin-top: .5rem; display: none;
 }
 .montant-preview.visible { display: block; }
 .montant-preview-title { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .65rem; }
-.montant-ligne { display: flex; justify-content: space-between; align-items: center; padding: .35rem 0; border-bottom: 1px solid rgba(0,136,170,.1); font-size: .84rem; }
+.montant-ligne { display: flex; justify-content: space-between; align-items: center; padding: .35rem 0; border-bottom: 1px solid rgba(22,102,179,.1); font-size: .84rem; }
 .montant-ligne:last-of-type { border-bottom: none; }
 .montant-ligne-label { color: var(--text-secondary); font-weight: 600; }
 .montant-ligne-val { font-weight: 800; color: var(--text-primary); }
-.montant-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: .65rem; padding-top: .65rem; border-top: 2px solid rgba(0,136,170,.3); }
+.montant-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: .65rem; padding-top: .65rem; border-top: 2px solid rgba(22,102,179,.3); }
 .montant-total-label { font-size: .85rem; font-weight: 700; color: var(--text-primary); }
 .montant-total-val { font-size: 1.35rem; font-weight: 900; color: var(--primary); font-family: 'Outfit', sans-serif; }
 
@@ -58,7 +58,7 @@
   <!-- ══ SECTION 1 : PATIENT ══ -->
   <div class="form-section">
     <div class="form-section-hdr">
-      <span class="form-section-ico" style="color:#0088aa;background:rgba(0,136,170,.12)"><i class="bi bi-person-vcard-fill"></i></span>
+      <span class="form-section-ico" style="color:#1666b3;background:rgba(22,102,179,.12)"><i class="bi bi-person-vcard-fill"></i></span>
       <div>
         <div class="form-section-title">Patient</div>
         <div class="form-section-sub">Sélectionnez le patient à facturer</div>
@@ -126,7 +126,7 @@
 
       <!-- Consultation : on facture le RENDEZ-VOUS, avant que le patient ne soit reçu -->
       <div class="col-12 col-md-7 bloc-service" id="bloc-rendez_vous">
-        <label class="f-label"><i class="bi bi-clipboard2-pulse-fill" style="color:#0088aa"></i> Rendez-vous à régler</label>
+        <label class="f-label"><i class="bi bi-clipboard2-pulse-fill" style="color:#1666b3"></i> Rendez-vous à régler</label>
         <select name="rendez_vous" id="sel-rendez_vous" class="f-input f-select">
           <option value="">-- Choisir le rendez-vous --</option>
           {% for r in rendez_vous %}
@@ -364,6 +364,7 @@ const TARIFS_ORDONNANCE = {
   {% for o in ordonnances %}
   "{{ o.pk }}": {
     prix: {{ o.montant_dispense|floatformat:0 }},
+    assurable: {{ o.montant_assurable|floatformat:0 }},
     label: "Médicaments dispensés — ORD-{{ o.pk|stringformat:'04d' }}"
   }{% if not forloop.last %},{% endif %}
   {% endfor %}
@@ -403,6 +404,7 @@ function updatePreview() {
 
   let lignes = [];
   let total = 0;
+  let assurable = null;   // part couverte, quand elle diffère du total (ordonnance)
   hospitDetail.style.display = 'none';
 
   if (service === 'rendez_vous') {
@@ -424,7 +426,7 @@ function updatePreview() {
 
   } else if (service === 'ordonnance') {
     const t = TARIFS_ORDONNANCE[document.getElementById('sel-ordonnance').value];
-    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; }
+    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; assurable = t.assurable; }
   }
 
   // Affiche/cache l'aperçu
@@ -441,9 +443,11 @@ function updatePreview() {
     const tauxVal = parseFloat(document.getElementById('inp-taux').value) || 0;
     const assBlock = document.getElementById('preview-assurance-block');
     if (tauxVal > 0) {
-      const partAss = Math.round(total * tauxVal / 100);
+      const couvert = assurable === null ? total : assurable;
+      const partAss = Math.round(couvert * tauxVal / 100);
       const partPat = total - partAss;
-      document.getElementById('preview-assurance-label').textContent = 'Pris en charge assurance (' + tauxVal + ' %)';
+      document.getElementById('preview-assurance-label').textContent = 'Pris en charge assurance (' + tauxVal + ' %'
+        + (couvert < total ? ' de ' + fmt(couvert) + ', le reste n\'est pas couvert' : '') + ')';
       document.getElementById('preview-assurance-val').textContent = '- ' + fmt(partAss);
       document.getElementById('preview-patient-val').textContent = fmt(partPat);
       assBlock.style.display = 'block';

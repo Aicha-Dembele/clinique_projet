@@ -13,8 +13,8 @@
     <div id="add-menu" style="display:none;position:fixed;z-index:99999;
          background:var(--card-bg);border:1px solid var(--card-border);border-radius:.85rem;
          box-shadow:0 8px 32px rgba(0,0,0,.25);min-width:210px;">
-      <a href="{% url 'personnel:medecin_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(0,136,170,.08)'" onmouseout="this.style.background='transparent'">
-        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(0,136,170,.12);color:#0088aa;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-person-badge-fill"></i></span>
+      <a href="{% url 'personnel:medecin_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(22,102,179,.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:28px;height:28px;border-radius:.5rem;background:rgba(22,102,179,.12);color:#1666b3;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi bi-person-badge-fill"></i></span>
         Médecin
       </a>
       <a href="{% url 'personnel:infirmier_ajouter' %}" style="display:flex;align-items:center;gap:.7rem;padding:.75rem 1.1rem;font-size:.84rem;font-weight:700;color:var(--text-primary);text-decoration:none;transition:background .12s" onmouseover="this.style.background='rgba(16,185,129,.08)'" onmouseout="this.style.background='transparent'">
@@ -108,7 +108,7 @@ document.addEventListener('click', function(e) {
   animation:fadeUp .5s ease both;
   display:flex; flex-direction:column; gap:.75rem;
 }
-.pcard:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:rgba(0,136,170,.25); }
+.pcard:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:rgba(22,102,179,.25); }
 
 /* En-tête card */
 .pcard-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem; }
@@ -162,7 +162,7 @@ img.pcard-av { object-fit:cover; }
 .av-purple { background:#a855f7; }
 .av-red    { background:#ef4444; }
 .av-green  { background:#10b981; }
-.av-cyan   { background:#0088aa; }
+.av-cyan   { background:#1666b3; }
 .av-pink   { background:#ec4899; }
 
 /* Section titre */
@@ -172,7 +172,7 @@ img.pcard-av { object-fit:cover; }
 {% block content %}
 
 <!-- ── Sous-titre ── -->
-<p style="color:var(--text-muted);font-size:.85rem;margin-top:-.5rem;margin-bottom:1.25rem">
+<p class="texte-sur-fond" style="width:fit-content;color:var(--text-muted);font-size:.85rem;margin-top:-.5rem;margin-bottom:1.25rem">
   {{ total_medecins }} médecin{% if total_medecins > 1 %}s{% endif %} · {{ total_infirmiers }} infirmier{% if total_infirmiers > 1 %}s{% endif %} · {{ total_personnel }} personnels soignants au total
 </p>
 
@@ -183,9 +183,9 @@ img.pcard-av { object-fit:cover; }
       <div class="stat-p-left">
         <div class="lbl">Total médecins</div>
         <div class="val">{{ total_medecins }}</div>
-        <div class="sub" style="color:#0088aa">+{% if total_medecins > 0 %}{{ total_medecins }}{% else %}0{% endif %} ce mois</div>
+        <div class="sub" style="color:#1666b3">+{% if total_medecins > 0 %}{{ total_medecins }}{% else %}0{% endif %} ce mois</div>
       </div>
-      <div class="stat-p-ico" style="background:rgba(0,136,170,.12);color:#0088aa"><i class="bi bi-person-badge-fill"></i></div>
+      <div class="stat-p-ico" style="background:rgba(22,102,179,.12);color:#1666b3"><i class="bi bi-person-badge-fill"></i></div>
     </div>
   </div>
   <div class="col-6 col-xl-3">
@@ -234,7 +234,7 @@ img.pcard-av { object-fit:cover; }
     <input type="hidden" name="filtre" value="{{ filtre }}">
     <div style="position:relative;flex:1">
       <i class="bi bi-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.85rem"></i>
-      <input type="text" name="q" value="{{ q }}" class="f-input" placeholder="Rechercher un médecin…" style="padding-left:2.1rem;font-size:.82rem">
+      <input type="text" name="q" value="{{ q }}" class="f-input" placeholder="Rechercher un membre du personnel…" style="padding-left:2.1rem;font-size:.82rem">
     </div>
     <button class="btn-c btn-outline-c" style="font-size:.82rem">Filtrer</button>
   </form>

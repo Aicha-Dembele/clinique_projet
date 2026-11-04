@@ -14,7 +14,8 @@ from patients.models import Patient
 from comptes.decorators import role_required, permission_required, get_role
 from .regles import (
     CAISSE_PHARMACIE, CAISSE_RECEPTION, blocage_caisse, caisse_de,
-    caisses_du_role, factures_de_la_caisse)
+    blocage_service, caisses_du_role, factures_de_la_caisse, factures_visibles,
+    perimetre_du_role)
 from comptes.recherche import termes_q
 
 
@@ -53,7 +54,10 @@ def _patients_facturables(inclure_pk=None):
 
 @permission_required('facture.view')
 def facture_liste(request):
-    qs = Facture.objects.select_related('patient', 'assurance').prefetch_related('lignes', 'paiements').order_by('-id')
+    role = get_role(request.user)
+    qs = factures_visibles(
+        Facture.objects.select_related('patient', 'assurance').prefetch_related('lignes', 'paiements').order_by('-id'),
+        role)
 
     # Filtre statut
     statut = request.GET.get('statut', '')
@@ -63,9 +67,9 @@ def facture_liste(request):
     # Recherche patient
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', numero='FAC'))
 
-    all_f = Facture.objects.all()
+    all_f = factures_visibles(Facture.objects.all(), role)
     total_paye    = all_f.filter(statut='payé').aggregate(t=Sum('montant_total'))['t'] or 0
     total_attente = all_f.filter(statut='non payé').aggregate(t=Sum('montant_total'))['t'] or 0
 
@@ -78,15 +82,18 @@ def facture_liste(request):
         'total_factures':    all_f.count(),
         'statut_filtre':     statut,
         'q':                 q,
+        'perimetre':         perimetre_du_role(role),
     })
 
 
 @permission_required('facture.view')
 def facture_detail(request, pk):
     facture = get_object_or_404(
-        Facture.objects.select_related('patient', 'rendez_vous__medecin',
-                                       'consultation', 'hospitalisation')
-                       .prefetch_related('lignes', 'paiements'),
+        factures_visibles(
+            Facture.objects.select_related('patient', 'rendez_vous__medecin',
+                                           'consultation', 'hospitalisation')
+                           .prefetch_related('lignes', 'paiements'),
+            get_role(request.user)),
         pk=pk
     )
     return render(request, 'facturation/detail.html', {
@@ -101,8 +108,10 @@ def facture_pdf(request, pk):
     """Télécharge / affiche la facture au format PDF (généré côté serveur)."""
     from .pdf import facture_pdf_response
     facture = get_object_or_404(
-        Facture.objects.select_related('patient', 'assurance')
-                       .prefetch_related('lignes', 'paiements'),
+        factures_visibles(
+            Facture.objects.select_related('patient', 'assurance')
+                           .prefetch_related('lignes', 'paiements'),
+            get_role(request.user)),
         pk=pk,
     )
     return facture_pdf_response(facture)
@@ -113,11 +122,11 @@ def paiement_pdf(request, pk):
     """Affiche le reçu de paiement au format PDF (avec logo, généré côté serveur)."""
     from .pdf import paiement_pdf_response
     paiement = get_object_or_404(
-        Paiement.objects.select_related(
+        factures_visibles(Paiement.objects.select_related(
             'facture__patient', 'facture__assurance',
             'facture__rendez_vous__medecin',
             'facture__consultation__rendez_vous__medecin',
-            'facture__hospitalisation'),
+            'facture__hospitalisation'), get_role(request.user), via='facture__'),
         pk=pk,
     )
     return paiement_pdf_response(paiement)
@@ -136,6 +145,9 @@ def _enregistrer_service(request, facture):
     service = (request.POST.get('service') or '').strip()
     if service not in libelles:
         raise ValueError("Choisissez le type de service à facturer.")
+    refus = blocage_service(service, get_role(request.user))
+    if refus:
+        raise ValueError(refus)
 
     objet_id = request.POST.get(service) or None
     if not objet_id:
@@ -185,9 +197,11 @@ def _contexte_form(request, facture=None):
                    .select_related('consultation__rendez_vous__patient')
                    .distinct().order_by('-date'))
     for o in ordonnances:
-        o.montant_dispense = sum(
-            (mv.montant() for mv in o.dispensations.filter(type_mouvement='sortie')),
-            Decimal('0'))
+        sorties = list(o.dispensations.filter(type_mouvement='sortie').select_related('medicament'))
+        o.montant_dispense = sum((mv.montant() for mv in sorties), Decimal('0'))
+        # L'aperçu applique le taux sur cette part-là, comme la facture.
+        o.montant_assurable = sum(
+            (mv.montant() for mv in sorties if mv.medicament.rembourse), Decimal('0'))
 
     # Consultation : c'est le RENDEZ-VOUS que l'on facture, avant que le patient
     # ne soit reçu. Un rendez-vous annulé n'a plus rien à facturer.
@@ -215,7 +229,10 @@ def _contexte_form(request, facture=None):
     # pourquoi l'enregistrement était refusé.
     services = []
     total_restants = 0
+    role = get_role(request.user)
     for code, libelle in Facture.SERVICES:
+        if blocage_service(code, role):
+            continue          # ex. la pharmacie n'est pas proposée à la réception
         restants = sum(1 for a in actes[code] if a.pk not in faits[code])
         total_restants += restants
         services.append({'code': code, 'libelle': libelle, 'restants': restants})
@@ -226,14 +243,17 @@ def _contexte_form(request, facture=None):
         'rendez_vous':      rendez_vous,
         'examens':          examens,
         'hospitalisations': hospitalisations,
-        'ordonnances':      ordonnances,
+        'ordonnances':      [] if blocage_service('ordonnance', role) else ordonnances,
         'rdv_factures':      faits['rendez_vous'],
         'examen_factures':   faits['examen'],
         'hospit_facturees':  faits['hospitalisation'],
         'ordo_facturees':    faits['ordonnance'],
         'services':         services,
         'total_restants':   total_restants,
-        'assurances':       Assurance.objects.filter(actif=True),
+        # L'assurance d'une ancienne facture reste proposée sur cette facture, même
+        # devenue inactive : sinon l'enregistrer lui ferait perdre sa prise en charge.
+        'assurances':       Assurance.objects.filter(
+                                Q(actif=True) | Q(pk=facture.assurance_id if facture else None)),
         'tarifs':           Tarif.objects.all().order_by('type_service', 'nom'),
     }
 
@@ -277,7 +297,7 @@ def facture_ajouter(request):
 
 @role_required('admin', 'receptionniste')
 def facture_modifier(request, pk):
-    facture = get_object_or_404(Facture, pk=pk)
+    facture = get_object_or_404(factures_visibles(Facture.objects, get_role(request.user)), pk=pk)
 
     if request.method == 'POST':
         try:
@@ -312,7 +332,7 @@ def facture_modifier(request, pk):
 
 @role_required('admin', 'receptionniste')
 def facture_supprimer(request, pk):
-    facture = get_object_or_404(Facture, pk=pk)
+    facture = get_object_or_404(factures_visibles(Facture.objects, get_role(request.user)), pk=pk)
     if request.method == 'POST':
         facture.delete()
         messages.success(request, 'Facture supprimée.')
@@ -328,7 +348,7 @@ def facture_supprimer(request, pk):
 @role_required('admin', 'receptionniste')
 def facture_recalculer(request, pk):
     """Force le recalcul d'une facture (utile si les tarifs ont changé)."""
-    facture = get_object_or_404(Facture, pk=pk)
+    facture = get_object_or_404(factures_visibles(Facture.objects, get_role(request.user)), pk=pk)
     facture.save()
     messages.success(request, f'Facture recalculée — Nouveau total : {_fmt(facture.montant_total)} FCFA')
     return redirect('facturation:detail', pk=pk)
@@ -352,13 +372,15 @@ def paiement_liste(request):
     q = request.GET.get('q', '').strip()
     if q:
         paiements = paiements.filter(
-            termes_q(q, 'facture__patient__nom', 'facture__patient__prenom', 'note'))
+            termes_q(q, 'facture__patient__nom', 'facture__patient__prenom', 'note',
+                     numero='FAC', champ_numero='facture__pk'))
 
     total = paiements.aggregate(t=Sum('montant'))['t'] or 0
     return render(request, 'facturation/paiements.html', {
         'paiements':       paiements,
         'total_encaisse':  _fmt(total),
         'q':               q,
+        'perimetre':       perimetre_du_role(role),
     })
 
 
@@ -539,7 +561,9 @@ def _sama_verifier(request, facture, montant, donnees):
 
 @role_required('admin', 'receptionniste')
 def paiement_modifier(request, pk):
-    paiement = get_object_or_404(Paiement, pk=pk)
+    role = get_role(request.user)
+    paiement = get_object_or_404(factures_visibles(Paiement.objects, role, via='facture__'), pk=pk)
+    visibles = factures_visibles(Facture.objects.select_related('patient'), role)
     if request.method == 'POST':
         try:
             paiement.montant       = Decimal(request.POST['montant'])
@@ -547,6 +571,8 @@ def paiement_modifier(request, pk):
             paiement.note          = request.POST.get('note', '')
             new_fid = request.POST.get('facture')
             if new_fid and str(paiement.facture_id) != new_fid:
+                if not visibles.filter(pk=new_fid).exists():
+                    raise ValueError("Cette facture ne relève pas de votre caisse.")
                 paiement.facture_id = new_fid
             paiement.save()
             messages.success(request, 'Paiement modifié.')
@@ -556,7 +582,7 @@ def paiement_modifier(request, pk):
 
     return render(request, 'facturation/paiement.html', {
         'paiement':   paiement,
-        'factures':   Facture.objects.all().select_related('patient'),
+        'factures':   visibles,
         'modes':      Paiement.MODE_CHOICES,
         'facture_id': paiement.facture_id,
         'action':     'Modifier',
@@ -565,7 +591,8 @@ def paiement_modifier(request, pk):
 
 @role_required('admin', 'receptionniste')
 def paiement_supprimer(request, pk):
-    paiement = get_object_or_404(Paiement, pk=pk)
+    paiement = get_object_or_404(
+        factures_visibles(Paiement.objects, get_role(request.user), via='facture__'), pk=pk)
     if request.method == 'POST':
         facture = paiement.facture
         paiement.delete()
@@ -580,7 +607,10 @@ def paiement_supprimer(request, pk):
 
 @permission_required('paiement.view')
 def paiement_recu(request, pk):
-    paiement = get_object_or_404(Paiement.objects.select_related('facture__patient'), pk=pk)
+    paiement = get_object_or_404(
+        factures_visibles(Paiement.objects.select_related('facture__patient'),
+                          get_role(request.user), via='facture__'),
+        pk=pk)
     return render(request, 'facturation/recu.html', {'paiement': paiement})
 
 
@@ -717,6 +747,8 @@ def _factures_prises_en_charge(request, avec_filtre_statut=True):
           .select_related('patient', 'assurance', 'rendez_vous', 'consultation',
                           'examen', 'hospitalisation', 'ordonnance')
           .order_by('assurance__nom', 'patient__nom', 'pk'))
+    # Le pharmacien ne voit que la part assurance des médicaments.
+    qs = factures_visibles(qs, get_role(request.user))
     if annee and mois:
         qs = qs.filter(date_creation__year=annee, date_creation__month=mois)
     if avec_filtre_statut:
@@ -741,7 +773,8 @@ def creances_assurances(request):
 
     # Mois proposés dans le sélecteur : ceux qui ont au moins une facture.
     mois_options = []
-    for r in (Facture.objects.exclude(date_creation__isnull=True)
+    for r in (factures_visibles(Facture.objects, get_role(request.user))
+              .exclude(date_creation__isnull=True)
               .annotate(mo=TruncMonth('date_creation'))
               .values('mo').distinct().order_by('-mo')):
         d = r['mo']
@@ -798,6 +831,7 @@ def creances_assurances(request):
         'mois_options':       mois_options,
         'statuts':            Facture.STATUT_ASSURANCE_CHOICES,
         'statut_selectionne': (request.GET.get('statut') or '').strip(),
+        'perimetre':          perimetre_du_role(get_role(request.user)),
         # Filtres courants, pour revenir sur le même écran après un marquage
         'retour_qs':          urlencode({k: v for k, v in (
                                   ('mois', mois_selectionne),
@@ -806,7 +840,7 @@ def creances_assurances(request):
     })
 
 
-@permission_required('facture.change', 'rapport.view')
+@permission_required('facture.change', 'rapport.view', 'creance.marquer')
 def creances_marquer(request):
     """Fait avancer le recouvrement : réclamé, remboursé, ou retour en arrière.
 
@@ -829,7 +863,9 @@ def creances_marquer(request):
 
     facture_id = (request.POST.get('facture') or '').strip()
     if facture_id:
-        cibles = Facture.objects.filter(pk=facture_id, assurance__isnull=False)
+        cibles = factures_visibles(
+            Facture.objects.filter(pk=facture_id, assurance__isnull=False),
+            get_role(request.user))
     else:
         # Portée « dossier » : on rejoue exactement le filtre de l'écran, mais
         # sans le filtre de statut — sinon marquer « réclamé » ne toucherait que
@@ -910,13 +946,15 @@ def creances_export(request):
 def factures_export(request):
     """Exporte la liste des factures (filtres de recherche appliqués) en CSV."""
     from .exports import csv_response
-    qs = Facture.objects.select_related('patient', 'assurance').prefetch_related('paiements').order_by('-id')
+    qs = factures_visibles(
+        Facture.objects.select_related('patient', 'assurance').prefetch_related('paiements').order_by('-id'),
+        get_role(request.user))
     statut = request.GET.get('statut', '')
     q = request.GET.get('q', '').strip()
     if statut:
         qs = qs.filter(statut=statut)
     if q:
-        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom'))
+        qs = qs.filter(termes_q(q, 'patient__nom', 'patient__prenom', numero='FAC'))
 
     headers = ['Facture', 'Patient', 'Date', 'Montant total', 'Part assurance',
                'Part patient', 'Payé', 'Statut']
@@ -1026,30 +1064,12 @@ def tarif_supprimer(request, pk):
 
 @role_required('admin', 'receptionniste')
 def assurance_liste(request):
-    assurances = Assurance.objects.all()
+    assurances = Assurance.objects.filter(actif=True)
     return render(request, 'facturation/assurances.html', {
         'assurances':  assurances,
-        'nb_actives':  assurances.filter(actif=True).count(),
+        'nb_actives':  assurances.count(),
         'nb_patients': Patient.objects.filter(assurance__isnull=False).count(),
     })
-
-
-@role_required('admin')
-def assurance_ajouter(request):
-    if request.method == 'POST':
-        try:
-            Assurance.objects.create(
-                nom=request.POST['nom'],
-                taux_prise_en_charge=Decimal(request.POST.get('taux_prise_en_charge') or '0'),
-                description=request.POST.get('description', ''),
-                actif='actif' in request.POST,
-            )
-            messages.success(request, 'Assurance créée.')
-            return redirect('facturation:assurances')
-        except Exception as e:
-            messages.error(request, f'Erreur : {e}')
-
-    return render(request, 'facturation/assurance_form.html', {'action': 'Créer'})
 
 
 @role_required('admin')
@@ -1073,17 +1093,6 @@ def assurance_modifier(request, pk):
     })
 
 
-@role_required('admin')
-def assurance_supprimer(request, pk):
-    assurance = get_object_or_404(Assurance, pk=pk)
-    if request.method == 'POST':
-        assurance.delete()
-        messages.success(request, 'Assurance supprimée.')
-        return redirect('facturation:assurances')
-    return render(request, 'partials/confirmer_suppression.html', {
-        'objet':      f'Assurance "{assurance.nom}" ({assurance.taux_prise_en_charge:.0f} %)',
-        'retour_url': '/facturation/assurances/',
-    })
 
 # ── Clôture de caisse ────────────────────────────────────────────
 #

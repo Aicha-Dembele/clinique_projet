@@ -30,7 +30,7 @@
 }
 .hero-banner-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(0,136,170,.75) 0%, rgba(0,80,120,.45) 60%, transparent 100%);
+  background: linear-gradient(90deg, rgba(22,102,179,.75) 0%, rgba(0,80,120,.45) 60%, transparent 100%);
 }
 .hero-banner-content {
   position: relative; z-index: 2;
@@ -64,8 +64,8 @@
   border: 1.5px solid var(--card-border); color: var(--text-secondary);
   background: var(--card-bg); transition: all .18s;
 }
-.tab-c:hover { border-color: rgba(0,136,170,.45); color: var(--text-primary); }
-.tab-c.active { background: #0088aa; border-color: #0088aa; color: #fff; box-shadow: 0 4px 14px rgba(0,136,170,.28); }
+.tab-c:hover { border-color: rgba(22,102,179,.45); color: var(--text-primary); }
+.tab-c.active { background: #1666b3; border-color: #1666b3; color: #fff; box-shadow: 0 4px 14px rgba(22,102,179,.28); }
 .tab-c .tab-count {
   font-size: .7rem; font-weight: 800; padding: .1em .5em;
   border-radius: 999px; background: rgba(0,0,0,.08);
@@ -85,7 +85,7 @@
   transition: background .12s;
 }
 .modern-table tbody tr:last-child { border-bottom: none; }
-.modern-table tbody tr:hover { background: rgba(0,136,170,.04); }
+.modern-table tbody tr:hover { background: rgba(22,102,179,.04); }
 .modern-table tbody td { padding: .85rem 1.1rem; font-size: .84rem; vertical-align: middle; }
 /* Ligne en retard : liseré rouge a gauche */
 .modern-table tbody tr.row-retard { background: rgba(239,68,68,.045); box-shadow: inset 3px 0 0 #ef4444; }
@@ -130,20 +130,20 @@
 
 /* ── Barre de recherche ── */
 .search-bar {
-  background: linear-gradient(135deg, rgba(0,136,170,.08) 0%, rgba(0,200,224,.05) 100%);
-  border: 1.5px solid rgba(0,136,170,.35);
+  background: linear-gradient(135deg, rgba(22,102,179,.08) 0%, rgba(34,184,224,.05) 100%);
+  border: 1.5px solid rgba(22,102,179,.35);
   border-radius: .9rem; padding: .9rem 1.2rem;
   margin-bottom: .75rem;
-  box-shadow: 0 2px 12px rgba(0,136,170,.10);
+  box-shadow: 0 2px 12px rgba(22,102,179,.10);
   display: flex; gap: .6rem; align-items: center; flex-wrap: wrap;
 }
-.search-bar .f-input { border-color: rgba(0,136,170,.3) !important; }
+.search-bar .f-input { border-color: rgba(22,102,179,.3) !important; }
 .search-bar .f-input:focus {
-  border-color: #0088aa !important;
-  box-shadow: 0 0 0 3px rgba(0,136,170,.15) !important;
+  border-color: #1666b3 !important;
+  box-shadow: 0 0 0 3px rgba(22,102,179,.15) !important;
   outline: none;
 }
-.search-bar i.bi-search { color: #0088aa !important; }
+.search-bar i.bi-search { color: #1666b3 !important; }
 
 </style>{% endblock %}
 
@@ -213,7 +213,7 @@
   <form method="get" class="d-flex gap-2 align-items-center flex-wrap" style="flex:1">
     <input type="hidden" name="onglet" value="{{ onglet }}">
     <div style="position:relative;flex:1;min-width:220px">
-      <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:#0088aa"></i>
+      <i class="bi bi-search" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:#1666b3"></i>
       <input type="text" name="q" class="f-input" style="padding-left:2.2rem;border-radius:.7rem"
              placeholder="Rechercher par patient, téléphone, médecin, spécialité…" value="{{ q }}">
     </div>
@@ -271,7 +271,7 @@
           <td><span class="con-num">RDV-{{ rdv.pk|stringformat:"04d" }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <div class="av-sm" style="background:rgba(0,136,170,.12);color:#0088aa">
+              <div class="av-sm" style="background:rgba(22,102,179,.12);color:#1666b3">
                 {{ rdv.patient.nom|slice:":1" }}{{ rdv.patient.prenom|slice:":1" }}
               </div>
               <div style="font-weight:700;font-size:.84rem">{{ rdv.patient }}</div>

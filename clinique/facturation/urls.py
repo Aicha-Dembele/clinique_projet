@@ -34,7 +34,5 @@ urlpatterns = [
     path('tarifs/<int:pk>/modifier/',     views.tarif_modifier,     name='tarif_modifier'),
     path('tarifs/<int:pk>/supprimer/',    views.tarif_supprimer,    name='tarif_supprimer'),
     path('assurances/',                   views.assurance_liste,    name='assurances'),
-    path('assurances/ajouter/',           views.assurance_ajouter,  name='assurance_ajouter'),
     path('assurances/<int:pk>/modifier/', views.assurance_modifier, name='assurance_modifier'),
-    path('assurances/<int:pk>/supprimer/',views.assurance_supprimer,name='assurance_supprimer'),
 ]

@@ -1,22 +1,12 @@
 {% extends 'base.html' %}
-{% block body_class %}page-dashboard-bg{% endblock %}
+{% load static %}
+{% block body_class %}page-dashboard-bg page-rdv-bg page-accueil{% endblock %}
 
 {% block title %}Dashboard Réceptionniste{% endblock %}
 {% block nav_dashboard %}active{% endblock %}
 {% block page_title %}Accueil & Réception{% endblock %}
 {% block page_heading %}Bonjour {{ request.user.get_full_name|default:request.user.username }} {% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Tableau de bord</li>{% endblock %}
-{% block page_actions %}
-
-{% if is_receptionniste %}
-{% comment %} L'action principale va jusqu'au bout : patient, rendez-vous, encaissement,
-   recu. « Nouveau patient » reste la pour le cas rare d'une fiche ouverte
-   sans visite. {% endcomment %}
-<a href="{% url 'consultation:reception' %}" class="btn-c btn-primary-c"><i class="bi bi-door-open-fill"></i> Réception</a>
-<a href="{% url 'patients:ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-person-plus-fill"></i> Nouveau patient</a>
-{% endif %}
-<a href="{% url 'consultation:rdv_ajouter' %}" class="btn-c btn-outline-c"><i class="bi bi-calendar-plus"></i> Nouveau RDV</a>
-{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -44,6 +34,22 @@
 {% endblock %}
 
 {% block content %}
+<!-- ── Accueil : bannière photo ─────────────────────────────── -->
+<section class="accueil-hero" style="background-image:url('{% static 'consultation/img/ME1.jpeg' %}')">
+  <div>
+    <div class="accueil-hero-date">{% now "l j F Y" %}</div>
+    <h1>Bonjour, {{ request.user.get_full_name|default:request.user.username }} 👋</h1>
+    <p><b>{{ rdv_restants }} patient{{ rdv_restants|pluralize }}</b> encore attendu{{ rdv_restants|pluralize }} aujourd'hui, et <b>{{ rdv_honores }}</b> déjà reçu{{ rdv_honores|pluralize }}.</p>
+    <div class="accueil-hero-btns">
+{% if is_receptionniste %}
+      <a class="plein" href="{% url 'consultation:reception' %}"><i class="bi bi-door-open-fill"></i>Réception</a>
+      <a class="verre" href="{% url 'patients:ajouter' %}"><i class="bi bi-person-plus-fill"></i>Nouveau patient</a>
+      {% endif %}
+      <a class="verre" href="{% url 'consultation:rdv_ajouter' %}"><i class="bi bi-calendar-plus"></i>Nouveau rendez-vous</a>
+    </div>
+  </div>
+</section>
+
 <div class="row g-3 mb-4">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">

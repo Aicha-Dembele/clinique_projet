@@ -237,6 +237,59 @@ def blocage_caisse(facture, role):
             f"pharmacie, les soins à la réception.")
 
 
+# ── Ce que chaque rôle VOIT de la facturation ────────────────────
+#
+# Encaisser (ci-dessus) et voir sont deux questions différentes, mais les
+# frontières sont les mêmes :
+#   - le pharmacien ne voit que la pharmacie : les factures d'ordonnance, les
+#     paiements de ces factures, et la part de l'assurance sur les médicaments ;
+#   - la réceptionniste ne voit que les soins : consultations, examens,
+#     hospitalisations — leurs factures, paiements et créances d'assurance.
+# L'administrateur voit tout.
+
+PERIMETRE_PAR_ROLE = {
+    'pharmacien':     CAISSE_PHARMACIE,
+    'receptionniste': CAISSE_RECEPTION,
+}
+
+
+def perimetre_du_role(role):
+    """La caisse dont ce rôle voit les factures, ou None s'il les voit toutes."""
+    return PERIMETRE_PAR_ROLE.get(role)
+
+
+def factures_visibles(requete, role, via=''):
+    """Restreint des factures à ce que ce rôle a le droit de voir.
+
+    `via` sert à filtrer d'autres objets par leur facture : par exemple
+    `factures_visibles(Paiement.objects.all(), role, via='facture__')`.
+    À appliquer aux listes, aux totaux ET aux pages ouvertes par leur numéro :
+    masquer un lien ne suffit pas, l'adresse peut être tapée à la main.
+    """
+    perimetre = perimetre_du_role(role)
+    if perimetre == CAISSE_PHARMACIE:
+        return requete.filter(**{f'{via}ordonnance__isnull': False})
+    if perimetre == CAISSE_RECEPTION:
+        return requete.filter(**{f'{via}ordonnance__isnull': True})
+    return requete
+
+
+def blocage_service(service, role):
+    """None si ce rôle peut facturer ce service à la main, sinon le message.
+
+    `service` est un code de Facture.SERVICES ('rendez_vous', 'ordonnance'…).
+    Les médicaments ne se facturent pas à la réception : leur facture naît
+    à la pharmacie, au moment où ils sont servis.
+    """
+    perimetre = perimetre_du_role(role)
+    caisse = CAISSE_PHARMACIE if service == 'ordonnance' else CAISSE_RECEPTION
+    if perimetre is None or perimetre == caisse:
+        return None
+    return (f"Ce service se facture à {CAISSE_LIBELLES[caisse]}, pas ici. "
+            f"Les médicaments sont facturés au comptoir de la pharmacie, "
+            f"les soins à la réception.")
+
+
 def etat_paiement(facture):
     """Petit résumé de l'état de paiement d'un acte, pour les listes et les
     menus déroulants. `facture` peut être None (acte non encore facturé)."""
