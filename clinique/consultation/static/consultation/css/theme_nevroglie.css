@@ -95,7 +95,7 @@ body {
   background-image: none;
 }
 body::after { display: none; }
-.tb-title, .tb-brand-name, .page-hdr-title, .panel-title, .card-body h5,
+.tb-title, .page-hdr-title, .panel-title, .card-body h5,
 .rdv-time, .sb-name, h1, h2, h3, h4, h5, h6 {
   font-family: 'Poppins', system-ui, sans-serif;
 }

@@ -309,12 +309,11 @@
       position: sticky; top: 0; z-index: 100;
       transition: background .3s, border-color .3s;
     }
-    /* Marque dans la barre du haut : masquée par défaut, elle n'apparaît
-       que sur téléphone/tablette, où le menu latéral — qui porte le logo
-       et le nom de la clinique — est replié hors de l'écran. */
+    /* Logo dans la barre du haut : masqué par défaut, il n'apparaît que sur
+       téléphone/tablette, où le menu latéral est replié hors de l'écran.
+       Le nom de la clinique reste dans le menu : il ne s'affiche qu'à l'ouverture. */
     .tb-brand { display: none; align-items: center; gap: .45rem; flex: none; }
     .tb-brand img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: block; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-    .tb-brand-name { font-family: 'Fraunces', serif; font-weight: 700; font-size: .95rem; color: var(--text-primary); white-space: nowrap; }
     .tb-title { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 600; color: var(--text-primary); letter-spacing: -.01em; }
     .tb-date { font-size: .72rem; color: var(--text-muted); font-weight: 500; margin-top: 1px; }
 
@@ -796,6 +795,8 @@
     }
     @media (max-width: 575.98px) {
       html { font-size: 15px; }
+      /* Le titre est repris juste en dessous : ici, il n'en restait que « Tablea… ». */
+      .tb-title { display: none; }
       .stat-card { padding: 1.1rem; }
       .stat-val { font-size: 1.55rem; }
     }
@@ -895,7 +896,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   {# Charte « Humain et chaleureux » (couleurs, formes, police) : après le style de base, avant extra_css. #}
   {# ?v= : à augmenter quand la feuille change, sinon le navigateur garde l'ancienne en mémoire. #}
-  <link rel="stylesheet" href="{% static 'consultation/css/theme_nevroglie.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'consultation/css/theme_nevroglie.css' %}?v=6">
   {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -1187,7 +1188,6 @@
 
     <div class="tb-brand">
       <img src="{% static 'consultation/img/logo_clinique.jpg' %}" alt="Logo Nevroglie">
-      <span class="tb-brand-name">Nevroglie</span>
     </div>
 
     <div class="me-auto" style="min-width:0">

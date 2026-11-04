@@ -28,6 +28,15 @@ class PageConnexionTests(TestCase):
         for photo in photos:
             self.assertTrue(finders.find(photo), photo)
 
+    def test_chaque_portrait_a_aussi_sa_place_sur_telephone(self):
+        """Sans --tx et --ty, tous les portraits s'empileraient dans un coin de l'écran."""
+        html = self.client.get(self.url).content.decode()
+        elements = re.findall(r'class="(?:portrait|puce)" style="([^"]+)"', html)
+        self.assertEqual(len(elements), 16)
+        for style in elements:
+            for variable in ('--tx:', '--ty:', '--tt:'):
+                self.assertIn(variable, style)
+
     def test_un_mauvais_mot_de_passe_affiche_l_erreur(self):
         User.objects.create_user('aminata', password='bon-mot-de-passe')
         page = self.client.post(self.url, {'username': 'aminata', 'password': 'mauvais'})
@@ -49,3 +58,13 @@ class PageConnexionTests(TestCase):
         page = visiteur.get(self.url)
         self.assertContains(page, 'value="aminata"')
         self.assertContains(page, 'checked')
+
+
+class BarreDuHautTests(TestCase):
+    def test_le_nom_de_la_clinique_reste_dans_le_menu(self):
+        """Sur téléphone, le nom n'apparaît qu'une fois le menu ouvert : à côté des trois traits, il dépassait."""
+        self.client.force_login(User.objects.create_superuser('chef', 'chef@exemple.ml', 'x'))
+        html = self.client.get(reverse('dashboard')).content.decode()
+        barre = html.split('<div class="tb-brand">')[1].split('</div>')[0]
+        self.assertEqual(re.sub(r'<[^>]+>', '', barre).strip(), '')
+        self.assertIn('<div class="sb-name">Nevroglie</div>', html)

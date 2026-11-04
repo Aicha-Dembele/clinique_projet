@@ -9,17 +9,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Poppins',system-ui,sans-serif;color:#102a43;background:#1666b3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    body{font-family:'Poppins',system-ui,sans-serif;color:#102a43;background:#1666b3;min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
     /* ── Fond : portraits reliés au formulaire comme des neurones ──
        Les tailles sont pensées pour un écran de 1600 × 900 (--t, en px) et suivent
        ensuite la taille réelle de l'écran : rien ne se chevauche sur un portable. */
     .fond{position:fixed;inset:0;overflow:hidden;background:radial-gradient(800px 560px at 50% 50%,rgba(255,255,255,.2),transparent 70%),linear-gradient(135deg,#0d4a86 0%,#1666b3 48%,#22b8e0 100%)}
     .liens{position:absolute;inset:0;width:100%;height:100%}
+    .liens-hauts{display:none}
     .liens line{stroke:rgba(255,255,255,.42);stroke-width:1.4;stroke-dasharray:5 7;animation:influx 3s linear infinite}
     @keyframes influx{to{stroke-dashoffset:-24}}
     .portrait,.puce{position:absolute;left:var(--x);top:var(--y);width:min(calc(var(--t) / 900 * 100vh),calc(var(--t) / 1600 * 100vw));aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;animation:flotte 7s ease-in-out infinite;animation-delay:var(--d)}
-    @keyframes flotte{0%,100%{translate:0 -7px}50%{translate:0 7px}}
+    @keyframes flotte{0%,100%{translate:0 calc(var(--a,7px) * -1)}50%{translate:0 var(--a,7px)}}
     .portrait{padding:6px;background:rgba(255,255,255,.95);box-shadow:0 0 0 8px rgba(255,255,255,.14),0 24px 44px -20px rgba(4,24,50,.85)}
     .visage{width:100%;height:100%;border-radius:50%;background-repeat:no-repeat;background-size:auto 210%}
     .puce{display:flex;align-items:center;justify-content:center;background:#fff;box-shadow:0 12px 26px -10px rgba(4,24,50,.75)}
@@ -36,11 +37,6 @@
     .v8{background-image:url('{% static "consultation/img/rendezvous.jpg" %}');background-position:29.4% 0%}
     .v9{background-image:url('{% static "consultation/img/MED2.jpg" %}');background-position:100% 30.5%}
     .v10{background-image:url('{% static "consultation/img/pat.jpg" %}');background-position:76.4% 34.4%}
-
-    /* Sur téléphone et tablette, une rangée de portraits au-dessus du formulaire. */
-    .rangee{display:none;position:relative;justify-content:center;margin-bottom:1.1rem}
-    .rangee .visage{width:4.4rem;height:4.4rem;border:3px solid #fff;margin-left:-.7rem;box-shadow:0 12px 22px -12px rgba(4,24,50,.8)}
-    .rangee .visage:first-child{margin-left:0}
 
     /* ── Carte de connexion, au milieu de la page ── */
     .colonne{position:relative;z-index:5;width:458px;max-width:100%}
@@ -74,16 +70,26 @@
     .annuler{display:block;text-align:center;margin-top:.7rem;font-size:.8rem;font-weight:500;color:#5b6f85;text-decoration:none}
     .annuler:hover{color:#1666b3}
 
-    @media (max-width:1099.98px){
-      .portrait,.puce,.liens{display:none}
-      .rangee{display:flex}
+    /* Écran tenu en hauteur (téléphone, tablette) : la carte prend presque toute la
+       largeur. Les portraits se dispersent au-dessus et en dessous d'elle, avec leurs
+       propres positions (--tx, --ty) et tailles (--tt, pensées pour un écran de 360 × 640). */
+    @media (max-width:1099.98px) and (orientation:portrait){
+      .portrait,.puce{left:var(--tx);top:var(--ty);--a:4px;width:min(calc(var(--tt) / 640 * 100vh),calc(var(--tt) / 360 * 100vw));width:min(calc(var(--tt) / 640 * 100dvh),calc(var(--tt) / 360 * 100vw))}
+      .portrait{padding:3px;box-shadow:0 0 0 4px rgba(255,255,255,.14),0 12px 24px -12px rgba(4,24,50,.85)}
+      .liens-larges{display:none}
+      .liens-hauts{display:inline}
     }
+    /* Téléphone : carte plus compacte, pour laisser de la place aux portraits. */
     @media (max-width:479.98px){
       body{padding:1.1rem .85rem}
-      .carte{padding:1.5rem 1.35rem 1.25rem;border-radius:1.7rem}
-      .entete img{width:66px;height:66px}
-      .entete h1{font-size:1.3rem}
-      .rangee .visage{width:3.8rem;height:3.8rem}
+      .carte{padding:1.2rem 1.35rem 1rem;border-radius:1.7rem}
+      .entete{margin-bottom:.85rem}
+      .entete img{width:54px;height:54px}
+      .entete h1{font-size:1.25rem;margin-top:.55rem}
+      .champ{height:2.85rem;margin-bottom:.6rem}
+      .options{font-size:.74rem;margin:.1rem .2rem .8rem}
+      .btn{height:3rem}
+      .annuler{margin-top:.55rem}
     }
     @media (prefers-reduced-motion:reduce){*{animation:none!important}}
   </style>
@@ -92,7 +98,7 @@
 
 <div class="fond" aria-hidden="true">
   <svg class="liens" viewBox="0 0 100 100" preserveAspectRatio="none">
-    <g vector-effect="non-scaling-stroke">
+    <g class="liens-larges" vector-effect="non-scaling-stroke">
       <line x1="10" y1="21" x2="26.5" y2="13" vector-effect="non-scaling-stroke"/>
       <line x1="10" y1="21" x2="24.5" y2="47" vector-effect="non-scaling-stroke"/>
       <line x1="26.5" y1="13" x2="45" y2="35" vector-effect="non-scaling-stroke"/>
@@ -123,36 +129,61 @@
       <line x1="69.5" y1="69" x2="75" y2="84" vector-effect="non-scaling-stroke"/>
       <line x1="75" y1="17" x2="76.5" y2="50" vector-effect="non-scaling-stroke"/>
     </g>
+    <g class="liens-hauts" vector-effect="non-scaling-stroke">
+      <line x1="13" y1="9" x2="33" y2="6.5" vector-effect="non-scaling-stroke"/>
+      <line x1="33" y1="6.5" x2="50" y2="12" vector-effect="non-scaling-stroke"/>
+      <line x1="13" y1="9" x2="30" y2="15.5" vector-effect="non-scaling-stroke"/>
+      <line x1="30" y1="15.5" x2="50" y2="12" vector-effect="non-scaling-stroke"/>
+      <line x1="50" y1="3.5" x2="33" y2="6.5" vector-effect="non-scaling-stroke"/>
+      <line x1="50" y1="3.5" x2="69" y2="6.5" vector-effect="non-scaling-stroke"/>
+      <line x1="50" y1="12" x2="69" y2="6.5" vector-effect="non-scaling-stroke"/>
+      <line x1="69" y1="6.5" x2="88" y2="11" vector-effect="non-scaling-stroke"/>
+      <line x1="69" y1="6.5" x2="69" y2="15.5" vector-effect="non-scaling-stroke"/>
+      <line x1="69" y1="15.5" x2="88" y2="11" vector-effect="non-scaling-stroke"/>
+      <line x1="13" y1="9" x2="36" y2="45" vector-effect="non-scaling-stroke"/>
+      <line x1="30" y1="15.5" x2="42" y2="45" vector-effect="non-scaling-stroke"/>
+      <line x1="50" y1="12" x2="50" y2="45" vector-effect="non-scaling-stroke"/>
+      <line x1="69" y1="15.5" x2="58" y2="45" vector-effect="non-scaling-stroke"/>
+      <line x1="88" y1="11" x2="64" y2="45" vector-effect="non-scaling-stroke"/>
+      <line x1="12" y1="88" x2="33" y2="93" vector-effect="non-scaling-stroke"/>
+      <line x1="33" y1="93" x2="52" y2="88" vector-effect="non-scaling-stroke"/>
+      <line x1="52" y1="88" x2="72" y2="93.5" vector-effect="non-scaling-stroke"/>
+      <line x1="72" y1="93.5" x2="90" y2="88" vector-effect="non-scaling-stroke"/>
+      <line x1="12" y1="88" x2="13" y2="96" vector-effect="non-scaling-stroke"/>
+      <line x1="13" y1="96" x2="33" y2="93" vector-effect="non-scaling-stroke"/>
+      <line x1="52" y1="88" x2="52" y2="96.5" vector-effect="non-scaling-stroke"/>
+      <line x1="33" y1="93" x2="52" y2="96.5" vector-effect="non-scaling-stroke"/>
+      <line x1="52" y1="96.5" x2="72" y2="93.5" vector-effect="non-scaling-stroke"/>
+      <line x1="90" y1="88" x2="90" y2="96.5" vector-effect="non-scaling-stroke"/>
+      <line x1="72" y1="93.5" x2="90" y2="96.5" vector-effect="non-scaling-stroke"/>
+      <line x1="12" y1="88" x2="36" y2="55" vector-effect="non-scaling-stroke"/>
+      <line x1="33" y1="93" x2="42" y2="55" vector-effect="non-scaling-stroke"/>
+      <line x1="52" y1="88" x2="50" y2="55" vector-effect="non-scaling-stroke"/>
+      <line x1="72" y1="93.5" x2="58" y2="55" vector-effect="non-scaling-stroke"/>
+      <line x1="90" y1="88" x2="64" y2="55" vector-effect="non-scaling-stroke"/>
+    </g>
   </svg>
 
-  <div class="portrait" style="--x:10%;--y:21%;--t:196;--d:0s"><div class="visage v1"></div></div>
-  <div class="portrait" style="--x:26.5%;--y:13%;--t:122;--d:-.9s"><div class="visage v2"></div></div>
-  <div class="portrait" style="--x:24.5%;--y:47%;--t:150;--d:-1.8s"><div class="visage v3"></div></div>
-  <div class="portrait" style="--x:8%;--y:62%;--t:138;--d:-2.7s"><div class="visage v4"></div></div>
-  <div class="portrait" style="--x:23%;--y:81%;--t:172;--d:-3.6s"><div class="visage v5"></div></div>
-  <div class="portrait" style="--x:75%;--y:17%;--t:168;--d:-4.5s"><div class="visage v6"></div></div>
-  <div class="portrait" style="--x:91%;--y:26%;--t:132;--d:-5.4s"><div class="visage v7"></div></div>
-  <div class="portrait" style="--x:76.5%;--y:50%;--t:136;--d:-6.3s"><div class="visage v8"></div></div>
-  <div class="portrait" style="--x:91.5%;--y:62%;--t:170;--d:-7.2s"><div class="visage v9"></div></div>
-  <div class="portrait" style="--x:75%;--y:84%;--t:142;--d:-8.1s"><div class="visage v10"></div></div>
+  <div class="portrait" style="--x:10%;--y:21%;--t:196;--d:0s;--tx:13%;--ty:9%;--tt:66"><div class="visage v1"></div></div>
+  <div class="portrait" style="--x:26.5%;--y:13%;--t:122;--d:-.9s;--tx:33%;--ty:6.5%;--tt:46"><div class="visage v2"></div></div>
+  <div class="portrait" style="--x:24.5%;--y:47%;--t:150;--d:-1.8s;--tx:50%;--ty:12%;--tt:52"><div class="visage v3"></div></div>
+  <div class="portrait" style="--x:8%;--y:62%;--t:138;--d:-2.7s;--tx:12%;--ty:88%;--tt:60"><div class="visage v4"></div></div>
+  <div class="portrait" style="--x:23%;--y:81%;--t:172;--d:-3.6s;--tx:33%;--ty:93%;--tt:62"><div class="visage v5"></div></div>
+  <div class="portrait" style="--x:75%;--y:17%;--t:168;--d:-4.5s;--tx:69%;--ty:6.5%;--tt:56"><div class="visage v6"></div></div>
+  <div class="portrait" style="--x:91%;--y:26%;--t:132;--d:-5.4s;--tx:88%;--ty:11%;--tt:60"><div class="visage v7"></div></div>
+  <div class="portrait" style="--x:76.5%;--y:50%;--t:136;--d:-6.3s;--tx:52%;--ty:88%;--tt:52"><div class="visage v8"></div></div>
+  <div class="portrait" style="--x:91.5%;--y:62%;--t:170;--d:-7.2s;--tx:72%;--ty:93.5%;--tt:62"><div class="visage v9"></div></div>
+  <div class="portrait" style="--x:75%;--y:84%;--t:142;--d:-8.1s;--tx:90%;--ty:88%;--tt:54"><div class="visage v10"></div></div>
 
-  <div class="puce" style="--x:16.5%;--y:42%;--t:58;--d:0s"><svg viewBox="0 0 64 64"><path d="M16 6h-3v14a13 13 0 0 0 26 0V6h-3"/><path d="M26 33v9a11 11 0 0 0 22 0v-7"/><circle cx="48" cy="29" r="6"/></svg></div>
-  <div class="puce" style="--x:83.5%;--y:37%;--t:58;--d:-1.3s"><svg viewBox="0 0 64 64"><path d="M30 9a9 9 0 0 0-9 7 9 9 0 0 0-7 14 9 9 0 0 0 4 14 9 9 0 0 0 12 8z"/><path d="M34 9a9 9 0 0 1 9 7 9 9 0 0 1 7 14 9 9 0 0 1-4 14 9 9 0 0 1-12 8z"/><path d="M22 24c3 0 5 2 5 5M42 24c-3 0-5 2-5 5M20 38c3-2 6-1 7 2M44 38c-3-2-6-1-7 2"/></svg></div>
-  <div class="puce" style="--x:14%;--y:86%;--t:54;--d:-2.6s"><svg viewBox="0 0 64 64"><path d="M32 56S7 41 7 23a13 13 0 0 1 25-5 13 13 0 0 1 25 5c0 18-25 33-25 33z"/><path d="M14 31h10l4-8 6 15 4-7h12"/></svg></div>
-  <div class="puce" style="--x:87%;--y:85%;--t:54;--d:-3.9s"><svg viewBox="0 0 64 64"><g transform="rotate(-40 32 32)"><rect x="6" y="20" width="52" height="24" rx="12"/><path d="M32 20v24"/><path d="M14 27c2-2 4-2.5 8-2.5"/></g></svg></div>
-  <div class="puce" style="--x:30%;--y:30%;--t:46;--d:-5.2s"><svg viewBox="0 0 64 64"><g transform="rotate(-45 32 32)"><path d="M2 32h10"/><rect x="12" y="25" width="30" height="14" rx="2"/><path d="M42 21v22M42 32h12M54 24v16"/><path d="M19 25v6M26 25v6M33 25v6"/></g></svg></div>
-  <div class="puce" style="--x:69.5%;--y:69%;--t:46;--d:-6.5s"><svg viewBox="0 0 64 64"><path d="M3 34h13l5-16 9 30 7-22 4 8h20"/></svg></div>
+  <div class="puce" style="--x:16.5%;--y:42%;--t:58;--d:0s;--tx:30%;--ty:15.5%;--tt:28"><svg viewBox="0 0 64 64"><path d="M16 6h-3v14a13 13 0 0 0 26 0V6h-3"/><path d="M26 33v9a11 11 0 0 0 22 0v-7"/><circle cx="48" cy="29" r="6"/></svg></div>
+  <div class="puce" style="--x:83.5%;--y:37%;--t:58;--d:-1.3s;--tx:69%;--ty:15.5%;--tt:30"><svg viewBox="0 0 64 64"><path d="M30 9a9 9 0 0 0-9 7 9 9 0 0 0-7 14 9 9 0 0 0 4 14 9 9 0 0 0 12 8z"/><path d="M34 9a9 9 0 0 1 9 7 9 9 0 0 1 7 14 9 9 0 0 1-4 14 9 9 0 0 1-12 8z"/><path d="M22 24c3 0 5 2 5 5M42 24c-3 0-5 2-5 5M20 38c3-2 6-1 7 2M44 38c-3-2-6-1-7 2"/></svg></div>
+  <div class="puce" style="--x:14%;--y:86%;--t:54;--d:-2.6s;--tx:13%;--ty:96%;--tt:28"><svg viewBox="0 0 64 64"><path d="M32 56S7 41 7 23a13 13 0 0 1 25-5 13 13 0 0 1 25 5c0 18-25 33-25 33z"/><path d="M14 31h10l4-8 6 15 4-7h12"/></svg></div>
+  <div class="puce" style="--x:87%;--y:85%;--t:54;--d:-3.9s;--tx:52%;--ty:96.5%;--tt:26"><svg viewBox="0 0 64 64"><g transform="rotate(-40 32 32)"><rect x="6" y="20" width="52" height="24" rx="12"/><path d="M32 20v24"/><path d="M14 27c2-2 4-2.5 8-2.5"/></g></svg></div>
+  <div class="puce" style="--x:30%;--y:30%;--t:46;--d:-5.2s;--tx:50%;--ty:3.5%;--tt:24"><svg viewBox="0 0 64 64"><g transform="rotate(-45 32 32)"><path d="M2 32h10"/><rect x="12" y="25" width="30" height="14" rx="2"/><path d="M42 21v22M42 32h12M54 24v16"/><path d="M19 25v6M26 25v6M33 25v6"/></g></svg></div>
+  <div class="puce" style="--x:69.5%;--y:69%;--t:46;--d:-6.5s;--tx:90%;--ty:96.5%;--tt:26"><svg viewBox="0 0 64 64"><path d="M3 34h13l5-16 9 30 7-22 4 8h20"/></svg></div>
 </div>
 
 <div class="colonne">
-  <div class="rangee" aria-hidden="true">
-    <div class="visage v6"></div>
-    <div class="visage v1"></div>
-    <div class="visage v5"></div>
-    <div class="visage v7"></div>
-    <div class="visage v9"></div>
-  </div>
-
   <main class="carte">
     <div class="entete">
       <img src="{% static 'consultation/img/logo_clinique.jpg' %}" alt="Logo de la Poly Clinique Nevroglie">
