@@ -1,7 +1,7 @@
 """
 Fichier WSGI pour PythonAnywhere — Clinique Nevroglie.
 
-Ce fichier est copié vers /var/www/ggroupe3_pythonanywhere_com_wsgi.py
+Ce fichier est copié vers /var/www/<nom-du-compte>_pythonanywhere_com_wsgi.py
 C'est lui que le serveur exécute pour démarrer l'application.
 
 Il ne contient AUCUN secret : la clé secrète est lue depuis
@@ -40,8 +40,10 @@ if os.path.exists(key_file):
         os.environ['DJANGO_SECRET_KEY'] = f.read().strip()
 
 os.environ['DJANGO_DEBUG'] = 'False'
-os.environ['DJANGO_ALLOWED_HOSTS'] = 'ggroupe3.pythonanywhere.com'
-os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://ggroupe3.pythonanywhere.com'
+# L'adresse du site suit le nom du compte : /home/nom → nom.pythonanywhere.com.
+HOTE = os.path.basename(HOME).lower() + '.pythonanywhere.com'
+os.environ['DJANGO_ALLOWED_HOSTS'] = HOTE
+os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://' + HOTE
 os.environ['DJANGO_SETTINGS_MODULE'] = 'clinique.settings'
 
 # ── 4. Démarrage de Django ───────────────────────────────────────────
