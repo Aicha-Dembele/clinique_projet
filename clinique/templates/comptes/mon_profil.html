@@ -22,4 +22,34 @@
     </div>
   </div>
 </div>
+
+<form method="post" class="panel mt-3">
+  {% csrf_token %}
+  <div class="panel-hdr">
+    <div class="panel-title"><i class="bi bi-envelope-fill" style="color:var(--primary)"></i> Changer mon adresse email</div>
+  </div>
+  <div class="panel-body">
+    {% if not request.user.email %}
+    <div class="alert-c alerte-attention mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>Aucune adresse n'est enregistrée sur votre compte : sans elle, vous ne pourrez pas récupérer un mot de passe oublié.</span>
+    </div>
+    {% endif %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="email">Mon adresse email *</label>
+        <input type="email" id="email" name="email" class="f-input" value="{{ email_saisi|default:request.user.email }}" required maxlength="254" pattern=".+@.+\..+" title="Exemple : prenom.nom@gmail.com" autocomplete="email">
+        <small class="text-muted">Votre vraie adresse : c'est là qu'arrive le lien « Mot de passe oublié ».</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="mot_de_passe">Mon mot de passe actuel *</label>
+        <input type="password" id="mot_de_passe" name="mot_de_passe" class="f-input" required autocomplete="current-password">
+        <small class="text-muted">Pour vérifier que c'est bien vous qui faites ce changement.</small>
+      </div>
+    </div>
+  </div>
+  <div class="panel-hdr" style="border-top:1px solid var(--card-border);border-bottom:0;justify-content:flex-end">
+    <button type="submit" class="btn btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>
+  </div>
+</form>
 {% endblock %}

@@ -6,7 +6,7 @@ from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
-from comptes.models import Profil, Role
+from comptes.models import JournalAudit, Profil, Role
 
 ANCIEN = 'Ancien-mot-de-passe-2026'
 NOUVEAU = 'Nouveau-mot-de-passe-2026'
@@ -136,3 +136,119 @@ class EmailObligatoireTests(TestCase):
         sans.user.save()
         page = self.client.get(reverse('comptes:utilisateurs_liste'))
         self.assertNotContains(page, 'Aucun email')
+
+
+class EmailDansMonProfilTests(TestCase):
+    """Chaque personne corrige sa propre adresse, à condition de redonner son mot de passe."""
+
+    def setUp(self):
+        role, _ = Role.objects.get_or_create(code='infirmier', defaults={'libelle': 'Infirmier'})
+        self.user = User.objects.create_user('aminata', 'inventee@exemple.ml', ANCIEN)
+        Profil.objects.create(user=self.user, role=role)
+        self.client.force_login(self.user)
+        self.url = reverse('comptes:mon_profil')
+
+    def _changer(self, email, mot_de_passe=ANCIEN, **autres):
+        return self.client.post(self.url, {'email': email, 'mot_de_passe': mot_de_passe, **autres})
+
+    def _adresse(self):
+        self.user.refresh_from_db()
+        return self.user.email
+
+    def test_la_page_propose_l_adresse_actuelle(self):
+        page = self.client.get(self.url)
+        self.assertContains(page, 'value="inventee@exemple.ml"')
+        self.assertContains(page, 'name="mot_de_passe"')
+        self.assertContains(page, 'csrfmiddlewaretoken')
+        self.assertNotContains(page, 'Aucune adresse')
+
+    def test_un_compte_sans_adresse_est_prevenu(self):
+        User.objects.filter(pk=self.user.pk).update(email='')
+        self.assertContains(self.client.get(self.url), 'Aucune adresse')
+
+    def test_le_bon_mot_de_passe_change_l_adresse(self):
+        reponse = self._changer(' aminata@exemple.ml ')
+        # Sans fetch_redirect_response=False, cette vérification lirait la page et consommerait le message.
+        self.assertRedirects(reponse, self.url, fetch_redirect_response=False)
+        self.assertEqual(self._adresse(), 'aminata@exemple.ml')
+        # L'adresse est réaffichée pour qu'on puisse repérer une faute de frappe.
+        self.assertContains(self.client.get(self.url), 'Adresse enregistrée : aminata@exemple.ml')
+
+    def test_on_reste_connecte_apres_le_changement(self):
+        self._changer('aminata@exemple.ml')
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+
+    def test_sans_le_bon_mot_de_passe_rien_ne_change(self):
+        for mot_de_passe in ('', 'mauvais'):
+            page = self._changer('aminata@exemple.ml', mot_de_passe)
+            self.assertContains(page, 'Mot de passe incorrect')
+            self.assertEqual(self._adresse(), 'inventee@exemple.ml')
+
+    def test_apres_une_erreur_l_adresse_tapee_reste_mais_pas_le_mot_de_passe(self):
+        page = self._changer('aminata@exemple.ml', 'mauvais')
+        self.assertContains(page, 'value="aminata@exemple.ml"')
+        self.assertNotContains(page, 'mauvais')
+
+    def test_une_fausse_adresse_est_refusee(self):
+        trop_longue = 'a' * 250 + '@exemple.ml'
+        for email in ('', '   ', 'pas-une-adresse', 'aminata@exemple', trop_longue):
+            page = self._changer(email)
+            self.assertEqual(page.status_code, 200, email)
+            self.assertEqual(self._adresse(), 'inventee@exemple.ml', email)
+
+    def test_on_ne_touche_a_rien_d_autre_ni_a_personne_d_autre(self):
+        """Le formulaire ne doit servir ni à changer de rôle, ni à viser le compte de quelqu'un."""
+        autre = User.objects.create_user('binta', 'binta@exemple.ml', ANCIEN)
+        self._changer('aminata@exemple.ml', username='chef', first_name='Chef', is_staff='on',
+                      is_superuser='on', pk=autre.pk, user=autre.pk, id=autre.pk)
+        self.user.refresh_from_db()
+        autre.refresh_from_db()
+        self.assertEqual(self.user.email, 'aminata@exemple.ml')
+        self.assertEqual((self.user.username, self.user.first_name), ('aminata', ''))
+        self.assertFalse(self.user.is_staff or self.user.is_superuser)
+        self.assertEqual(autre.email, 'binta@exemple.ml')
+
+    def test_il_faut_etre_connecte(self):
+        self.client.logout()
+        reponse = self._changer('aminata@exemple.ml')
+        self.assertEqual(reponse.status_code, 302)
+        self.assertIn(reverse('login'), reponse.url)
+        self.assertEqual(self._adresse(), 'inventee@exemple.ml')
+
+    def test_un_compte_sans_profil_peut_aussi_corriger_son_adresse(self):
+        """Des comptes anciens n'ont pas de profil : la page d'administration ne les liste pas."""
+        sans_profil = User.objects.create_superuser('ancien', '', ANCIEN)
+        self.client.force_login(sans_profil)
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+        self._changer('ancien@exemple.ml')
+        sans_profil.refresh_from_db()
+        self.assertEqual(sans_profil.email, 'ancien@exemple.ml')
+
+    def test_le_lien_part_vers_la_nouvelle_adresse_et_plus_vers_l_ancienne(self):
+        self._changer('aminata@exemple.ml')
+        self.client.logout()
+        self.client.post(reverse('password_reset'), {'email': 'inventee@exemple.ml'})
+        self.assertEqual(mail.outbox, [])
+        self.client.post(reverse('password_reset'), {'email': 'aminata@exemple.ml'})
+        self.assertEqual(destinataires(), [['aminata@exemple.ml']])
+
+    def test_un_lien_deja_envoye_a_l_ancienne_adresse_ne_marche_plus(self):
+        self.client.post(reverse('password_reset'), {'email': 'inventee@exemple.ml'})
+        lien = re.search(r'http://testserver(/reset/\S+)', mail.outbox[0].body).group(1)
+        self._changer('aminata@exemple.ml')
+        self.client.logout()
+        self.assertContains(self.client.get(lien, follow=True), 'Lien invalide')
+
+    def test_le_changement_est_note_au_journal_sans_le_mot_de_passe(self):
+        self._changer('aminata@exemple.ml')
+        entree = JournalAudit.objects.get(modele='User', objet_id=str(self.user.pk))
+        self.assertEqual(entree.user, self.user)
+        self.assertEqual(entree.action, 'modification')
+        self.assertIn('inventee@exemple.ml', entree.details)
+        self.assertIn('aminata@exemple.ml', entree.details)
+        self.assertNotIn(ANCIEN, entree.details)
+
+    def test_rien_n_est_note_quand_rien_ne_change(self):
+        self._changer('inventee@exemple.ml')
+        self._changer('aminata@exemple.ml', 'mauvais')
+        self.assertFalse(JournalAudit.objects.filter(modele='User').exists())

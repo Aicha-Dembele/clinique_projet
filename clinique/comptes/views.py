@@ -48,7 +48,31 @@ class ConnexionView(auth_views.LoginView):
 
 @login_required
 def mon_profil(request):
-    return render(request, 'comptes/mon_profil.html', {})
+    """Chacun peut corriger sa propre adresse, celle où arrive le lien « Mot de passe oublié »."""
+    if request.method != 'POST':
+        return render(request, 'comptes/mon_profil.html', {})
+
+    user = request.user
+    email = request.POST.get('email', '').strip()
+    # Le mot de passe est redemandé : choisir l'adresse, c'est choisir où part le lien qui
+    # permet de le changer. Un poste resté ouvert ne doit pas suffire pour prendre le compte.
+    refus = _email_refuse(email)
+    if not refus and not user.check_password(request.POST.get('mot_de_passe', '')):
+        refus = "Mot de passe incorrect : votre adresse email n'a pas changé."
+    if refus:
+        messages.error(request, refus)
+        return render(request, 'comptes/mon_profil.html', {'email_saisi': email})
+
+    ancienne = user.email
+    if email != ancienne:
+        with transaction.atomic():
+            user.email = email
+            user.save(update_fields=['email'])
+            JournalAudit.enregistrer(
+                user, 'modification', user,
+                details=f"Adresse email changée par la personne elle-même : {ancienne or 'aucune'} → {email}")
+    messages.success(request, f"Adresse enregistrée : {email}. C'est là qu'arrivera le lien « Mot de passe oublié ».")
+    return redirect('comptes:mon_profil')
 
 
 @admin_required
@@ -76,11 +100,13 @@ def _email_refuse(email):
     et un compte sans adresse n'a aucun moyen de le recevoir.
     """
     if not email:
-        return "L'adresse email est obligatoire : sans elle, cette personne ne pourra pas récupérer son mot de passe."
+        return "L'adresse email est obligatoire : sans elle, impossible de récupérer un mot de passe oublié."
     try:
         validate_email(email)
     except ValidationError:
         return "Cette adresse email n'est pas valide."
+    if len(email) > User._meta.get_field('email').max_length:
+        return "Cette adresse email est trop longue."
     return None
 
 
