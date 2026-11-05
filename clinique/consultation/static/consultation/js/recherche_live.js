@@ -127,6 +127,8 @@ window.Recherche = (function () {
           }
           window.history.replaceState(null, '', url.href);
           form.removeAttribute('aria-busy');
+          // Les cartes de chiffres viennent peut-être d'être remplacées (voir base.html).
+          if (window.ajusterChiffres) window.ajusterChiffres();
         })
         .catch(function () {
           if (moi !== numero) return;

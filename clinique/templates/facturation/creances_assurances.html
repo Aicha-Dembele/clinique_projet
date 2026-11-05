@@ -77,11 +77,11 @@
 </div>
 
 <!-- ── TOTAUX : le cycle de recouvrement, de gauche à droite ── -->
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4 stats-montants">
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.04s">
       <div class="stat-h-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="bi bi-hourglass-split"></i></div>
-      <div style="flex:1;min-width:0">
+      <div class="stat-h-info">
         <div class="stat-h-lbl">Reste à réclamer</div>
         <div class="stat-h-val">{{ montant_a_reclamer|floatformat:0 }}</div>
         <div class="stat-h-trend" style="color:#ef4444">FCFA, demande non envoyée</div>
@@ -91,7 +91,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.08s">
       <div class="stat-h-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="bi bi-send-fill"></i></div>
-      <div style="flex:1;min-width:0">
+      <div class="stat-h-info">
         <div class="stat-h-lbl">Réclamé, en attente</div>
         <div class="stat-h-val">{{ montant_reclame|floatformat:0 }}</div>
         <div class="stat-h-trend" style="color:#f59e0b">FCFA demandés, non reçus</div>
@@ -101,7 +101,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.12s">
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-check2-circle"></i></div>
-      <div style="flex:1;min-width:0">
+      <div class="stat-h-info">
         <div class="stat-h-lbl">Remboursé</div>
         <div class="stat-h-val">{{ montant_rembourse|floatformat:0 }}</div>
         <div class="stat-h-trend" style="color:#10b981">FCFA encaissés</div>
@@ -111,7 +111,7 @@
   <div class="col-6 col-xl-3">
     <div class="stat-h" style="animation-delay:.16s">
       <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-cash-stack"></i></div>
-      <div style="flex:1;min-width:0">
+      <div class="stat-h-info">
         <div class="stat-h-lbl">Total pris en charge</div>
         <div class="stat-h-val">{{ total_a_reclamer|floatformat:0 }}</div>
         <div class="stat-h-trend" style="color:#a855f7">{{ nb_factures }} facture{{ nb_factures|pluralize }} · {{ nb_patients }} patient{{ nb_patients|pluralize }}</div>

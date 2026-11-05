@@ -215,6 +215,22 @@ body::after { display: none; }
 body .stat-h-spark { display: none; }
 body .stat-h-val { white-space: nowrap; }
 body .stat-h-val small { display: block; margin-top: .15rem; }
+/* Un chiffre ne doit jamais sortir de sa carte : ajusterChiffres (base.html) réduit sa
+   taille s'il ne tient pas. Pour le voir, sa colonne doit pouvoir rétrécir. */
+body .stat-h > div { min-width: 0; }
+
+/* Cartes de montants : l'icône passe à côté du libellé et le chiffre prend toute la
+   largeur de la carte. À quatre cartes par ligne, il ne lui restait que 93 px. */
+.stats-montants .stat-h {
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  /* Même hauteur de première ligne : un libellé sur deux lignes ne décale pas son chiffre. */
+  grid-template-rows: minmax(2.25rem, auto);
+  gap: 0 .6rem; align-items: center; align-content: start;
+}
+.stats-montants .stat-h-info { display: contents; }
+.stats-montants .stat-h-ico { width: 40px; height: 40px; font-size: 1rem; }
+.stats-montants .stat-h-val, .stats-montants .stat-h-trend { grid-column: 1 / -1; }
+.stats-montants .stat-h-val { margin-top: .5rem; }
 
 /* ── Barres de recherche des listes ──────────────────────────────────
    Définies dans le extra_css de chaque liste (chargé APRÈS cette feuille) :

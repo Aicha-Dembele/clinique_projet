@@ -896,7 +896,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   {# Charte « Humain et chaleureux » (couleurs, formes, police) : après le style de base, avant extra_css. #}
   {# ?v= : à augmenter quand la feuille change, sinon le navigateur garde l'ancienne en mémoire. #}
-  <link rel="stylesheet" href="{% static 'consultation/css/theme_nevroglie.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'consultation/css/theme_nevroglie.css' %}?v=7">
   {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -1350,7 +1350,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{% static 'consultation/js/recherche_live.js' %}?v=2"></script>
+<script src="{% static 'consultation/js/recherche_live.js' %}?v=3"></script>
 <script>
   // Date locale
   const D = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
@@ -1389,6 +1389,26 @@
   document.addEventListener('click', e => {
     if (window.innerWidth < 992 && sb.classList.contains('open') && !sb.contains(e.target) && !e.target.closest('#sbToggle')) closeSb();
   });
+
+  // Un chiffre ne doit jamais sortir de sa carte : un montant coupé se lirait comme un
+  // autre montant. S'il ne tient pas, on réduit sa taille juste ce qu'il faut.
+  const taillesDepart = new WeakMap();
+  function ajusterChiffres() {
+    document.querySelectorAll('.stat-h-val').forEach(el => {
+      // On repart de la taille prévue : la fenêtre a peut-être grandi depuis.
+      if (taillesDepart.has(el)) el.style.fontSize = taillesDepart.get(el);
+      let taille = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth && taille > 12) {
+        if (!taillesDepart.has(el)) taillesDepart.set(el, el.style.fontSize);
+        taille -= 1;
+        el.style.fontSize = taille + 'px';
+      }
+    });
+  }
+  ajusterChiffres();
+  window.addEventListener('resize', ajusterChiffres);
+  // La police arrive après la page et change la largeur des chiffres.
+  if (document.fonts) document.fonts.ready.then(ajusterChiffres);
 
   // Raccourci ⌘K / Ctrl+K → focus recherche
   document.addEventListener('keydown', e => {
