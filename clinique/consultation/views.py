@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.db import models
+from django.db import models, transaction
 from django.http import JsonResponse
 
 from .models import (
@@ -25,7 +25,7 @@ from patients.models import Patient
 from personnel.models import Medecin, Laborantin, Infirmier
 from comptes.decorators import (
     role_required, role_required_strict, permission_required, get_role)
-from comptes.models import JournalAudit
+from comptes.models import JournalAudit, Notification, Profil
 from comptes.recherche import termes_q, nouveau_en_tete
 # On paie avant d'etre soigne : consultation, examen et hospitalisation sont
 # factures des leur enregistrement, et ne peuvent etre realises qu'une fois la
@@ -302,6 +302,66 @@ def rdv_liste(request):
     })
 
 
+# ── Notifications : chacun reçoit ce qui le concerne ────────────────────
+
+def _compte_du_medecin(medecin):
+    """Le compte relié à ce médecin, s'il y en a un (Profil.medecin)."""
+    return getattr(getattr(medecin, 'profil', None), 'user', None)
+
+
+def _notifier_medecin_rdv(rdv, auteur, urgence=False):
+    """Prévient le médecin qu'un patient lui est adressé (cloche).
+
+    Une erreur ici ne doit jamais empêcher d'enregistrer le rendez-vous : le
+    bloc atomic l'isole de la transaction de la réception.
+    """
+    try:
+        with transaction.atomic():
+            # La date arrive du formulaire sous forme de texte : on relit le rendez-vous.
+            rdv = Rendez_vous.objects.select_related('patient', 'medecin').get(pk=rdv.pk)
+            compte = _compte_du_medecin(rdv.medecin)
+            if not compte or compte == auteur:
+                return
+            quand = timezone.localtime(rdv.date).strftime('%d/%m/%Y à %H:%M')
+            Notification.creer(
+                user=compte,
+                titre="Patient en urgence" if urgence else "Nouveau rendez-vous",
+                message=f"{rdv.patient} — {'à recevoir maintenant' if urgence else quand}",
+                url=reverse('consultation:rdv_liste'),
+                icone='bi-exclamation-triangle-fill' if urgence else 'bi-calendar-plus-fill',
+            )
+    except Exception:
+        pass
+
+
+def _notifier_hospitalisation(hospit, auteur):
+    """Prévient ceux que ce séjour concerne, sauf la personne qui vient de le saisir.
+
+    Le médecin responsable d'une part. La réception d'autre part : quand un
+    médecin hospitalise un patient, elle ne le saurait pas autrement, et c'est
+    elle qui encaisse le séjour.
+    """
+    try:
+        with transaction.atomic():
+            sujet = f"{hospit.patient} — chambre {hospit.numero_chambre}"
+            url = f"{reverse('consultation:hospitalisations')}?new={hospit.pk}"
+            compte = _compte_du_medecin(hospit.medecin)
+            if compte and compte != auteur:
+                Notification.creer(
+                    user=compte, titre="Patient hospitalisé", message=sujet,
+                    url=url, icone='bi-hospital-fill')
+            if get_role(auteur) != 'receptionniste':
+                accueil = Profil.objects.filter(
+                    role__code='receptionniste', user__is_active=True).select_related('user')
+                for profil in accueil:
+                    Notification.creer(
+                        user=profil.user, titre="Nouvelle hospitalisation",
+                        message=f"{sujet} (Dr. {hospit.medecin.nom})",
+                        url=url, icone='bi-hospital-fill')
+    except Exception:
+        pass
+
+
 @role_required('admin', 'receptionniste')
 def rdv_ajouter(request):
     if request.method == 'POST':
@@ -316,6 +376,7 @@ def rdv_ajouter(request):
             # tarif de la specialite du medecin. Le medecin ne pourra recevoir
             # le patient qu'une fois cette facture encaissee.
             facture = facturer(rdv.patient, 'rendez_vous', rdv)
+            _notifier_medecin_rdv(rdv, request.user)
 
             # Le medecin ne pourra pas recevoir le patient tant que la facture
             # n'est pas reglee : on emmene donc droit a l'encaissement, plutot
@@ -370,6 +431,7 @@ def rdv_modifier(request, pk):
     rdv = get_object_or_404(Rendez_vous, pk=pk)
     if request.method == 'POST':
         try:
+            ancien_medecin = rdv.medecin_id
             rdv.patient_id = request.POST['patient']
             rdv.medecin_id = request.POST['medecin']
             rdv.date = request.POST['date']
@@ -379,6 +441,9 @@ def rdv_modifier(request, pk):
             # la facture est remise au prix juste (et recreee si elle manque,
             # cas des rendez-vous pris avant le paiement d'avance).
             facturer(rdv.patient, 'rendez_vous', rdv)
+            # Un autre médecin reprend ce rendez-vous : c'est lui qu'il faut prévenir.
+            if str(rdv.medecin_id) != str(ancien_medecin):
+                _notifier_medecin_rdv(rdv, request.user)
             messages.success(request, 'Rendez-vous modifie.')
             return redirect('consultation:rdv_liste')
         except Exception as e:
@@ -676,11 +741,9 @@ def consultation_ajouter(request):
 
     # Le menu deroulant grise les rendez-vous qui ne sont pas encore regles.
     rdvs = _annoter_paiement(rdvs, 'rendez_vous')
-    rdvs_regles = sum(1 for r in rdvs if r.paiement['reglee'])
 
     return render(request, 'consultation/form_consultation.html', {
         'rdvs': rdvs,
-        'rdvs_regles': rdvs_regles,
         'action': 'Ajouter',
     })
 
@@ -708,7 +771,6 @@ def consultation_modifier(request, pk):
     return render(request, 'consultation/form_consultation.html', {
         'consultation': consultation,
         'rdvs': rdvs,
-        'rdvs_regles': sum(1 for r in rdvs if r.paiement['reglee']),
         'action': 'Modifier',
     })
 
@@ -1019,7 +1081,7 @@ def _notifier_medecin_resultat(res):
             titre="Résultat d'examen disponible",
             message=f"{res.examen.type_examen} — {res.patient}",
             url=reverse('consultation:resultat_detail', args=[res.pk]),
-            icone='bi-flask-fill',
+            icone='bi-clipboard2-pulse-fill',
         )
     except Exception:
         pass
@@ -1161,7 +1223,7 @@ def ordonnance_ajouter(request):
         'consultation_id': consultation_id,
         'catalogue':       catalogue,
         'specialites_map': SPECIALITES_DICT,
-        'action':          'Creer',
+        'action':          'Créer',
     })
 
 
@@ -1395,6 +1457,7 @@ def hospit_ajouter(request):
             # mais l'admission n'est confirmee qu'une fois celle-ci reglee
             # (cf. Hospitalisation.est_admis).
             facture = facturer(h.patient, 'hospitalisation', h)
+            _notifier_hospitalisation(h, request.user)
             messages.success(
                 request,
                 f'Chambre {h.numero_chambre} reservee — facture FAC-{facture.pk:04d} '
@@ -1733,6 +1796,7 @@ def reception(request):
                     statut='programme',
                 )
                 facture = facturer(patient, 'rendez_vous', rdv)
+                _notifier_medecin_rdv(rdv, request.user)
 
                 mode = request.POST.get('mode_paiement', '')
                 a_regler = facture.montant_restant()
@@ -1984,6 +2048,8 @@ def admission_urgence(request):
                     accompagnant_telephone=request.POST.get(
                         'accompagnant_telephone', '').strip(),
                 )
+
+            _notifier_medecin_rdv(rdv, request.user, urgence=True)
 
             JournalAudit.enregistrer(
                 request.user, 'creation', derogation,

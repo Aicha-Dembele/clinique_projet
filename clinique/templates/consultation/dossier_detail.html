@@ -17,7 +17,7 @@
 {% endblock %}
 {% block extra_css %}
 <style>
-.dm-hero { background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(20,184,166,.04)); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.75rem 2rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; animation: fadeUp .5s ease both; }
+.dm-hero { background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(20,184,166,.04)), var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.2rem; padding: 1.75rem 2rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem; animation: fadeUp .5s ease both; }
 .dm-hero-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
 .dm-avatar { width: 78px; height: 78px; border-radius: 1rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.7rem; font-weight: 800; flex-shrink: 0; box-shadow: 0 8px 22px -6px rgba(16,185,129,.45); }
 .dm-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; }
@@ -63,55 +63,6 @@
   .tl-item { break-inside: avoid; page-break-inside: avoid; }
   * { color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
-
-/* ── Cohérence design consultation : cartes translucides sur la photo de fond ── */
-body.page-consultation-bg .dm-hero,
-body.page-consultation-bg .dm-section,
-body.page-consultation-bg .dm-meta-cell,
-body.page-consultation-bg .tl-item {
-  background: rgba(255,255,255,.10) !important;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,.20) !important;
-  box-shadow: 0 4px 24px rgba(0,0,0,.06) !important;
-}
-body.page-consultation-bg .dm-section-hdr {
-  background: rgba(255,255,255,.08) !important;
-  border-bottom: 1px solid rgba(255,255,255,.15) !important;
-}
-body.page-consultation-bg .dm-name,
-body.page-consultation-bg .dm-section-title,
-body.page-consultation-bg .dm-meta-val,
-body.page-consultation-bg .tl-title,
-body.page-consultation-bg .tl-body,
-body.page-consultation-bg .tl-kv strong { color: #011e2a !important; }
-body.page-consultation-bg .dm-tag,
-body.page-consultation-bg .dm-meta-lbl,
-body.page-consultation-bg .tl-date,
-body.page-consultation-bg .tl-kv span,
-body.page-consultation-bg .dm-section-count { color: #033a50 !important; }
-
-[data-theme="dark"] body.page-consultation-bg .dm-hero,
-[data-theme="dark"] body.page-consultation-bg .dm-section,
-[data-theme="dark"] body.page-consultation-bg .dm-meta-cell,
-[data-theme="dark"] body.page-consultation-bg .tl-item {
-  background: rgba(5,15,25,.42) !important;
-  border: 1px solid rgba(255,255,255,.12) !important;
-}
-[data-theme="dark"] body.page-consultation-bg .dm-section-hdr {
-  background: rgba(5,15,25,.30) !important;
-  border-bottom: 1px solid rgba(255,255,255,.10) !important;
-}
-[data-theme="dark"] body.page-consultation-bg .dm-name,
-[data-theme="dark"] body.page-consultation-bg .dm-section-title,
-[data-theme="dark"] body.page-consultation-bg .dm-meta-val,
-[data-theme="dark"] body.page-consultation-bg .tl-title,
-[data-theme="dark"] body.page-consultation-bg .tl-body,
-[data-theme="dark"] body.page-consultation-bg .tl-kv strong { color: #eaf6fb !important; }
-[data-theme="dark"] body.page-consultation-bg .dm-tag,
-[data-theme="dark"] body.page-consultation-bg .dm-meta-lbl,
-[data-theme="dark"] body.page-consultation-bg .tl-date,
-[data-theme="dark"] body.page-consultation-bg .tl-kv span,
-[data-theme="dark"] body.page-consultation-bg .dm-section-count { color: #a9c7d4 !important; }
 </style>
 {% endblock %}
 {% block content %}

@@ -1220,7 +1220,7 @@
     <div class="dropdown">
       <div class="tb-btn" data-bs-toggle="dropdown" role="button">
         <i class="bi bi-bell-fill"></i>
-        {% if notifications_non_lues or rdv_count or factures_impayees or examens_attente_count %}<span class="tb-dot"></span>{% endif %}
+        {% if notifications_non_lues or cloche.rdv or cloche.factures or cloche.examens %}<span class="tb-dot"></span>{% endif %}
       </div>
       <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:330px">
         <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-1">
@@ -1241,46 +1241,46 @@
           </div>
         </a>
         {% endfor %}
-        {% if rdv_count %}
+        {% if cloche.rdv %}
         <a href="{% url 'consultation:rdv_liste' %}" class="dropdown-item">
           <div class="d-flex gap-2 align-items-center">
             <div style="width:36px;height:36px;border-radius:.6rem;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <i class="bi bi-calendar-check" style="color:var(--primary)"></i>
             </div>
             <div>
-              <div style="font-size:.82rem;font-weight:700">{{ rdv_count }} RDV aujourd'hui</div>
+              <div style="font-size:.82rem;font-weight:700">{{ cloche.rdv }} RDV aujourd'hui</div>
               <div style="font-size:.7rem;color:var(--text-muted)">Voir le planning</div>
             </div>
           </div>
         </a>
         {% endif %}
-        {% if examens_attente_count %}
+        {% if cloche.examens %}
         <a href="{% url 'consultation:examens' %}" class="dropdown-item">
           <div class="d-flex gap-2 align-items-center">
             <div style="width:36px;height:36px;border-radius:.6rem;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <i class="bi bi-eyedropper" style="color:#ef4444"></i>
             </div>
             <div>
-              <div style="font-size:.82rem;font-weight:700">{{ examens_attente_count }} examens en attente</div>
+              <div style="font-size:.82rem;font-weight:700">{{ cloche.examens }} examen{{ cloche.examens|pluralize }} en attente</div>
               <div style="font-size:.7rem;color:var(--text-muted)">Résultats à valider</div>
             </div>
           </div>
         </a>
         {% endif %}
-        {% if factures_impayees %}
+        {% if cloche.factures %}
         <a href="{% url 'facturation:liste' %}" class="dropdown-item">
           <div class="d-flex gap-2 align-items-center">
             <div style="width:36px;height:36px;border-radius:.6rem;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <i class="bi bi-receipt" style="color:#f59e0b"></i>
             </div>
             <div>
-              <div style="font-size:.82rem;font-weight:700">{{ factures_impayees }} factures impayées</div>
+              <div style="font-size:.82rem;font-weight:700">{{ cloche.factures }} facture{{ cloche.factures|pluralize }} impayée{{ cloche.factures|pluralize }}</div>
               <div style="font-size:.7rem;color:var(--text-muted)">À régulariser</div>
             </div>
           </div>
         </a>
         {% endif %}
-        {% if not notifications_recentes and not rdv_count and not factures_impayees and not examens_attente_count %}
+        {% if not notifications_recentes and not cloche.rdv and not cloche.factures and not cloche.examens %}
         <div class="text-center py-3" style="font-size:.82rem;color:var(--text-muted)">
           <i class="bi bi-bell-slash" style="font-size:1.4rem;display:block;margin-bottom:.4rem;opacity:.5"></i>
           Aucune notification

@@ -127,6 +127,39 @@ def _notifications(request):
         return 0, []
 
 
+def _cloche(request, role, codes):
+    """Les compteurs de la cloche : seulement ce qui concerne la personne connectée.
+
+    Ils s'ajoutent à ses notifications personnelles. Ils ne viennent plus des vues :
+    la cloche disait autre chose selon la page, et le tableau de bord d'un laborantin
+    y affichait les factures impayées de toute la clinique.
+    """
+    compteurs = {'rdv': 0, 'factures': 0, 'examens': 0}
+    if not request.user.is_authenticated:
+        return compteurs
+    try:
+        from django.utils import timezone
+        from consultation.models import ExamenMedical, Rendez_vous
+        from facturation.models import Facture
+        from facturation.regles import factures_visibles
+
+        if 'rdv.view' in codes:
+            rdv = Rendez_vous.objects.filter(date__date=timezone.localdate())
+            if role == 'medecin':
+                # Un médecin ne compte que ses propres rendez-vous.
+                rdv = rdv.filter(medecin=getattr(request.user.profil, 'medecin', None))
+            compteurs['rdv'] = rdv.count()
+        if 'facture.view' in codes:
+            # Le pharmacien ne compte que les factures de médicaments (facturation/regles.py).
+            compteurs['factures'] = factures_visibles(
+                Facture.objects.filter(statut='non payé'), role).count()
+        if role == 'admin' and 'examen.view' in codes:
+            compteurs['examens'] = ExamenMedical.objects.filter(statut='en_attente').count()
+    except Exception:
+        pass
+    return compteurs
+
+
 def role_context(request):
     role = get_role(request.user) if request.user.is_authenticated else None
     codes = _user_permissions(request)
@@ -147,4 +180,5 @@ def role_context(request):
         'consultations_en_retard': _consultations_en_retard(request, role, codes),
         'notifications_non_lues': notif_count,
         'notifications_recentes': notif_list,
+        'cloche': _cloche(request, role, codes),
     }
