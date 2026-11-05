@@ -307,7 +307,7 @@ def dashboard(request):
     # ── PHARMACIEN ─────────────────────────────────────────────────
     elif role == 'pharmacien':
         from pharmacie.models import Medicament, MouvementStock
-        from pharmacie.ventes import resume
+        from pharmacie.ventes import a_reclamer_par_assurance, resume
         from django.db.models import F, DecimalField
         from django.db.models.functions import Coalesce
 
@@ -328,6 +328,7 @@ def dashboard(request):
             'medic_a_reapprovisionner': (rupture + en_alerte)[:10],
             'mouvements_recents': MouvementStock.objects.select_related('medicament').order_by('-date')[:8],
             'ventes':             resume(),
+            'a_reclamer_assurances': a_reclamer_par_assurance(),
         }
         return render(request, 'pharmacien/dashboard.html', ctx)
 

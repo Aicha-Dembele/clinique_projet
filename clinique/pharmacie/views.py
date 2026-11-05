@@ -137,6 +137,21 @@ def _prevenir_non_couverts(request, facture):
             + ', '.join(non_couverts) + '.')
 
 
+def _prevenir_deja_reclamee(request, facture, part_avant):
+    """Un médicament ajouté à une ordonnance déjà réclamée n'est pas dans la demande envoyée.
+
+    Une ordonnance n'a qu'une facture, et une facture qu'un seul stade de recouvrement :
+    sans ce rappel, ce complément passerait pour réclamé alors que personne ne l'a demandé.
+    """
+    complement = facture.part_assurance() - part_avant
+    if facture.statut_assurance != 'a_reclamer' and complement > 0:
+        messages.warning(
+            request,
+            f"Cette ordonnance a déjà été réclamée à l'{facture.assurance.nom}. Les "
+            f"{complement:,.0f} FCFA de ce nouveau médicament ne sont pas dans la demande "
+            f"envoyée : réclamez-les à part.".replace(',', ' '))
+
+
 def _verifier_ordonnance_vente(patient_id, ordonnance_id):
     """Règle de la clinique : pas de vente de médicaments sans ordonnance.
 
@@ -272,6 +287,7 @@ def _dispenser_groupe(request):
         return None
 
     facture = _facture_pour_dispensation(patient_id, ordonnance_id)
+    part_avant = facture.part_assurance() if facture is not None else Decimal('0')
     faits, erreurs, ignores = [], [], []
     # Garde-fou anti-doublon : un médicament déjà dispensé pour CETTE ordonnance
     # n'est pas re-servi (sinon la facture et le stock se regonflent à chaque
@@ -320,6 +336,7 @@ def _dispenser_groupe(request):
         messages.success(request, msg)
         if facture is not None:
             _prevenir_non_couverts(request, facture)
+            _prevenir_deja_reclamee(request, facture, part_avant)
     if erreurs:
         messages.error(request, "Stock insuffisant, non dispensé(s) : " + ', '.join(erreurs) + '.')
     if ignores:
@@ -540,6 +557,7 @@ def sortie_stock(request):
 
             # Dispensation à un patient → portée automatiquement sur sa facture
             facture = _facture_pour_dispensation(patient_id, ordonnance_id) if patient_id else None
+            part_avant = facture.part_assurance() if facture is not None else Decimal('0')
 
             MouvementStock.objects.create(
                 medicament=medicament,
@@ -560,6 +578,7 @@ def sortie_stock(request):
                     f'{facture.patient} (FAC-{facture.pk:04d} — {facture.montant_total:,.0f} FCFA).'
                     .replace(',', ' ') + _resume_assurance(facture))
                 _prevenir_non_couverts(request, facture)
+                _prevenir_deja_reclamee(request, facture, part_avant)
             else:
                 messages.success(request, f'-{quantite} {medicament.unite} dispensés de {medicament.nom}.')
             return redirect('pharmacie:medicaments')
@@ -1046,6 +1065,7 @@ def ventes_profits(request):
         'mois_choisi':    f'{annee}-{mois:02d}',
         'mois_libelle':   f'{calculs.MOIS_FR[mois]} {annee}',
         'nb_lots_sans_prix': calculs.lots_sans_prix().count(),
+        'a_reclamer_assurances': calculs.a_reclamer_par_assurance(),
         'graphique': {
             'mois':   [m.libelle for m in mensuel],
             'vendu':  [float(m.vendu) for m in mensuel],

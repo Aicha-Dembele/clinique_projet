@@ -144,8 +144,8 @@
               {% comment %} L'assurance s'applique prestation par prestation, jamais sur
                  le total : on montre donc le partage ici, à chaque ligne. {% endcomment %}
               {% if facture.assurance and ligne.part_assurance %}
-                <div style="font-size:.7rem;color:var(--text-muted);font-weight:500;margin-top:.15rem">
-                  Assurance {{ ligne.part_assurance|floatformat:0 }} · Patient {{ ligne.part_patient|floatformat:0 }} FCFA
+                <div style="font-size:.74rem;color:var(--text-secondary);font-weight:700;margin-top:.15rem">
+                  {{ facture.assurance.nom }} {{ ligne.part_assurance|floatformat:0 }} FCFA · Patient {{ ligne.part_patient|floatformat:0 }} FCFA
                 </div>
               {% elif facture.assurance and not ligne.rembourse %}
                 <div style="font-size:.7rem;color:var(--text-muted);font-weight:500;margin-top:.15rem">

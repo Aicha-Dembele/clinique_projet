@@ -201,7 +201,8 @@ class RetraitTakafulTests(TestCase):
         takaful = Assurance.objects.create(nom='Takaful 100%', taux_prise_en_charge=Decimal('100'))
         patient = creer_patient(takaful)
         facture = Facture.objects.create(patient=patient, assurance=takaful)
-        Facture.objects.filter(pk=facture.pk).update(montant_total=Decimal('8000'), montant_remboursable=Decimal('8000'))
+        Facture.objects.filter(pk=facture.pk).update(
+            montant_total=Decimal('8000'), montant_remboursable=Decimal('8000'), montant_assurance=None)
         facture.refresh_from_db()
         part_avant = facture.part_assurance()
         self.retirer()

@@ -120,12 +120,19 @@ class Facture(models.Model):
     montant_total   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     # Part du total sur laquelle l'assurance s'applique. Égale au total pour
     # les soins ; sur une ordonnance, elle exclut les médicaments non
-    # remboursés. Recalculée à chaque save() comme montant_total, pour que
-    # part_assurance() n'ait pas à relire les lignes à chaque affichage.
+    # remboursés. Recalculée à chaque save() comme montant_total.
     # NULL = jamais calculée (facture construite en mémoire, ou établie avant
     # l'application de l'assurance médicament par médicament). On retombe
     # alors sur le total, c'est-à-dire l'ancien comportement.
     montant_remboursable = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True, default=None)
+    # Ce que l'assurance paie sur cette facture : la SOMME des parts calculées
+    # ligne par ligne (LigneFacture.repartir). Sur une ordonnance, chaque
+    # médicament est calculé à part, puis on additionne. Recalculée à chaque
+    # save(), pour que les listes n'aient pas à relire les lignes de chaque
+    # facture. NULL = rien à additionner : facture construite en mémoire, ou
+    # ancienne facture sans ligne.
+    montant_assurance = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True, default=None)
     statut          = models.CharField(max_length=20, choices=STATUT_CHOICES, default='non payé')
     date_creation   = models.DateTimeField(auto_now_add=True, null=True)
@@ -253,6 +260,15 @@ class Facture(models.Model):
         """
         return sum(l.sous_total() for l in self.lignes.all() if l.rembourse) or Decimal('0')
 
+    def calculer_part_assurance(self):
+        """Ce que l'assurance paie : la somme des parts de chaque ligne.
+
+        On additionne, on ne recalcule jamais le taux sur le total : 70 % de
+        trois médicaments à 1 001 F font 3 × 701 F, soit 2 103 F, et non
+        70 % de 3 003 F.
+        """
+        return sum(l.part_assurance for l in self.lignes.all()) or Decimal('0')
+
     def _db(self):
         """Base sur laquelle travailler : celle de l'instance.
 
@@ -379,7 +395,8 @@ class Facture(models.Model):
             from pharmacie.models import MouvementStock
             sorties = (MouvementStock.objects.using(db)
                        .filter(type_mouvement='sortie', ordonnance_id=self.ordonnance_id)
-                       .select_related('medicament'))
+                       .select_related('medicament')
+                       .order_by('date', 'pk'))   # l'ordre où ils ont été servis
             # Traçabilité : ces sorties portent bien cette facture-là.
             sorties.exclude(facture_id=self.pk).update(facture=self)
             for mv in sorties:
@@ -392,6 +409,9 @@ class Facture(models.Model):
                     rembourse=mv.medicament.rembourse,
                 ))
 
+        # Chaque ligne fait son propre calcul : voir LigneFacture.repartir().
+        for ligne in lignes:
+            ligne.repartir(self.taux_prise_en_charge)
         LigneFacture.objects.using(db).bulk_create(lignes)
 
     def save(self, *args, **kwargs):
@@ -414,10 +434,12 @@ class Facture(models.Model):
         # sont exclus : ils restent entièrement à la charge du patient).
         self.montant_total = self.calculer_total()
         self.montant_remboursable = self.calculer_remboursable()
+        self.montant_assurance = self.calculer_part_assurance()
         # Save final sans boucle infinie
         Facture.objects.using(self._db()).filter(pk=self.pk).update(
             montant_total=self.montant_total,
-            montant_remboursable=self.montant_remboursable)
+            montant_remboursable=self.montant_remboursable,
+            montant_assurance=self.montant_assurance)
         # Recalcule le statut selon la part réellement due par le patient
         self.update_statut()
 
@@ -437,20 +459,6 @@ class Facture(models.Model):
         sous-total par groupe. Travaille sur les lignes déjà préchargées
         (prefetch_related) : aucune requête supplémentaire."""
         lignes = list(self.lignes.all())
-
-        # Répartition assurance / patient LIGNE PAR LIGNE : sur une
-        # ordonnance, un médicament non remboursé reste entièrement au
-        # patient pendant que les autres sont pris en charge. Le taux est lu
-        # une seule fois ici, pas une requête par médicament.
-        taux = self.taux_prise_en_charge or Decimal('0')
-        for ligne in lignes:
-            sous_total = ligne.sous_total()
-            if ligne.rembourse and taux > 0:
-                ligne.part_assurance = (
-                    sous_total * taux / Decimal('100')).quantize(Decimal('1'))
-            else:
-                ligne.part_assurance = Decimal('0')
-            ligne.part_patient = sous_total - ligne.part_assurance
 
         groupes = []
         for code, label in self.GROUPES_LIGNES:
@@ -472,11 +480,14 @@ class Facture(models.Model):
 
     # ── Répartition assurance / patient ───────────────────────────
     def part_assurance(self):
-        """Montant pris en charge par l'assurance (arrondi au franc)."""
+        """Ce que l'assurance paie : la somme des parts de chaque ligne."""
         taux = self.taux_prise_en_charge or Decimal('0')
         if taux <= 0:
             return Decimal('0')
-        # Sur la part remboursable seulement : voir base_assurable().
+        if self.montant_assurance is not None:
+            return self.montant_assurance
+        # Pas de ligne à additionner (facture jamais enregistrée, ou ancienne
+        # facture sans ligne) : le taux sur ce que l'on sait d'elle.
         return (self.base_assurable() * taux / Decimal('100')).quantize(Decimal('1'))
 
     def part_patient(self):
@@ -525,9 +536,35 @@ class LigneFacture(models.Model):
     # déréférence plus tard de la liste des remboursables, les factures déjà
     # établies ne changent pas rétroactivement.
     rembourse     = models.BooleanField("pris en charge", default=True)
+    # Qui paie quoi sur CETTE ligne. C'est ce qui est réclamé à l'assurance à la
+    # fin du mois : sur une ordonnance, chaque médicament est calculé à part,
+    # puis la facture additionne (Facture.calculer_part_assurance).
+    part_assurance = models.DecimalField(
+        "part de l'assurance", max_digits=10, decimal_places=2, default=0)
+    part_patient   = models.DecimalField(
+        "part du patient", max_digits=10, decimal_places=2, default=0)
 
     def sous_total(self):
         return self.prix_unitaire * self.quantite
+
+    def repartir(self, taux):
+        """Partage le prix de cette ligne entre l'assurance et le patient.
+
+        L'assurance est arrondie au franc et le patient paie le reste : les deux
+        parts redonnent toujours le prix exact. Une ligne non prise en charge
+        reste entièrement au patient.
+        """
+        sous_total = self.sous_total()
+        taux = Decimal(str(taux or 0))
+        if self.rembourse and taux > 0:
+            self.part_assurance = (sous_total * taux / Decimal('100')).quantize(Decimal('1'))
+        else:
+            self.part_assurance = Decimal('0')
+        self.part_patient = sous_total - self.part_assurance
+
+    def designation(self):
+        """Le nom de la prestation, sans le préfixe des médicaments."""
+        return self.description.removeprefix('Médicament — ')
 
     def __str__(self):
         return f"{self.description} × {self.quantite} = {self.sous_total():,.0f} FCFA"

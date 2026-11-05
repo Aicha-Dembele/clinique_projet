@@ -45,8 +45,15 @@ def medicaments_non_couverts(facture):
     """Noms des médicaments de cette facture que l'assurance ne prend pas en charge."""
     if not facture.assurance_id:
         return []
-    return [ligne.description.removeprefix('Médicament — ')
-            for ligne in facture.lignes.all() if not ligne.rembourse]
+    return [ligne.designation() for ligne in facture.lignes.all() if not ligne.rembourse]
+
+
+def _styles_tableau(normal):
+    """Texte d'une cellule qui peut passer à la ligne, et titre de colonne à droite."""
+    petit = ParagraphStyle('petit', parent=normal, fontSize=9, leading=11)
+    titre = ParagraphStyle('titre', parent=petit, fontName='Helvetica-Bold',
+                           textColor=colors.white, alignment=2)
+    return petit, titre
 
 
 def facture_pdf_response(facture):
@@ -93,14 +100,29 @@ def facture_pdf_response(facture):
     elements.append(Spacer(1, 6 * mm))
 
     # ── Lignes ──
-    data = [["Désignation", "Qté", "Prix unitaire", "Sous-total"]]
-    for l in facture.lignes.all():
-        marque = " *" if facture.assurance_id and not l.rembourse else ""
-        data.append([l.description + marque, str(l.quantite),
-                     _fcfa(l.prix_unitaire), _fcfa(l.sous_total())])
+    # Patient assuré : chaque ligne montre sa part, car c'est ligne par ligne que
+    # l'assurance se calcule.
+    if facture.assurance_id and facture.taux_prise_en_charge:
+        petit, titre = _styles_tableau(normal)
+        data = [["Désignation", "Qté", "Prix unitaire", "Sous-total",
+                 Paragraph(escape(f"Part {facture.assurance.nom}"), titre),
+                 Paragraph("Part patient", titre)]]
+        for l in facture.lignes.all():
+            marque = " *" if not l.rembourse else ""
+            data.append([Paragraph(escape(l.description + marque), petit), str(l.quantite),
+                         _fcfa(l.prix_unitaire), _fcfa(l.sous_total()),
+                         _fcfa(l.part_assurance), _fcfa(l.part_patient)])
+        largeurs = [58 * mm, 10 * mm, 26 * mm, 26 * mm, 25 * mm, 25 * mm]
+    else:
+        data = [["Désignation", "Qté", "Prix unitaire", "Sous-total"]]
+        for l in facture.lignes.all():
+            data.append([l.description, str(l.quantite),
+                         _fcfa(l.prix_unitaire), _fcfa(l.sous_total())])
+        largeurs = [88 * mm, 16 * mm, 33 * mm, 33 * mm]
 
-    t = Table(data, colWidths=[88 * mm, 16 * mm, 33 * mm, 33 * mm])
+    t = Table(data, colWidths=largeurs)
     t.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('BACKGROUND', (0, 0), (-1, 0), ACCENT),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -243,6 +265,28 @@ def paiement_pdf_response(paiement):
     ]))
     elements.append(t)
     elements.append(Spacer(1, 6 * mm))
+
+    # ── Médicaments d'un patient assuré : ce que chacun paie, ligne par ligne ──
+    if f.ordonnance_id and f.assurance_id:
+        petit, titre = _styles_tableau(normal)
+        lignes = [["Médicament", "Prix", Paragraph(escape(f"Part {f.assurance.nom}"), titre),
+                   Paragraph("Part patient", titre)]]
+        for l in f.lignes.all():
+            quantite = f" × {l.quantite}" if l.quantite > 1 else ""
+            lignes.append([Paragraph(escape(l.designation() + quantite), petit), _fcfa(l.sous_total()),
+                           _fcfa(l.part_assurance), _fcfa(l.part_patient)])
+        t_medics = Table(lignes, colWidths=[84 * mm, 30 * mm, 30 * mm, 30 * mm])
+        t_medics.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BACKGROUND', (0, 0), (-1, 0), ACCENT),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#d6e3e8")),
+        ]))
+        elements.append(t_medics)
+        elements.append(Spacer(1, 6 * mm))
 
     # ── Total payé ──
     t_tot = Table([["Montant payé", _fcfa(paiement.montant)]],

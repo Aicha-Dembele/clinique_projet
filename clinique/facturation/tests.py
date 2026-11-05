@@ -61,10 +61,11 @@ class StatutPaiementTests(TestCase):
         # On force aussi la part remboursable, que save() aurait calculée
         # depuis les lignes : sans elle, l'assurance n'aurait plus d'assiette
         # et la facture paraîtrait entièrement à la charge du patient.
+        # Pas de ligne à additionner ici : montant_assurance repart à vide.
         f = Facture.objects.create(patient=self.patient)
         Facture.objects.filter(pk=f.pk).update(
             montant_total=Decimal(total), montant_remboursable=Decimal(total),
-            taux_prise_en_charge=taux)
+            montant_assurance=None, taux_prise_en_charge=taux)
         f.refresh_from_db()
         return f
 

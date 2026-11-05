@@ -200,8 +200,8 @@ def _contexte_form(request, facture=None):
         sorties = list(o.dispensations.filter(type_mouvement='sortie').select_related('medicament'))
         o.montant_dispense = sum((mv.montant() for mv in sorties), Decimal('0'))
         # L'aperçu applique le taux sur cette part-là, comme la facture.
-        o.montant_assurable = sum(
-            (mv.montant() for mv in sorties if mv.medicament.rembourse), Decimal('0'))
+        o.montants_couverts = [mv.montant() for mv in sorties if mv.medicament.rembourse]
+        o.montant_assurable = sum(o.montants_couverts, Decimal('0'))
 
     # Consultation : c'est le RENDEZ-VOUS que l'on facture, avant que le patient
     # ne soit reçu. Un rendez-vous annulé n'a plus rien à facturer.
@@ -746,6 +746,7 @@ def _factures_prises_en_charge(request, avec_filtre_statut=True):
           .filter(assurance__isnull=False, taux_prise_en_charge__gt=0)
           .select_related('patient', 'assurance', 'rendez_vous', 'consultation',
                           'examen', 'hospitalisation', 'ordonnance')
+          .prefetch_related('lignes')
           .order_by('assurance__nom', 'patient__nom', 'pk'))
     # Le pharmacien ne voit que la part assurance des médicaments.
     qs = factures_visibles(qs, get_role(request.user))
@@ -923,21 +924,45 @@ def creances_export(request):
             nom = slugify(premiere.assurance.nom) or 'assurance'
 
     headers = ['Assurance', 'Taux (%)', 'Facture', 'Patient', 'Numero assure',
-               'Service', 'Date', 'Montant total', 'A reclamer', 'Part patient',
+               'Service', 'Date', 'Prestation', 'Quantite', 'Prix unitaire',
+               'Montant', 'A reclamer', 'Part patient',
                'Recouvrement', 'Reclame le', 'Rembourse le']
-    rows = [[
-        f.assurance.nom,
-        f'{f.taux_prise_en_charge:.0f}',
-        f'FAC-{f.pk:04d}',
-        f'{f.patient.nom} {f.patient.prenom}',
-        f.patient.numero_assure or '',
-        f.service_libelle(),
-        f.date_creation.strftime('%d/%m/%Y') if f.date_creation else '',
-        int(f.montant_total), int(f.part_assurance()), int(f.part_patient()),
-        f.get_statut_assurance_display(),
-        f.date_reclamation.strftime('%d/%m/%Y') if f.date_reclamation else '',
-        f.date_remboursement.strftime('%d/%m/%Y') if f.date_remboursement else '',
-    ] for f in factures]
+
+    def ligne_export(f, prestation, quantite, prix, montant, assurance, patient):
+        return [
+            f.assurance.nom,
+            f'{f.taux_prise_en_charge:.0f}',
+            f'FAC-{f.pk:04d}',
+            f'{f.patient.nom} {f.patient.prenom}',
+            f.patient.numero_assure or '',
+            f.service_libelle(),
+            f.date_creation.strftime('%d/%m/%Y') if f.date_creation else '',
+            prestation, quantite, prix,
+            int(montant), int(assurance), int(patient),
+            f.get_statut_assurance_display(),
+            f.date_reclamation.strftime('%d/%m/%Y') if f.date_reclamation else '',
+            f.date_remboursement.strftime('%d/%m/%Y') if f.date_remboursement else '',
+        ]
+
+    # Une ligne par médicament : c'est médicament par médicament que l'assurance
+    # est calculée, et c'est ce détail qu'elle vérifie.
+    rows, total_montant, total_assurance, total_patient = [], 0, 0, 0
+    for f in factures:
+        lignes = list(f.lignes.all())
+        if lignes:
+            rows += [ligne_export(f, l.designation(), l.quantite, int(l.prix_unitaire),
+                                  l.sous_total(), l.part_assurance, l.part_patient)
+                     for l in lignes]
+        else:
+            # Ancienne facture sans ligne : son montant ne doit pas disparaître.
+            rows.append(ligne_export(f, f.service_libelle(), 1, int(f.montant_total),
+                                     f.montant_total, f.part_assurance(), f.part_patient()))
+        total_montant += int(f.montant_total)
+        total_assurance += int(f.part_assurance())
+        total_patient += int(f.part_patient())
+    if rows:
+        rows.append(['TOTAL'] + [''] * 9
+                    + [total_montant, total_assurance, total_patient, '', '', ''])
 
     return csv_response(f'creances_{nom}_{slugify(periode_label)}.csv', headers, rows)
 

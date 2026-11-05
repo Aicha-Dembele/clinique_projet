@@ -1,0 +1,11 @@
+{% load montants %}
+{% comment %} Ce que l'assurance doit encore à la pharmacie : le rappel renvoie au détail, à réclamer à la fin du mois. {% endcomment %}
+{% if a_reclamer_assurances and 'facture.view' in user_permissions %}
+<a href="{% url 'facturation:creances' %}?statut=a_reclamer" class="mb-4"
+   style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.8rem 1.1rem;border-radius:.9rem;border:1.5px solid rgba(168,85,247,.35);background:rgba(168,85,247,.07);color:var(--text-primary);text-decoration:none;font-size:.86rem">
+  <i class="bi bi-shield-fill-check" style="color:#a855f7;font-size:1.05rem"></i>
+  <span style="flex:1;min-width:190px">Part des assurances à réclamer :
+    {% for a in a_reclamer_assurances %}{% if not forloop.first %} · {% endif %}{{ a.nom }} <strong>{{ a.montant|espaces }} FCFA</strong>{% endfor %}</span>
+  <span style="font-weight:700;font-size:.8rem">Voir le détail <i class="bi bi-arrow-right"></i></span>
+</a>
+{% endif %}

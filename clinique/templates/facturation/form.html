@@ -360,11 +360,18 @@ const TARIFS_HOSPIT = {
   {% endfor %}
 };
 
+// Même arrondi que la facture : au franc, un demi franc allant au nombre pair.
+function partAssurance(base, taux) {
+  const v = base * taux / 100, bas = Math.floor(v);
+  return Math.abs(v - bas - .5) < 1e-9 ? (bas % 2 ? bas + 1 : bas) : Math.round(v);
+}
+
 const TARIFS_ORDONNANCE = {
   {% for o in ordonnances %}
   "{{ o.pk }}": {
     prix: {{ o.montant_dispense|floatformat:0 }},
     assurable: {{ o.montant_assurable|floatformat:0 }},
+    couverts: [{% for m in o.montants_couverts %}{{ m|floatformat:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
     label: "Médicaments dispensés — ORD-{{ o.pk|stringformat:'04d' }}"
   }{% if not forloop.last %},{% endif %}
   {% endfor %}
@@ -405,6 +412,7 @@ function updatePreview() {
   let lignes = [];
   let total = 0;
   let assurable = null;   // part couverte, quand elle diffère du total (ordonnance)
+  let couverts = null;    // un montant par médicament couvert : chacun est calculé à part
   hospitDetail.style.display = 'none';
 
   if (service === 'rendez_vous') {
@@ -426,7 +434,7 @@ function updatePreview() {
 
   } else if (service === 'ordonnance') {
     const t = TARIFS_ORDONNANCE[document.getElementById('sel-ordonnance').value];
-    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; assurable = t.assurable; }
+    if (t) { lignes.push({ label: t.label, prix: t.prix, qte: 1 }); total = t.prix; assurable = t.assurable; couverts = t.couverts; }
   }
 
   // Affiche/cache l'aperçu
@@ -444,7 +452,7 @@ function updatePreview() {
     const assBlock = document.getElementById('preview-assurance-block');
     if (tauxVal > 0) {
       const couvert = assurable === null ? total : assurable;
-      const partAss = Math.round(couvert * tauxVal / 100);
+      const partAss = (couverts || [couvert]).reduce((somme, m) => somme + partAssurance(m, tauxVal), 0);
       const partPat = total - partAss;
       document.getElementById('preview-assurance-label').textContent = 'Pris en charge assurance (' + tauxVal + ' %'
         + (couvert < total ? ' de ' + fmt(couvert) + ', le reste n\'est pas couvert' : '') + ')';

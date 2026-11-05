@@ -34,6 +34,10 @@
 .recu-row:last-child { border-bottom: none; }
 .recu-row-lbl { color: var(--text-muted); font-weight: 600; }
 .recu-row-val { color: var(--text-primary); font-weight: 700; text-align: right; }
+.recu-medics { width: 100%; border-collapse: collapse; margin: .75rem 0 .25rem; font-size: .8rem; }
+.recu-medics th { color: var(--text-muted); font-weight: 700; font-size: .7rem; text-align: right; padding: .35rem 0 .35rem .6rem; border-bottom: 1px solid var(--card-border); }
+.recu-medics td { color: var(--text-primary); font-weight: 600; text-align: right; padding: .4rem 0 .4rem .6rem; border-bottom: 1px dashed var(--card-border); white-space: nowrap; }
+.recu-medics th:first-child, .recu-medics td:first-child { text-align: left; padding-left: 0; white-space: normal; }
 .recu-total { background: rgba(22,102,179,.08); border: 1px dashed rgba(22,102,179,.4); border-radius: .85rem; padding: 1.25rem 1.5rem; margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
 .recu-total-lbl { font-size: .78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .recu-total-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: #1666b3; letter-spacing: -.02em; }
@@ -94,6 +98,23 @@
         <span class="recu-row-lbl">Reste à charge patient</span>
         <span class="recu-row-val">{{ paiement.facture.part_patient|floatformat:0 }} FCFA</span>
       </div>
+      {% if paiement.facture.ordonnance_id %}
+      <table class="recu-medics">
+        <thead>
+          <tr><th>Médicament</th><th>Prix</th><th>{{ paiement.facture.assurance.nom }}</th><th>Patient</th></tr>
+        </thead>
+        <tbody>
+          {% for l in paiement.facture.lignes.all %}
+          <tr>
+            <td>{{ l.designation }}{% if l.quantite > 1 %} × {{ l.quantite }}{% endif %}</td>
+            <td>{{ l.sous_total|floatformat:0 }}</td>
+            <td>{{ l.part_assurance|floatformat:0 }}</td>
+            <td>{{ l.part_patient|floatformat:0 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
       {% endif %}
       <div class="recu-row">
         <span class="recu-row-lbl">Mode de paiement</span>

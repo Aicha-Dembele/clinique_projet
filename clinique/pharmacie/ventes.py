@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
+from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -245,3 +246,20 @@ def factures_fournisseurs():
             lien=f"{reverse('pharmacie:lots')}?medicament={lot.medicament_id}&etat=tous",
         ))
     return sorted(factures, key=lambda f: (f.jour or date.min, f.numero), reverse=True)
+
+
+def a_reclamer_par_assurance():
+    """Ce que chaque assurance doit encore sur les médicaments, sans avoir été réclamé.
+
+    Une ligne par assurance : les anciennes factures Takaful ne doivent pas
+    passer pour de l'AMO.
+    """
+    from facturation.models import Facture
+    lignes = (Facture.objects
+              .filter(ordonnance__isnull=False, assurance__isnull=False,
+                      taux_prise_en_charge__gt=0, statut_assurance='a_reclamer')
+              .values('assurance__nom')
+              .annotate(montant=Sum('montant_assurance'))
+              .order_by('-montant'))
+    return [{'nom': l['assurance__nom'], 'montant': l['montant']}
+            for l in lignes if l['montant']]

@@ -1,14 +1,15 @@
 {% extends 'base.html' %}
 {% block body_class %}page-consultation-bg page-facturation-bg{% endblock %}
 
-{% block title %}Créances assurances{% endblock %}
+{% block title %}{% if perimetre == 'pharmacie' %}À réclamer à l'AMO{% else %}Créances assurances{% endif %}{% endblock %}
 {% block nav_creances %}active{% endblock %}
-{% block page_title %}Créances assurances{% endblock %}
-{% block page_heading %}Créances assurances{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Créances assurances</li>{% endblock %}
+{% block page_title %}{% if perimetre == 'pharmacie' %}À réclamer à l'AMO{% else %}Créances assurances{% endif %}{% endblock %}
+{% block page_heading %}{% if perimetre == 'pharmacie' %}À réclamer à l'AMO{% else %}Créances assurances{% endif %}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">{% if perimetre == 'pharmacie' %}À réclamer à l'AMO{% else %}Créances assurances{% endif %}</li>{% endblock %}
 {% block page_actions %}
+<button type="button" class="btn-c btn-outline-c no-print" onclick="window.print()"><i class="bi bi-printer"></i> Imprimer</button>
 <a href="{% url 'facturation:creances_export' %}{% if mois_selectionne %}?mois={{ mois_selectionne }}{% endif %}"
-   class="btn-c btn-primary-c"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter tout (Excel)</a>
+   class="btn-c btn-primary-c no-print"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter tout (Excel)</a>
 {% endblock %}
 
 {% block extra_css %}<style>
@@ -19,6 +20,11 @@
 .hero-banner-content { position: relative; z-index: 2; height: 100%; display: flex; align-items: center; padding: 0 2rem; gap: 1.5rem; }
 .hero-title { font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: -.02em; margin: 0; }
 .hero-sub { font-size: .85rem; color: rgba(255,255,255,.78); margin-top: .25rem; }
+@media (max-width: 575.98px) {
+  .hero-banner { height: auto; min-height: 160px; }
+  .hero-banner-content { padding: 1.2rem; }
+  .hero-title { font-size: 1.2rem; }
+}
 
 .stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.1rem 1.2rem; display: flex; align-items: center; gap: .9rem; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s; animation: fadeUp .5s ease both; }
 .stat-h:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
@@ -57,9 +63,45 @@
 .av-sm { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; background: rgba(168,85,247,.12); color: #a855f7; }
 .con-num { font-size: .72rem; font-weight: 800; color: var(--text-muted); font-family: 'Outfit', monospace; background: var(--input-bg); padding: .2em .55em; border-radius: .35rem; border: 1px solid var(--card-border); }
 
+/* ── Le détail d'une ordonnance : la part de chaque médicament ── */
+.modern-table tbody tr.a-detail { border-bottom: none; }
+.modern-table tbody tr.ligne-medics:hover { background: transparent; }
+.modern-table tbody tr.ligne-medics > td { padding: 0 1.1rem .7rem 3.2rem; }
+.medics { width: auto; border-collapse: collapse; }
+@media (max-width: 575.98px) {
+  .modern-table tbody tr.ligne-medics > td { padding-left: 1.1rem; }
+  .medics, .medics tbody { display: block; max-width: calc(100vw - 4rem); }
+  .medics tr { display: flex; flex-wrap: wrap; gap: 0 .8rem; padding: .25rem 0; }
+  .modern-table .medics td { padding: 0; }
+  .medics .medic-nom { flex-basis: 100%; }
+}
+.modern-table .medics tr { border-bottom: 1px dashed var(--card-border); }
+.modern-table .medics tr:last-child { border-bottom: none; }
+.modern-table .medics td { padding: .28rem .6rem .28rem 0; font-size: .76rem; color: var(--text-secondary); }
+.medic-nom { font-weight: 700; color: var(--text-primary); }
+.medic-hors { font-size: .68rem; font-weight: 700; color: #c81e24; margin-left: .3rem; }
+[data-theme="dark"] .medic-hors { color: #ff8a8e; }
+.medic-part { font-weight: 800; }
+
+/* ── Imprimé : le bordereau à joindre à la demande de remboursement ── */
+.imprime-seul { display: none; }
+@media print {
+  html { font-size: 12px !important; }
+  .no-print, .topbar, #sidebar, nav, .sb-link, [class*="sidebar"], .hero-banner, .stats-montants, .periode-bar, .breadcrumb-c { display: none !important; }
+  body, #main, .page, main { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .imprime-seul { display: block; }
+  .assureur-card { box-shadow: none; animation: none; break-inside: auto; }
+  .modern-table tbody tr { break-inside: avoid; }
+}
+
 </style>{% endblock %}
 
 {% block content %}
+
+<div class="imprime-seul" style="margin-bottom:1rem">
+  <div style="font-size:1.4rem;font-weight:800">Bordereau de réclamation{% if perimetre == 'pharmacie' %} : médicaments{% endif %}</div>
+  <div>Clinique Nevroglie · {{ periode_label }}</div>
+</div>
 
 <!-- ── HERO ── -->
 <div class="hero-banner">
@@ -70,7 +112,7 @@
       <i class="bi bi-shield-fill-check" style="font-size:1.6rem;color:#fff"></i>
     </div>
     <div>
-      <div class="hero-title">{% if perimetre == 'pharmacie' %}Ce que les assurances doivent pour les médicaments{% elif perimetre == 'reception' %}Ce que les assurances doivent pour les soins{% else %}Ce que les assurances doivent à la clinique{% endif %}</div>
+      <div class="hero-title">{% if perimetre == 'pharmacie' %}Ce que l'AMO doit à la pharmacie{% elif perimetre == 'reception' %}Ce que les assurances doivent pour les soins{% else %}Ce que les assurances doivent à la clinique{% endif %}</div>
       <div class="hero-sub">{{ periode_label }} — part prise en charge, non encaissée auprès des patients{% if perimetre == 'pharmacie' %} · ordonnances uniquement{% elif perimetre == 'reception' %} · consultations, examens, hospitalisations{% endif %}</div>
     </div>
   </div>
@@ -157,7 +199,7 @@
     <div class="assureur-montant">
       <div class="assureur-montant-lbl">Pris en charge</div>
       <div class="assureur-montant-val">{{ g.a_reclamer|floatformat:0 }} FCFA</div>
-      <div class="d-flex gap-1 flex-wrap justify-content-end" style="margin-top:.5rem">
+      <div class="d-flex gap-1 flex-wrap justify-content-end no-print" style="margin-top:.5rem">
         <a href="{% url 'facturation:creances_export' %}?assurance={{ g.assurance.pk }}{% if mois_selectionne %}&mois={{ mois_selectionne }}{% endif %}"
            class="btn-c btn-outline-c">
           <i class="bi bi-download"></i> Dossier
@@ -196,7 +238,7 @@
   </div>
 
   <!-- Avancement du dossier -->
-  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:.7rem 1.3rem;border-bottom:1px solid var(--card-border);font-size:.76rem">
+  <div class="no-print" style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:.7rem 1.3rem;border-bottom:1px solid var(--card-border);font-size:.76rem">
     <span><span class="pastille" style="background:#ef4444"></span> À réclamer : <strong>{{ g.montant_a_reclamer|floatformat:0 }} FCFA</strong> ({{ g.nb_a_reclamer }})</span>
     <span><span class="pastille" style="background:#f59e0b"></span> Réclamé : <strong>{{ g.montant_reclame|floatformat:0 }} FCFA</strong> ({{ g.nb_reclame }})</span>
     <span><span class="pastille" style="background:#10b981"></span> Remboursé : <strong>{{ g.montant_rembourse|floatformat:0 }} FCFA</strong> ({{ g.nb_rembourse }})</span>
@@ -209,18 +251,18 @@
           <th>Facture</th>
           <th>Patient</th>
           <th>N° assuré</th>
-          <th>Service</th>
+          {% if perimetre != 'pharmacie' %}<th>Service</th>{% endif %}
           <th>Date</th>
           <th class="num">Montant</th>
           <th class="num">Taux</th>
           <th class="num">À réclamer</th>
-          <th>Recouvrement</th>
-          <th></th>
+          <th class="no-print">Recouvrement</th>
+          <th class="no-print"></th>
         </tr>
       </thead>
       <tbody>
         {% for f in g.factures %}
-        <tr>
+        <tr{% if f.ordonnance_id %} class="a-detail"{% endif %}>
           <td><span class="con-num">FAC-{{ f.pk|stringformat:"04d" }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-2">
@@ -229,12 +271,12 @@
             </div>
           </td>
           <td><span style="font-size:.8rem;color:var(--text-secondary)">{{ f.patient.numero_assure|default:"—" }}</span></td>
-          <td><span class="badge-service">{{ f.service_libelle }}</span></td>
+          {% if perimetre != 'pharmacie' %}<td><span class="badge-service">{{ f.service_libelle }}</span></td>{% endif %}
           <td>{{ f.date_creation|date:'d/m/Y' }}</td>
           <td class="num">{{ f.montant_total|floatformat:0 }}</td>
           <td class="num">{{ f.taux_prise_en_charge|floatformat:0 }} %</td>
           <td class="num" style="font-weight:800;color:#a855f7">{{ f.part_assurance|floatformat:0 }}</td>
-          <td>
+          <td class="no-print">
             {% if f.statut_assurance == 'rembourse' %}
               <span class="badge-etat" style="background:rgba(16,185,129,.12);color:#10b981">
                 <i class="bi bi-check2-circle"></i> Remboursé
@@ -251,7 +293,7 @@
               </span>
             {% endif %}
           </td>
-          <td>
+          <td class="no-print">
             <div class="d-flex gap-1">
               {% if 'facture.change' in user_permissions or 'rapport.view' in user_permissions or 'creance.marquer' in user_permissions %}
               {% if f.statut_assurance == 'a_reclamer' %}
@@ -266,15 +308,32 @@
             </div>
           </td>
         </tr>
+        {% if f.ordonnance_id %}
+        {# Chaque médicament est calculé à part : c'est la somme de ces lignes qui est réclamée. #}
+        <tr class="ligne-medics">
+          <td colspan="{% if perimetre == 'pharmacie' %}9{% else %}10{% endif %}">
+            <table class="medics">
+              {% for l in f.lignes.all %}
+              <tr>
+                <td class="medic-nom">{{ l.designation }}{% if l.quantite > 1 %} × {{ l.quantite }}{% endif %}{% if not l.rembourse %}<span class="medic-hors">Non pris en charge</span>{% endif %}</td>
+                <td class="num">{{ l.sous_total|floatformat:0 }} FCFA</td>
+                <td class="num">{{ g.assurance.nom }} <span class="medic-part">{{ l.part_assurance|floatformat:0 }}</span></td>
+                <td class="num">Patient <span class="medic-part">{{ l.part_patient|floatformat:0 }}</span></td>
+              </tr>
+              {% endfor %}
+            </table>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="5">Total {{ g.assurance.nom }}</td>
+          <td colspan="{% if perimetre == 'pharmacie' %}4{% else %}5{% endif %}">Total {{ g.assurance.nom }}</td>
           <td class="num">{{ g.total_facture|floatformat:0 }}</td>
           <td></td>
           <td class="num" style="color:#a855f7">{{ g.a_reclamer|floatformat:0 }}</td>
-          <td colspan="2"></td>
+          <td class="no-print" colspan="2"></td>
         </tr>
       </tfoot>
     </table>
@@ -291,5 +350,7 @@
   </div>
 </div>
 {% endfor %}
+
+<div class="imprime-seul" style="margin-top:2.5rem">Date, signature et cachet de la pharmacie :</div>
 
 {% endblock %}

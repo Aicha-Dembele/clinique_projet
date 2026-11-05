@@ -1059,7 +1059,7 @@
     {% endif %}
     {% if 'facture.view' in user_permissions or 'rapport.view' in user_permissions %}
     <a href="{% url 'facturation:creances' %}" class="sb-link {% block nav_creances %}{% endblock %}">
-      <i class="bi bi-cash-stack"></i> Créances assurances
+      <i class="bi bi-cash-stack"></i> {% if is_pharmacien %}À réclamer à l'AMO{% else %}Créances assurances{% endif %}
     </a>
     {% endif %}
 
