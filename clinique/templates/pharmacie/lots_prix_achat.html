@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load montants %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Prix d'achat{% endblock %}
+{% block nav_lots %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Prix d'achat{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:lots' %}">Lots</a></li>
+  <li class="breadcrumb-item active">Prix d'achat</li>
+{% endblock %}
+{% block extra_css %}<style>
+.barre-prix { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.barre-prix p { margin: 0; font-size: .82rem; color: var(--text-muted); max-width: 46rem; line-height: 1.5; }
+.champ-prix { width: 7rem; padding: .35rem .6rem; text-align: right; margin-left: auto; }
+@media (max-width: 767.98px) { .champ-prix { width: 5.5rem; } }
+.table-c td { vertical-align: middle; }
+</style>{% endblock %}
+{% block content %}
+
+<form method="post" class="card-c">
+  {% csrf_token %}
+  <div class="barre-prix">
+    {% if medicament %}
+    <p>Lots de <strong>{{ medicament.libelle }}</strong>. Vous pouvez corriger un prix déjà saisi.</p>
+    {% else %}
+    <p>Saisissez ce qu'<strong>une unité</strong> de chaque lot vous a coûté chez le fournisseur. Vous pouvez en remplir une partie et revenir plus tard : une case laissée vide ne change rien.</p>
+    {% endif %}
+    {% if lots %}<button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>{% endif %}
+  </div>
+
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Médicament</th>
+          <th class="d-none d-md-table-cell">Lot</th>
+          <th class="text-end d-none d-md-table-cell">Reste</th>
+          <th class="text-end d-none d-md-table-cell">Prix de vente</th>
+          <th class="text-end">Prix d'achat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lot in lots %}
+        <tr>
+          <td style="font-weight:600">
+            {{ lot.medicament.libelle }}
+            <div class="d-md-none" style="font-size:.74rem;font-weight:500;color:var(--text-muted)">Vendu {{ lot.medicament.prix_unitaire|espaces }} FCFA</div>
+          </td>
+          <td class="d-none d-md-table-cell" style="font-size:.78rem;white-space:nowrap">{{ lot.numero|default:"—" }}</td>
+          <td class="text-end d-none d-md-table-cell">{{ lot.quantite_restante }} {{ lot.medicament.unite }}</td>
+          <td class="text-end d-none d-md-table-cell" style="white-space:nowrap">{{ lot.medicament.prix_unitaire|espaces }} FCFA</td>
+          <td class="text-end">
+            <input type="number" name="prix_{{ lot.pk }}" min="0" step="1" class="f-input champ-prix"
+                   value="{% if lot.prix_achat %}{{ lot.prix_achat|stringformat:'.0f' }}{% endif %}"
+                   placeholder="À saisir" aria-label="Prix d'achat de {{ lot.medicament.nom }}">
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-5" style="color:var(--text-muted)">
+            <i class="bi bi-check-circle-fill" style="color:#10b981;font-size:1.4rem;display:block;margin-bottom:.4rem"></i>
+            Tous les lots ont leur prix d'achat.
+            <div style="margin-top:.75rem"><a href="{% url 'pharmacie:ventes' %}" class="btn-c btn-outline-c">Voir les ventes et les profits</a></div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if lots %}
+  <div class="d-flex justify-content-end mt-3">
+    <button type="submit" class="btn-c btn-primary-c"><i class="bi bi-check-lg"></i> Enregistrer</button>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}

@@ -26,6 +26,9 @@ urlpatterns = [
 
     # Le stock arrivage par arrivage.
     path('lots/',                     views.lot_liste,            name='lots'),
+    path('lots/prix-achat/',          views.lots_prix_achat,      name='lots_prix_achat'),
+    path('ventes/',                   views.ventes_profits,       name='ventes'),
+    path('factures-fournisseurs/',    views.factures_achats,      name='factures_fournisseurs'),
 
     path('mouvements/',               views.mouvement_liste,      name='mouvements'),
     path('mouvements/<int:pk>/supprimer/', views.mouvement_supprimer, name='mouvement_supprimer'),

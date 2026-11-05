@@ -22,6 +22,7 @@ from patients.models import Patient
 from consultation.models import Ordonnance
 from comptes.decorators import role_required, permission_required
 from comptes.recherche import termes_q
+from . import ventes as calculs
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -938,6 +939,7 @@ def lot_liste(request):
         'lots':         lots,
         'q':            q,
         'etat':         etat,
+        'nb_sans_prix': calculs.lots_sans_prix().count(),
         'medicament':   Medicament.objects.filter(pk=medicament_id).first()
                         if medicament_id else None,
         'nb_stock':     en_stock.count(),
@@ -945,4 +947,144 @@ def lot_liste(request):
         'nb_bientot':   en_stock.filter(date_peremption__gte=aujourdhui,
                                         date_peremption__lte=limite).count(),
         'valeur_achat': _fmt(valeur),
+    })
+
+
+@permission_required('stock.entree')
+def lots_prix_achat(request):
+    """Saisir d'un coup ce que les lots ont coûté.
+
+    Par défaut : les lots dont le prix manque. Avec ?medicament= : tous les lots de ce
+    médicament, pour corriger un prix déjà saisi. Une case vide ne change rien, on peut
+    donc en remplir une partie et revenir plus tard.
+
+    Le profit se recalcule tout seul : il lit le prix du lot au moment d'afficher, donc
+    même les ventes déjà faites sur ces lots en tiennent compte.
+    """
+    medicament_id = request.GET.get('medicament', '')
+    lots = Lot.objects.select_related('medicament').order_by('medicament__nom', 'pk')
+    if medicament_id.isdigit():
+        lots = lots.filter(medicament_id=medicament_id)
+    else:
+        medicament_id = ''
+        lots = lots.filter(prix_achat=0)
+
+    if request.method == 'POST':
+        enregistres, refuses = 0, []
+        with transaction.atomic():
+            for lot in lots:
+                brut = request.POST.get(f'prix_{lot.pk}', '').strip()
+                if not brut:
+                    continue
+                try:
+                    prix = Decimal(brut)
+                    if not prix.is_finite() or prix < 0:
+                        raise ValueError
+                except (ValueError, ArithmeticError):
+                    refuses.append(lot.medicament.nom)
+                    continue
+                if prix != lot.prix_achat:
+                    lot.prix_achat = prix
+                    lot.save(update_fields=['prix_achat'])
+                    enregistres += 1
+        if enregistres:
+            messages.success(request, f"{enregistres} prix d'achat enregistré{'s' if enregistres > 1 else ''}.")
+        if refuses:
+            messages.error(request, "Prix non valide, à corriger : " + ', '.join(refuses) + '.')
+        if not enregistres and not refuses:
+            messages.info(request, "Aucun prix n'a changé.")
+        return redirect(request.get_full_path())
+
+    return render(request, 'pharmacie/lots_prix_achat.html', {
+        'lots': lots,
+        'medicament': Medicament.objects.filter(pk=medicament_id).first() if medicament_id else None,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Ventes et profits, factures fournisseurs (voir pharmacie/ventes.py)
+# ─────────────────────────────────────────────────────────────────
+
+def _mois_demande(request, aujourdhui):
+    """Le mois choisi (?mois=2026-11) ; le mois en cours si le choix est absent ou faux."""
+    try:
+        annee, mois = (int(x) for x in request.GET.get('mois', '').split('-'))
+        if 2000 <= annee <= 2100 and 1 <= mois <= 12:
+            return annee, mois
+    except ValueError:
+        pass
+    return aujourdhui.year, aujourdhui.month
+
+
+@permission_required('pharmacie.view')
+def ventes_profits(request):
+    """Combien la pharmacie vend, par jour, semaine et mois, et ce qu'elle y gagne."""
+    aujourdhui = timezone.localdate()
+    lignes = calculs.ventes()
+
+    vue = request.GET.get('vue')
+    if vue not in ('jour', 'semaine', 'mois'):
+        vue = 'jour'
+    periodes = {'jour': calculs.par_jour, 'semaine': calculs.par_semaine,
+                'mois': calculs.par_mois}[vue](lignes, aujourdhui=aujourdhui)
+
+    annee, mois = _mois_demande(request, aujourdhui)
+    medicaments = calculs.par_medicament(lignes, annee, mois)
+    total_mois = calculs.Cumul(libelle='Total')
+    for ligne in medicaments:
+        total_mois.ajouter(ligne)
+
+    # Du plus ancien au plus récent : c'est le sens de lecture d'un graphique.
+    mensuel = list(reversed(calculs.par_mois(lignes, aujourdhui=aujourdhui)))
+    return render(request, 'pharmacie/ventes.html', {
+        'resume':         calculs.resume(lignes, aujourdhui),
+        'vue':            vue,
+        'periodes':       periodes,
+        'medicaments':    medicaments,
+        'total_mois':     total_mois,
+        'mois_options':   calculs.mois_avec_ventes(lignes, aujourdhui),
+        'mois_choisi':    f'{annee}-{mois:02d}',
+        'mois_libelle':   f'{calculs.MOIS_FR[mois]} {annee}',
+        'nb_lots_sans_prix': calculs.lots_sans_prix().count(),
+        'graphique': {
+            'mois':   [m.libelle for m in mensuel],
+            'vendu':  [float(m.vendu) for m in mensuel],
+            'profit': [float(m.profit) for m in mensuel],
+        },
+    })
+
+
+@permission_required('pharmacie.view')
+def factures_achats(request):
+    """Ce que la pharmacie achète à ses fournisseurs, à part des factures de ses clients."""
+    aujourdhui = timezone.localdate()
+    factures = calculs.factures_fournisseurs()
+
+    def total(liste):
+        return sum((f.montant for f in liste), Decimal('0'))
+
+    du_mois = [f for f in factures if f.jour and (f.jour.year, f.jour.month) == (aujourdhui.year, aujourdhui.month)]
+    de_lannee = [f for f in factures if f.jour and f.jour.year == aujourdhui.year]
+
+    mois_options = sorted({(f.jour.year, f.jour.month) for f in factures if f.jour}, reverse=True)
+    choisi = request.GET.get('mois', '')
+    fournisseur = request.GET.get('fournisseur', '')
+    affichees = factures
+    if choisi:
+        annee, mois = _mois_demande(request, aujourdhui)
+        affichees = [f for f in affichees if f.jour and (f.jour.year, f.jour.month) == (annee, mois)]
+    if fournisseur.isdigit():
+        affichees = [f for f in affichees if f.fournisseur_id == int(fournisseur)]
+
+    return render(request, 'pharmacie/factures_fournisseurs.html', {
+        'factures':       affichees,
+        'total_affiche':  total(affichees),
+        'total_mois':     total(du_mois),
+        'total_annee':    total(de_lannee),
+        'nb_factures':    len(factures),
+        'mois_options':   [{'valeur': f'{a}-{m:02d}', 'libelle': f'{calculs.MOIS_FR[m]} {a}'}
+                           for a, m in mois_options],
+        'mois_choisi':    choisi,
+        'fournisseurs':   Fournisseur.objects.all(),
+        'fournisseur_choisi': fournisseur,
     })

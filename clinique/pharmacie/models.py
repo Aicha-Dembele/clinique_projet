@@ -334,8 +334,9 @@ class MouvementStock(models.Model):
 
         Les precisions du bon de livraison (numero de lot, peremption, prix
         d'achat, fournisseur) sont posees par l'appelant sur l'instance avant
-        le save, sous forme d'attributs `lot_*`. Quand elles manquent, on
-        retombe sur ce qu'on sait du medicament : l'entree reste tracee.
+        le save, sous forme d'attributs `lot_*`. Sans prix d'achat, le lot reste
+        a 0, qui veut dire « inconnu » : y recopier le prix de vente donnerait un
+        profit nul mais faux (voir pharmacie/ventes.py).
         """
         Lot.objects.create(
             medicament=self.medicament,
@@ -344,9 +345,9 @@ class MouvementStock(models.Model):
                              or self.medicament.date_peremption),
             quantite_initiale=self.quantite,
             quantite_restante=self.quantite,
-            prix_achat=(getattr(self, 'lot_prix_achat', None)
-                        or self.prix_unitaire or Decimal('0')),
+            prix_achat=getattr(self, 'lot_prix_achat', None) or Decimal('0'),
             fournisseur=getattr(self, 'lot_fournisseur', None),
+            commande=getattr(self, 'lot_commande', None),
         )
 
     def _consommer_les_lots(self):
@@ -424,6 +425,9 @@ class Lot(models.Model):
     toujours **le lot qui périme le plus tôt** (règle PEPS / FEFO), comme
     dans une vraie pharmacie : voir `MouvementStock._consommer_les_lots()`.
     """
+    #: Le stock déjà là à la mise en service : ce n'est pas un achat.
+    NUMERO_INITIAL = 'LOT-INITIAL'
+
     medicament  = models.ForeignKey(Medicament, related_name='lots',
                                     on_delete=models.CASCADE)
     numero      = models.CharField(
@@ -434,9 +438,12 @@ class Lot(models.Model):
     quantite_restante = models.PositiveIntegerField()
     prix_achat  = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        help_text="Prix d'achat unitaire chez le fournisseur (pour la marge).")
+        help_text="Prix d'achat unitaire chez le fournisseur. 0 veut dire « pas encore renseigné ».")
     fournisseur = models.ForeignKey(Fournisseur, null=True, blank=True,
                                     related_name='lots', on_delete=models.SET_NULL)
+    commande    = models.ForeignKey('Commande', null=True, blank=True,
+                                    related_name='lots', on_delete=models.SET_NULL,
+                                    help_text="La commande qui a livré ce lot. Vide : entrée de stock sans commande.")
     date_entree = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
@@ -591,6 +598,7 @@ class LigneCommande(models.Model):
         mouvement.lot_peremption = date_peremption
         mouvement.lot_prix_achat = self.prix_achat or None
         mouvement.lot_fournisseur = self.commande.fournisseur
+        mouvement.lot_commande = self.commande
         mouvement.save()
 
         self.quantite_recue += quantite

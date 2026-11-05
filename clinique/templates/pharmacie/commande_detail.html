@@ -8,7 +8,14 @@
   <li class="breadcrumb-item"><a href="{% url 'pharmacie:commandes' %}">Commandes</a></li>
   <li class="breadcrumb-item active">CMD-{{ commande.pk|stringformat:"04d" }}</li>
 {% endblock %}
+{% block extra_css %}<style>
+@media print {
+  .no-print, .topbar, #sidebar, nav, .sb-link, [class*="sidebar"] { display: none !important; }
+  body, #main, .page, main { margin: 0 !important; padding: 1rem !important; background: #fff !important; }
+}
+</style>{% endblock %}
 {% block page_actions %}
+<button type="button" class="btn-c btn-outline-c no-print" onclick="window.print()"><i class="bi bi-printer"></i> Imprimer</button>
 {% if not commande.est_receptionnee and commande.statut != 'annulee' and 'stock.entree' in user_permissions %}
 <a href="{% url 'pharmacie:commande_receptionner' commande.pk %}" class="btn-c btn-primary-c"><i class="bi bi-box-arrow-in-down"></i> Réceptionner la livraison</a>
 {% endif %}

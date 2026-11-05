@@ -117,7 +117,12 @@
             {% endif %}
           </td>
           <td>{{ lot.fournisseur.nom|default:"—" }}</td>
-          <td class="text-end">{{ lot.prix_achat|floatformat:0 }} FCFA</td>
+          <td class="text-end">
+            {% if lot.prix_achat %}{{ lot.prix_achat|floatformat:0 }} FCFA{% else %}<span style="color:var(--text-muted)">À saisir</span>{% endif %}
+            {% if 'stock.entree' in user_permissions %}
+            <a href="{% url 'pharmacie:lots_prix_achat' %}?medicament={{ lot.medicament_id }}" title="Modifier le prix d'achat" aria-label="Modifier le prix d'achat de {{ lot.medicament.nom }}"><i class="bi bi-pencil"></i></a>
+            {% endif %}
+          </td>
           <td style="font-size:.78rem;color:var(--text-muted)">{{ lot.date_entree|date:"d/m/Y"|default:"—" }}</td>
         </tr>
         {% empty %}
@@ -136,6 +141,7 @@
   <div style="margin-top:.8rem;font-size:.82rem;color:var(--text-muted)">
     {{ lots|length }} lot{{ lots|length|pluralize }} affiché{{ lots|length|pluralize }} ·
     valeur d'achat du stock affiché : <strong>{{ valeur_achat }} FCFA</strong>
+    {% if nb_sans_prix %}· {% if 'stock.entree' in user_permissions %}<a href="{% url 'pharmacie:lots_prix_achat' %}">{% endif %}{{ nb_sans_prix }} lot{{ nb_sans_prix|pluralize }} sans prix d'achat{% if 'stock.entree' in user_permissions %}</a>{% endif %}{% endif %}
   </div>
   {% endif %}
 </div>

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static montants %}
 {% block body_class %}page-dashboard-bg page-pharmacie-bg page-accueil{% endblock %}
 
 {% block title %}Dashboard Pharmacien{% endblock %}
@@ -80,6 +80,55 @@
         <div class="stat-h-trend text-muted">FCFA</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Ventes de la pharmacie : le détail est sur la page Ventes et profits -->
+<div class="row g-3 mb-4 stats-montants">
+  <div class="col-6 col-xl-3">
+    <a href="{% url 'pharmacie:ventes' %}?vue=jour" class="stat-h" style="text-decoration:none">
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12)"><i class="bi bi-calendar-day" style="color:#1666b3"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Vendu aujourd'hui</div>
+        <div class="stat-h-val">{{ ventes.jour.vendu|espaces }}</div>
+        <div class="stat-h-trend text-muted">FCFA</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-xl-3">
+    <a href="{% url 'pharmacie:ventes' %}?vue=semaine" class="stat-h" style="text-decoration:none">
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12)"><i class="bi bi-calendar-week" style="color:#14b8a6"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Vendu cette semaine</div>
+        <div class="stat-h-val">{{ ventes.semaine.vendu|espaces }}</div>
+        <div class="stat-h-trend text-muted">FCFA</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-xl-3">
+    <a href="{% url 'pharmacie:ventes' %}?vue=mois" class="stat-h" style="text-decoration:none">
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12)"><i class="bi bi-calendar-month" style="color:#a855f7"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Vendu ce mois</div>
+        <div class="stat-h-val">{{ ventes.mois.vendu|espaces }}</div>
+        <div class="stat-h-trend text-muted">FCFA</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-xl-3">
+    <a href="{% url 'pharmacie:ventes' %}" class="stat-h" style="text-decoration:none">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12)"><i class="bi bi-piggy-bank" style="color:#10b981"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Profit ce mois</div>
+        {% if ventes.mois.cout_connu or not ventes.mois.quantite %}
+        <div class="stat-h-val">{{ ventes.mois.profit|espaces }}</div>
+        <div class="stat-h-trend text-muted">FCFA</div>
+        {% else %}
+        <div class="stat-h-val">—</div>
+        <div class="stat-h-trend text-muted">Prix d'achat manquants</div>
+        {% endif %}
+      </div>
+    </a>
   </div>
 </div>
 

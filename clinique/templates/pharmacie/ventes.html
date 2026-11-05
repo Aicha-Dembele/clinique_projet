@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load montants %}
+{% block body_class %}page-pharmacie-bg{% endblock %}
+{% block title %}Ventes et profits{% endblock %}
+{% block nav_ventes %}active{% endblock %}
+{% block page_title %}Pharmacie{% endblock %}
+{% block page_heading %}Ventes et profits{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{% url 'pharmacie:medicaments' %}">Pharmacie</a></li>
+  <li class="breadcrumb-item active">Ventes et profits</li>
+{% endblock %}
+{% block page_actions %}
+{% if 'facture.view' in user_permissions %}
+<a href="{% url 'facturation:liste' %}" class="btn-c btn-outline-c"><i class="bi bi-receipt-cutoff"></i> Factures clients</a>
+{% endif %}
+<a href="{% url 'pharmacie:factures_fournisseurs' %}" class="btn-c btn-outline-c"><i class="bi bi-file-earmark-text"></i> Factures fournisseurs</a>
+{% endblock %}
+{% block extra_css %}<style>
+.stat-h { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1rem; padding: 1.05rem 1.15rem; box-shadow: var(--shadow-sm); height: 100%; }
+.stat-h-ico { border-radius: .8rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.stat-h-lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-h-val { font-size: 1.45rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; line-height: 1.1; }
+.stat-h-trend { font-size: .68rem; font-weight: 700; margin-top: .25rem; color: var(--text-muted); }
+.onglets { display: inline-flex; gap: .35rem; flex-wrap: wrap; }
+.titre-bloc { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.titre-bloc h2 { font-size: 1rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+.montant { white-space: nowrap; text-align: right; }
+.profit-plus { color: #0f8a5f; font-weight: 700; }
+.profit-moins { color: #dc2626; font-weight: 700; }
+.table-c tfoot td { font-weight: 800; border-top: 2px solid var(--card-border); }
+.avis-prix { display: flex; gap: .7rem; align-items: flex-start; flex-wrap: wrap; background: rgba(245,158,11,.10); border: 1.5px solid rgba(245,158,11,.35); border-radius: .8rem; padding: .85rem 1.1rem; margin-bottom: 1rem; font-size: .82rem; color: var(--text-primary); line-height: 1.5; }
+.avis-prix i { color: #f59e0b; font-size: 1rem; }
+.graphique-ventes { position: relative; height: 240px; }
+</style>{% endblock %}
+{% block content %}
+
+{% if nb_lots_sans_prix %}
+<div class="avis-prix">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div style="flex:1;min-width:220px">
+    <strong>{{ nb_lots_sans_prix }} lot{{ nb_lots_sans_prix|pluralize }} n'{{ nb_lots_sans_prix|pluralize:"a,ont" }} pas de prix d'achat.</strong>
+    Tant qu'il manque, ce qui en sort compte dans le vendu, mais pas dans le profit : on ne peut pas calculer un gain sans savoir ce que le médicament a coûté.
+  </div>
+  {% if 'stock.entree' in user_permissions %}
+  <a href="{% url 'pharmacie:lots_prix_achat' %}" class="btn-c btn-primary-c"><i class="bi bi-pencil"></i> Saisir les prix d'achat</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4 stats-montants">
+  <div class="col-6 col-xl-3">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(22,102,179,.12);color:#1666b3"><i class="bi bi-calendar-day"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Vendu aujourd'hui</div>
+        <div class="stat-h-val">{{ resume.jour.vendu|espaces }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
+        <div class="stat-h-trend">{{ resume.jour.quantite }} article{{ resume.jour.quantite|pluralize }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(20,184,166,.12);color:#14b8a6"><i class="bi bi-calendar-week"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Vendu cette semaine</div>
+        <div class="stat-h-val">{{ resume.semaine.vendu|espaces }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
+        <div class="stat-h-trend">{{ resume.semaine.quantite }} article{{ resume.semaine.quantite|pluralize }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(168,85,247,.12);color:#a855f7"><i class="bi bi-calendar-month"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Vendu ce mois</div>
+        <div class="stat-h-val">{{ resume.mois.vendu|espaces }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
+        <div class="stat-h-trend">{{ resume.mois.quantite }} article{{ resume.mois.quantite|pluralize }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-h">
+      <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="bi bi-piggy-bank"></i></div>
+      <div class="stat-h-info">
+        <div class="stat-h-lbl">Profit ce mois</div>
+        {% if resume.mois.cout_connu or not resume.mois.quantite %}
+        <div class="stat-h-val">{{ resume.mois.profit|espaces }} <small style="font-size:.65rem;color:var(--text-muted);font-weight:600">FCFA</small></div>
+        <div class="stat-h-trend">{% if resume.mois.marge is not None %}Marge de {{ resume.mois.marge }} %{% else %}Aucune vente{% endif %}</div>
+        {% else %}
+        <div class="stat-h-val">—</div>
+        <div class="stat-h-trend">Prix d'achat manquants</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-c mb-4">
+  <div class="titre-bloc"><h2>Les 12 derniers mois</h2></div>
+  <div class="graphique-ventes"><canvas id="graphiqueVentes"></canvas></div>
+</div>
+
+<div class="card-c mb-4">
+  <div class="titre-bloc">
+    <h2>Le détail</h2>
+    <div class="onglets">
+      <a href="?vue=jour&amp;mois={{ mois_choisi }}" class="btn-c {% if vue == 'jour' %}btn-primary-c{% else %}btn-outline-c{% endif %}">Par jour</a>
+      <a href="?vue=semaine&amp;mois={{ mois_choisi }}" class="btn-c {% if vue == 'semaine' %}btn-primary-c{% else %}btn-outline-c{% endif %}">Par semaine</a>
+      <a href="?vue=mois&amp;mois={{ mois_choisi }}" class="btn-c {% if vue == 'mois' %}btn-primary-c{% else %}btn-outline-c{% endif %}">Par mois</a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Période</th>
+          <th class="text-end d-none d-md-table-cell">Articles vendus</th>
+          <th class="text-end">Vendu</th>
+          <th class="text-end d-none d-md-table-cell">Coût d'achat</th>
+          <th class="text-end">Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in periodes %}
+        <tr>
+          <td style="font-weight:600">{{ p.libelle }}</td>
+          <td class="text-end d-none d-md-table-cell">{{ p.quantite }}</td>
+          <td class="montant">{{ p.vendu|espaces }} FCFA</td>
+          <td class="montant d-none d-md-table-cell">{% if p.cout_connu %}{{ p.cout|espaces }} FCFA{% else %}—{% endif %}</td>
+          <td class="montant">
+            {% if p.cout_connu %}<span class="{% if p.profit < 0 %}profit-moins{% else %}profit-plus{% endif %}">{{ p.profit|espaces }} FCFA</span>{% else %}—{% endif %}
+            {% if p.quantite_sans_prix and p.cout_connu %}<div style="font-size:.7rem;color:var(--text-muted);font-weight:500">{{ p.quantite_sans_prix }} sans prix d'achat</div>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)">Aucune vente sur cette période.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-c mb-4">
+  <div class="titre-bloc">
+    <h2>Profit par médicament — {{ mois_libelle }}</h2>
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <input type="hidden" name="vue" value="{{ vue }}">
+      <select name="mois" class="f-input f-select" aria-label="Choisir le mois" onchange="this.form.submit()">
+        {% for m in mois_options %}
+        <option value="{{ m.valeur }}" {% if m.valeur == mois_choisi %}selected{% endif %}>{{ m.libelle }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="table-responsive">
+    <table class="table-c">
+      <thead>
+        <tr>
+          <th>Médicament</th>
+          <th class="text-end d-none d-md-table-cell">Quantité</th>
+          <th class="text-end">Vendu</th>
+          <th class="text-end d-none d-md-table-cell">Coût d'achat</th>
+          <th class="text-end">Profit</th>
+          <th class="text-end d-none d-md-table-cell">Marge</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicaments %}
+        <tr>
+          <td style="font-weight:600">{{ m.libelle }}</td>
+          <td class="text-end d-none d-md-table-cell">{{ m.quantite }}</td>
+          <td class="montant">{{ m.vendu|espaces }} FCFA</td>
+          <td class="montant d-none d-md-table-cell">{% if m.cout_connu %}{{ m.cout|espaces }} FCFA{% else %}—{% endif %}</td>
+          <td class="montant">
+            {% if m.cout_connu %}<span class="{% if m.profit < 0 %}profit-moins{% else %}profit-plus{% endif %}">{{ m.profit|espaces }} FCFA</span>{% endif %}
+            {% if m.quantite_sans_prix %}
+            <div style="font-size:.7rem;font-weight:600"><a href="{% url 'pharmacie:lots_prix_achat' %}?medicament={{ m.medicament.pk }}">Prix d'achat manquant ({{ m.quantite_sans_prix }})</a></div>
+            {% endif %}
+          </td>
+          <td class="text-end d-none d-md-table-cell">{% if m.marge is not None %}{{ m.marge }} %{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-4" style="color:var(--text-muted)">Aucun médicament vendu en {{ mois_libelle }}.</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if medicaments %}
+      <tfoot>
+        <tr>
+          <td>{{ total_mois.libelle }}</td>
+          <td class="text-end d-none d-md-table-cell">{{ total_mois.quantite }}</td>
+          <td class="montant">{{ total_mois.vendu|espaces }} FCFA</td>
+          <td class="montant d-none d-md-table-cell">{% if total_mois.cout_connu %}{{ total_mois.cout|espaces }} FCFA{% else %}—{% endif %}</td>
+          <td class="montant">{% if total_mois.cout_connu %}{{ total_mois.profit|espaces }} FCFA{% else %}—{% endif %}</td>
+          <td class="text-end d-none d-md-table-cell">{% if total_mois.marge is not None %}{{ total_mois.marge }} %{% else %}—{% endif %}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<p style="font-size:.76rem;color:var(--text-muted)">
+  Une vente compte le jour où le médicament est dispensé, même si l'assurance règle sa part plus tard.
+  Le profit compare son prix de vente au prix d'achat du lot dont il est vraiment sorti.
+</p>
+
+{{ graphique|json_script:"donnees-graphique" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  Chart.defaults.animation = false;
+  const d = JSON.parse(document.getElementById('donnees-graphique').textContent);
+  const fcfa = v => Math.round(v).toLocaleString('fr-FR').replace(/ | /g, ' ') + ' FCFA';
+  new Chart(document.getElementById('graphiqueVentes'), {
+    type: 'bar',
+    data: {
+      labels: d.mois,
+      datasets: [
+        { label: 'Vendu', data: d.vendu, backgroundColor: '#1666b3', borderRadius: 6 },
+        { label: 'Profit', data: d.profit, backgroundColor: '#10b981', borderRadius: 6 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { tooltip: { callbacks: { label: c => ` ${c.dataset.label} : ${fcfa(c.parsed.y)}` } } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => fcfa(v) } } },
+    },
+  });
+})();
+</script>
+{% endblock %}
