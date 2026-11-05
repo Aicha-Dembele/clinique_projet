@@ -69,7 +69,7 @@
       <div class="stat-h-ico" style="background:rgba(16,185,129,.12);color:var(--primary)"><i class="bi bi-check-circle-fill"></i></div>
       <div class="stat-h-info">
         <div class="stat-h-lbl">Résultats validés</div>
-        <div class="stat-h-val">{{ examens_termines|default:0 }}</div>
+        <div class="stat-h-val">{{ resultats_du_jour|default:0 }}</div>
         <div class="stat-h-trend" style="color:var(--primary)">Aujourd'hui</div>
       </div>
     </div>
@@ -136,18 +136,21 @@
         <div class="panel-title"><i class="bi bi-pie-chart-fill" style="color:#a855f7"></i> Types d'analyses</div>
       </div>
       <div class="panel-body">
+        {% if types_analyses %}
         <div class="row align-items-center g-3">
-          <div class="col-12 col-sm-5"><div class="chart-wrap-mini" style="position:relative"><canvas id="typesChart"></canvas><div class="donut-center"><div class="donut-center-val">100%</div><div class="donut-center-lbl">Total</div></div></div></div>
+          <div class="col-12 col-sm-5"><div class="chart-wrap-mini" style="position:relative"><canvas id="typesChart"></canvas><div class="donut-center"><div class="donut-center-val">{{ total_examens }}</div><div class="donut-center-lbl">examen{{ total_examens|pluralize }}</div></div></div></div>
           <div class="col-12 col-sm-7">
             <div class="donut-legend">
-              <div class="donut-leg-item"><span class="donut-leg-dot" style="background:#10b981"></span><span class="donut-leg-name">Hématologie</span><span class="donut-leg-val">38%</span></div>
-              <div class="donut-leg-item"><span class="donut-leg-dot" style="background:#14b8a6"></span><span class="donut-leg-name">Biochimie</span><span class="donut-leg-val">27%</span></div>
-              <div class="donut-leg-item"><span class="donut-leg-dot" style="background:#a855f7"></span><span class="donut-leg-name">Bactério</span><span class="donut-leg-val">18%</span></div>
-              <div class="donut-leg-item"><span class="donut-leg-dot" style="background:#f59e0b"></span><span class="donut-leg-name">Imagerie</span><span class="donut-leg-val">12%</span></div>
-              <div class="donut-leg-item"><span class="donut-leg-dot" style="background:#94a3b8"></span><span class="donut-leg-name">Autres</span><span class="donut-leg-val">5%</span></div>
+              {% for t in types_analyses %}
+              <div class="donut-leg-item"><span class="donut-leg-dot" style="background:{{ t.couleur }}"></span><span class="donut-leg-name">{{ t.nom }}</span><span class="donut-leg-val">{{ t.pct }}%</span></div>
+              {% endfor %}
             </div>
           </div>
         </div>
+        {{ types_analyses|json_script:"types-analyses" }}
+        {% else %}
+        <div class="text-center py-4" style="color:var(--text-muted);font-size:.85rem">Aucun examen enregistré pour l'instant.</div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -180,11 +183,12 @@
 
   const tc = document.getElementById('typesChart');
   if (tc) {
+    const types = JSON.parse(document.getElementById('types-analyses').textContent);
     new Chart(tc, {
       type: 'doughnut',
-      data: { labels: ['Hématologie','Biochimie','Bactério','Imagerie','Autres'], datasets: [{
-        data: [38,27,18,12,5],
-        backgroundColor: ['#10b981','#14b8a6','#a855f7','#f59e0b','#94a3b8'],
+      data: { labels: types.map(t => t.nom), datasets: [{
+        data: types.map(t => t.pct),
+        backgroundColor: types.map(t => t.couleur),
         borderWidth: 0, borderRadius: 6, spacing: 3,
       }]},
       options: { responsive: true, maintainAspectRatio: false, cutout: '72%',

@@ -114,7 +114,7 @@
             <div class="chart-wrap-mini" style="position:relative">
               <canvas id="paymentChart"></canvas>
               <div class="donut-center">
-                <div class="donut-center-val">{% if pct_especes or pct_orange or pct_carte %}100{% else %}0{% endif %}%</div>
+                <div class="donut-center-val">{% if pct_especes or pct_sama %}100{% else %}0{% endif %}%</div>
                 <div class="donut-center-lbl">Total</div>
               </div>
             </div>
@@ -122,8 +122,7 @@
           <div class="col-6">
             <div class="donut-legend">
               <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#1666b3"></div><div class="donut-leg-name">Espèces</div><div class="donut-leg-val">{{ pct_especes|default:0 }}%</div></div>
-              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#f97316"></div><div class="donut-leg-name">Orange Money</div><div class="donut-leg-val">{{ pct_orange|default:0 }}%</div></div>
-              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#a855f7"></div><div class="donut-leg-name">Carte bancaire</div><div class="donut-leg-val">{{ pct_carte|default:0 }}%</div></div>
+              <div class="donut-leg-item"><div class="donut-leg-dot" style="background:#f97316"></div><div class="donut-leg-name">SAMA Money</div><div class="donut-leg-val">{{ pct_sama|default:0 }}%</div></div>
             </div>
           </div>
         </div>
@@ -143,14 +142,9 @@
           <span class="bar-val">{{ pct_especes|default:0 }}%</span>
         </div>
         <div class="bar-row">
-          <span class="bar-name"><i class="bi bi-phone-fill me-1" style="color:#f97316"></i> Orange Money</span>
-          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_orange|default:0 }}%;background:linear-gradient(90deg,#f97316,#fb923c)"></div></div>
-          <span class="bar-val">{{ pct_orange|default:0 }}%</span>
-        </div>
-        <div class="bar-row">
-          <span class="bar-name"><i class="bi bi-credit-card-fill me-1" style="color:#a855f7"></i> Carte bancaire</span>
-          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_carte|default:0 }}%;background:linear-gradient(90deg,#a855f7,#c084fc)"></div></div>
-          <span class="bar-val">{{ pct_carte|default:0 }}%</span>
+          <span class="bar-name"><i class="bi bi-phone-fill me-1" style="color:#f97316"></i> SAMA Money</span>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ pct_sama|default:0 }}%;background:linear-gradient(90deg,#f97316,#fb923c)"></div></div>
+          <span class="bar-val">{{ pct_sama|default:0 }}%</span>
         </div>
       </div>
     </div>
@@ -205,17 +199,18 @@
 <script>
 (function(){
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-  const data = [{{ pct_especes|default:0 }}, {{ pct_orange|default:0 }}, {{ pct_carte|default:0 }}];
+  const data = [{{ pct_especes|default:0 }}, {{ pct_sama|default:0 }}];
   const total = data.reduce((a,b) => a+b, 0);
   const ctx = document.getElementById('paymentChart');
   if (ctx) {
     new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Espèces','Orange Money','Carte'],
+        labels: ['Espèces','SAMA Money'],
         datasets: [{
-          data: total > 0 ? data : [1,1,1],
-          backgroundColor: ['#1666b3','#f97316','#a855f7'],
+          // Sans paiement, un anneau gris : pas de fausse répartition.
+          data: total > 0 ? data : [1],
+          backgroundColor: total > 0 ? ['#1666b3','#f97316'] : ['#e2e8f0'],
           borderWidth: 0,
           hoverOffset: 8
         }]

@@ -4,6 +4,44 @@ from django.utils import timezone
 from patients.models import Patient
 
 
+COULEURS_TYPES = ['#10b981', '#14b8a6', '#a855f7', '#f59e0b', '#94a3b8']
+
+
+def repartition_types(types, maximum=4):
+    """La part réelle de chaque type d'examen, du plus fréquent au moins fréquent.
+
+    Au-delà de `maximum` types, le reste est regroupé dans « Autres ». Les types
+    saisis à la main sont comparés sans tenir compte des majuscules. Les
+    pourcentages sont arrondis de façon à toujours faire 100 en tout.
+    """
+    noms, nombres = {}, {}
+    for texte in types:
+        texte = (texte or '').strip() or 'Non précisé'
+        cle = texte.casefold()
+        noms.setdefault(cle, texte)
+        nombres[cle] = nombres.get(cle, 0) + 1
+    total = sum(nombres.values())
+    if not total:
+        return []
+
+    classes = sorted(nombres, key=lambda cle: (-nombres[cle], cle))
+    parts = [{'nom': noms[cle], 'nb': nombres[cle]} for cle in classes[:maximum]]
+    reste = sum(nombres[cle] for cle in classes[maximum:])
+    if reste:
+        parts.append({'nom': 'Autres', 'nb': reste})
+
+    exacts = [part['nb'] * 100 / total for part in parts]
+    for part, exact in zip(parts, exacts):
+        part['pct'] = int(exact)
+    manque = 100 - sum(part['pct'] for part in parts)
+    plus_forts_restes = sorted(range(len(parts)), key=lambda i: parts[i]['pct'] - exacts[i])
+    for i in plus_forts_restes[:manque]:
+        parts[i]['pct'] += 1
+    for part, couleur in zip(parts, COULEURS_TYPES):
+        part['couleur'] = couleur
+    return parts
+
+
 @login_required
 def dashboard(request):
     """
@@ -228,8 +266,11 @@ def dashboard(request):
             **base_ctx,
             'examens_liste':       examens_qs.filter(statut__in=['en_attente','en_cours']).order_by('id')[:10],
             'examens_en_cours':    examens_qs.filter(statut='en_cours').count(),
-            'examens_termines':    examens_qs.filter(statut='termine').count(),
-            'total_examens_mois':  examens_qs.count(),
+            'resultats_du_jour':   ResultatExamen.objects.filter(date_examen__date=aujourd_hui).count(),
+            'total_examens_mois':  examens_qs.filter(
+                date__year=aujourd_hui.year, date__month=aujourd_hui.month).count(),
+            'total_examens':       examens_qs.count(),
+            'types_analyses':      repartition_types(examens_qs.values_list('type_examen', flat=True)),
             'derniers_resultats':  ResultatExamen.objects.order_by('-date_examen')[:4],
         }
         return render(request, 'laborantin/dashboard.html', ctx)
