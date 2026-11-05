@@ -1,0 +1,9 @@
+{% extends 'registration/auth_base.html' %}
+{# Affichée par Django quand un formulaire est refusé par la protection CSRF : voir comptes/tests_page_connexion.py. #}
+{% block title %}Page expirée — Nevroglie{% endblock %}
+{% block content %}
+<div class="auth-title">Cette page a expiré</div>
+<div class="auth-sub" style="margin-bottom:.4rem">Elle est sans doute restée ouverte trop longtemps. Par sécurité, ce que vous venez d'envoyer n'a pas été enregistré.</div>
+<a href="{% url 'login' %}" class="btn-login">Continuer <i class="bi bi-arrow-right"></i></a>
+<div class="help-text" style="text-align:center;margin-top:1rem">Si vous remplissiez un formulaire, il faudra le refaire. Si ce message revient à chaque essai, vérifiez que votre navigateur accepte les cookies.</div>
+{% endblock %}

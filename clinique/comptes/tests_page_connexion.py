@@ -6,6 +6,7 @@ from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
+from comptes.models import Profil, Role
 from comptes.views import REMEMBER_COOKIE
 
 
@@ -58,6 +59,52 @@ class PageConnexionTests(TestCase):
         page = visiteur.get(self.url)
         self.assertContains(page, 'value="aminata"')
         self.assertContains(page, 'checked')
+
+
+class PageExpireeTests(TestCase):
+    """Un formulaire refusé par la protection CSRF : un message compréhensible, et toujours aucun envoi accepté."""
+
+    def setUp(self):
+        # Le client de test ignore cette protection, sauf si on lui demande de l'appliquer.
+        self.navigateur = self.client_class(enforce_csrf_checks=True)
+        self.url = reverse('login')
+        self.identifiants = {'username': 'aminata', 'password': 'bon-mot-de-passe'}
+        self.user = User.objects.create_user('aminata', 'aminata@exemple.ml', self.identifiants['password'])
+
+    def test_un_envoi_sans_jeton_affiche_un_message_clair(self):
+        page = self.navigateur.post(self.url, self.identifiants)
+        self.assertContains(page, 'Cette page a expiré', status_code=403)
+        self.assertContains(page, f'href="{self.url}"', status_code=403)
+        self.assertNotContains(page, 'CSRF', status_code=403)
+
+    def test_un_jeton_perime_affiche_le_meme_message(self):
+        self.navigateur.get(self.url)
+        page = self.navigateur.post(self.url, {**self.identifiants, 'csrfmiddlewaretoken': 'perime'})
+        self.assertContains(page, 'Cette page a expiré', status_code=403)
+
+    def test_la_protection_refuse_toujours_la_connexion(self):
+        self.navigateur.post(self.url, self.identifiants)
+        self.assertIsNone(self.navigateur.session.get('_auth_user_id'))
+
+    def test_apres_le_message_on_peut_se_connecter(self):
+        self.navigateur.post(self.url, self.identifiants)
+        html = self.navigateur.get(self.url).content.decode()
+        jeton = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', html).group(1)
+        reponse = self.navigateur.post(self.url, {**self.identifiants, 'csrfmiddlewaretoken': jeton})
+        self.assertEqual(reponse.status_code, 302)
+        self.assertEqual(self.navigateur.session.get('_auth_user_id'), str(self.user.pk))
+
+    def test_pour_une_personne_connectee_rien_n_est_enregistre_et_continuer_mene_a_l_accueil(self):
+        """Le message annonce que rien n'est enregistré : il faut que ce soit vrai."""
+        role, _ = Role.objects.get_or_create(code='infirmier', defaults={'libelle': 'Infirmier'})
+        Profil.objects.create(user=self.user, role=role)
+        self.navigateur.force_login(self.user)
+        page = self.navigateur.post(reverse('comptes:mon_profil'), {
+            'email': 'autre@exemple.ml', 'mot_de_passe': self.identifiants['password']})
+        self.assertContains(page, "n'a pas été enregistré", status_code=403)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'aminata@exemple.ml')
+        self.assertRedirects(self.navigateur.get(self.url), reverse('dashboard'), fetch_redirect_response=False)
 
 
 class BarreDuHautTests(TestCase):
